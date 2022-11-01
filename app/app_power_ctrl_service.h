@@ -54,6 +54,6 @@ typedef struct __pwr_ctrl_sm
     IV0PWRSRC_ENUM         active_power_src;
 }PWR_CTRL_SM;
 
-#endif /*APP_POWER_CONTROL_SERVICE*/
+#endif /* APP_POWER_CONTROL_SERVICE */
 
-#endif /*APP_POWER_CTRL_SERVICE_H_*/
+#endif /* APP_POWER_CTRL_SERVICE_H_ */

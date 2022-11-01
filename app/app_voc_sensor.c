@@ -18,9 +18,9 @@
 
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
 
-#include "lib/bsec_1_x/bsec_interface.h"
-#include "lib/bsec_1_x/bsec_integration.h"
-#include "lib/bsec_1_x/bsec_serialized_configurations_iaq.h"
+#include "bsec_interface.h"
+#include "bsec_integration.h"
+#include "bsec_serialized_configurations_iaq.h"
 
 #if ( BME68X_CHIP_TYPE == CHIP_TYPE_INTERNAL_BME680 )
 #define BME68X_I2C_ADDR BME680_I2C_ADDR_PRIMARY
@@ -55,7 +55,6 @@
 
 /* Struct instance for read_service */
 read_voc_data_service inst_read_service;
-static int8_t bme68x_stat = 0;
 
 static uint32_t state_load_func(uint8_t *state_buffer, uint32_t n_buffer);
 static uint32_t config_load_func(uint8_t *config_buffer, uint32_t n_buffer);
@@ -66,6 +65,7 @@ static void state_save_func(const uint8_t *state_buffer, uint32_t length);
 static void bme680_output_ready_cb(bme680_bsec_output *bsec_out);
 static int8_t bme680_write_i2c(uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t len);
 static int8_t bme680_read_i2c(uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t len);
+static void update_voc_sens_to_broker(bme680_bsec_output *bsec_out);
 #endif
 
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
@@ -73,6 +73,7 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out);
 static BME68X_INTF_RET_TYPE bme68x_write_i2c(uint8_t reg_addr, const uint8_t *data, uint32_t len, void *intf_ptr);
 static BME68X_INTF_RET_TYPE bme68x_read_i2c(uint8_t reg_addr, uint8_t *data, uint32_t len, void *intf_ptr);
 static void bsec_delay_us(uint32_t period, void *intf_ptr);
+static void update_voc_sens_to_broker(bme68x_bsec_output *bsec_out);
 #endif
 
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
@@ -163,7 +164,7 @@ static void bme680_output_ready_cb(bme680_bsec_output *bsec_out)
   * @param  Pointer to the struct type bme680_bsec_output.
   * @retval void.
   */
-void update_voc_sens_to_broker(bme680_bsec_output *bsec_out)
+static void update_voc_sens_to_broker(bme680_bsec_output *bsec_out)
 {
 	/* Update the newly calculated value of IAQ index in data base and publish to broker */
 	update_and_publish_to_broker(SBMEB0IAQ ,  bsec_out->iaq.data);
@@ -176,36 +177,6 @@ void update_voc_sens_to_broker(bme680_bsec_output *bsec_out)
 	update_and_publish_to_broker(SBMEB0SST ,  bsec_out->stabilization_status.data);
 	update_and_publish_to_broker(SBMEB0RIS ,  bsec_out->run_in_status.data);
 	update_and_publish_to_broker(SBMEB0AQR ,  bsec_out->iaq.accuracy);       // DDMP need to be update after changed in Master DDMP
-}
-
-/**
-  * @brief  init_bme680_sensor
-  * @param  none.
-  * @retval error code.
-  */
-uint8_t init_bme680_sensor(void)
-{ 
-    uint8_t err = 0;
-    return_values_init ret_val;
-    float temperature_offset = BME680_TEMPERATURE_OFFSET;
-
-    ret_val = bsec_iot_init(BSEC_SAMPLE_RATE_LP, temperature_offset, bme680_write_i2c, bme680_read_i2c, 
-    osal_task_delay, state_load_func, config_load_func, state_save_func);
-
-    bme68x_stat = ret_val.bme680_status;
-
-    if ( ( BSEC_OK == ret_val.bsec_status ) && ( BME680_OK == ret_val.bme680_status ) )
-    {
-        LOG(I, "BME680 Init success");
-        err = VOC_SENSOR_STATUS_INIT_SUCCESS;
-    }
-    else
-    {
-        LOG(E, "BME680 Init failed : bme680_status =  %d, bsec_status = %d ", ret_val.bme680_status, ret_val.bsec_status);
-        err = VOC_SENSOR_STATUS_INIT_FAILED;
-    }
-
-	return err;
 }
 
 /**
@@ -231,6 +202,22 @@ static uint32_t config_load_func(uint8_t *config_buffer, uint32_t n_buffer)
 
     return buffer_size;
 }
+/**
+  * @brief  Const structure initilazed for bme688 sensor
+  */
+const BME680_BSEC_LIB_INTERFACE g_bsec_lib_intf = 
+{
+    .bus_read           = bme680_read_i2c,
+    .bus_write          = bme680_write_i2c,
+    .delay_ms           = osal_task_delay,
+    .get_time_stamp_us  = get_timestamp_us,
+    .output_ready       = bme680_output_ready_cb,
+    .config_load        = config_load_func,
+    .state_load         = state_load_func,
+    .state_save         = state_save_func,
+    .temperature_offset = BME68X_TEMPERATURE_OFFSET,
+    .sample_rate        = BSEC_SAMPLE_RATE_LP,
+};
 
 #endif
 
@@ -398,7 +385,7 @@ static uint32_t config_load_func(uint8_t *config_buffer, uint32_t n_buffer)
 }
 
 /**
-  * @brief  COnst structure initilazed for bme688 sensor
+  * @brief  Const structure initilazed for bme688 sensor
   */
 const BME6X_BSEC_LIB_INTERFACE g_bsec_lib_intf = 
 {
@@ -410,7 +397,7 @@ const BME6X_BSEC_LIB_INTERFACE g_bsec_lib_intf =
     .config_load        = config_load_func,
     .state_load         = state_load_func,
     .state_save         = state_save_func,
-    .temperature_offset = 0.0f,
+    .temperature_offset = BME68X_TEMPERATURE_OFFSET,
     .sample_rate        = BSEC_SAMPLE_RATE_LP,
 };
 
@@ -475,16 +462,6 @@ int64_t get_timestamp_us(void)
    time_stamp_us =  (int64_t)((int64_t)time_ms * (int64_t)1000);
    
    return time_stamp_us;
-}
-
-/**
-  * @brief  Function to get BME68x initialization status 
-  * @param  void.
-  * @retval BME68x init status
-  */
-int8_t get_bmestatus(void)
-{
-    return bme68x_stat;
 }
 
 #endif

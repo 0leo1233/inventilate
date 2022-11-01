@@ -16,7 +16,7 @@ static int8_t calc_rate_of_change(float curr_val, float prev_val, float max_val)
 static uint8_t get_step_level(int32_t roc);
 void calc_mode_min_max_rpm(void);
 
-fan_motor_control_info_db_t fan_motor_control_db[DEV_RPM_DB_TABLE_SIZE];
+EXT_RAM_ATTR fan_motor_control_info_db_t fan_motor_control_db[DEV_RPM_DB_TABLE_SIZE];
 
 /* IAQ Range */
 static IAQ_RANGE iaq_range_level[IAQ_RANGE_LEVELS] =
@@ -224,7 +224,7 @@ void set_fan_motor_rpm(invent_device_id_t dev_id, uint32_t rpm)
 #endif
 
 	/* Set the duty cycle */
-    hal_pwm_set_duty_cycle(dev_id, duty_cycle);
+    hal_pwm_set_duty_cycle(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, dev_id, duty_cycle);
 }
 
 /**
@@ -826,7 +826,7 @@ void update_dev_rpm(INVENTILATE_CONTROL_ALGO* ptr_iv, IV0MODE_ENUM mode)
 #endif
 
             /* Set the duty cycle */
-            hal_pwm_set_duty_cycle(dev_id, duty_cycle);
+            hal_pwm_set_duty_cycle(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, dev_id, duty_cycle);
 
             /* store the current set rpm */
             ptr_iv->prev_set_rpm[dev_id] = ptr_iv->set_rpm[dev_id];
@@ -880,19 +880,19 @@ static uint8_t get_step_level(int32_t roc_percent)
 {
     uint8_t rpm_step = 0;
 	
-	if ( ( roc_percent > 0 ) && ( roc_percent <= 5 ) )
+	if ( ( roc_percent > ROC_STEP_LEVEL_1_MIN_PERCENT ) && ( roc_percent <= ROC_STEP_LEVEL_1_MAX_PERCENT ) )
     {
         rpm_step = RPM_STEP_LEVEL_1;
     }
-    else if ( ( roc_percent >= 6 ) && ( roc_percent <= 20 ) )
+    else if ( ( roc_percent >= ROC_STEP_LEVEL_2_MIN_PERCENT ) && ( roc_percent <= ROC_STEP_LEVEL_2_MAX_PERCENT ) )
     {
         rpm_step = RPM_STEP_LEVEL_2;
     }
-    else if ( ( ( roc_percent >= 21 ) && ( roc_percent <= 40 ) ) )
+    else if ( ( roc_percent >= ROC_STEP_LEVEL_3_MIN_PERCENT ) && ( roc_percent <= ROC_STEP_LEVEL_3_MAX_PERCENT ) )
     {
         rpm_step = RPM_STEP_LEVEL_3;
     }
-	else if ( ( roc_percent >= 41 ) && ( roc_percent <= 60 ) )
+	else if ( ( roc_percent >= ROC_STEP_LEVEL_4_MIN_PERCENT ) && ( roc_percent <= ROC_STEP_LEVEL_4_MAX_PERCENT ) )
     {
         rpm_step = RPM_STEP_LEVEL_4;
     }

@@ -9,7 +9,6 @@
 #ifdef APP_ONBOARD_HMI_CONTROL
 
 #include "osal.h"
-#include "drv_uc1510c.h"
 
 #define HMI_EVT_PRO_SUCCESS                   ((uint8_t)  0u)
 #define HMI_EVT_PRO_FAIL                      ((uint8_t)  1u)
@@ -18,19 +17,30 @@
 #define MODE_MENU_SEGEMENTS                   ((uint8_t)  4u)
 #define ONBOARD_HMI_EVT_TABLE_SIZE            ((uint8_t)  3u)
 
-#define OBHMI_IDLE_WAIT_TIME_MIN              2u
+#define OBHMI_NO_HMI_ACTION_WAIT_TIME_MSEC    30000u
 #define OBHMI_WAIT_TIME_MSEC                  3000u
-#define OBHMI_IDLE_TIME_MSEC                  MIN_TO_MSEC(OBHMI_IDLE_WAIT_TIME_MIN)
 #define OBHMI_WAIT_TIME_TICKS                 pdMS_TO_TICKS(OBHMI_WAIT_TIME_MSEC)
+
+#define OBHMI_STARTUP_SEQ_WAIT_TIME_MSEC      2000u
+#define OBHMI_STARTUP_SEQ_TICKS               pdMS_TO_TICKS(OBHMI_WAIT_TIME_MSEC)
+
+#define OBHMI_IDLE_TIME_MSEC                  5000
+#define OBHMI_IDLE_TIME_TICKS                 pdMS_TO_TICKS(OBHMI_IDLE_TIME_MSEC)
 
 #define LONG_PRESS_TIMER_MSEC                 3000u
 #define LONG_PRESS_TIMER_TICKS                pdMS_TO_TICKS(LONG_PRESS_TIMER_MSEC)
+
+#define LONG_PRESS_REL_TIMER_MSEC             1000u
+#define LONG_PRESS_REL_TIMER_TICKS            pdMS_TO_TICKS(LONG_PRESS_REL_TIMER_MSEC)
   
-#define SHORT_PRESS_TIMER_MSEC                250u
+#define SHORT_PRESS_TIMER_MSEC                100u //250u
 #define SHORT_PRESS_TIMER_TICKS               pdMS_TO_TICKS(SHORT_PRESS_TIMER_MSEC)
 
 #define BLINK_TIMER_MSEC                      500u
 #define BLINK_TIMER_TICKS                     pdMS_TO_TICKS(BLINK_TIMER_MSEC)
+
+#define HMI_BACKLIGHT_MIN_DUTY_CYCLE          0
+#define HMI_BACKLIGHT_MAX_DUTY_CYCLE          100
 
 typedef enum __blink_action
 {
@@ -40,8 +50,8 @@ typedef enum __blink_action
 
 typedef enum __segment_state
 {
-    SEGMENT_STATE_ON        = 0,
-    SEGMENT_STATE_OFF       = 1,
+    SEGMENT_STATE_OFF       = 0,
+    SEGMENT_STATE_ON        = 1,
     SEGMENT_STATE_NO_CHANGE = 2
 }SEGMENT_STATE;
 
@@ -95,8 +105,16 @@ typedef enum __onbrdhmi_ctrl_state
 {
     ONBOARD_HMI_STATE_IDLE          = 0,
 	ONBOARD_HMI_STATE_OFF           = 1,
-    ONBOARD_HMI_STATE_ACTIVE        = 2
+    ONBOARD_HMI_STATE_STARTUP       = 2,
+    ONBOARD_HMI_STATE_ACTIVE        = 3
 }ONBRDHMI_CTRL_STATE;
+
+typedef enum __hmi_startup_seq_state
+{
+    STARTUP_SEQ_STATE_IDLE     = 0,
+    STARTUP_SEQ_STATE_ONGOING  = 1,
+    STARTUP_SEQ_STATE_COMPLETE = 2
+}HMI_STARTUP_SEQ_STATE;
 
 #if ( INVENT_HARWARE_VERSION == HW_VERSION_4_1 )
 
@@ -136,10 +154,11 @@ typedef enum _button_pressed_evt
 
 typedef enum _button_state
 {
-    BTN_STATE_UNKNOWN   = 0x00,
-    BTN_PRESSED         = 0x01,
-    BTN_RELEASED        = 0x02,
-    BTN_LONG_PRESS      = 0x03
+    BTN_STATE_UNKNOWN           = 0x00,
+    BTN_PRESSED                 = 0x01,
+    BTN_RELEASED                = 0x02,
+    BTN_LONG_PRESS_ONGOING      = 0x03,
+    BTN_LONG_PRESS_RELEASED     = 0x04
 }button_state;
 
 typedef enum __INV_PWR_STATE
@@ -229,9 +248,7 @@ typedef enum __onboard_hmi_seg_ctrl
 	ENABLE_ALL_SEGEMENT           = 0,
 	DISABLE_ALL_SEGEMENT          = 1,
     POWERED_OFF_STATE_SEG         = 2,
-    POWERED_ON_STATE_SEG          = 3,
-    WAIT_FOR_HMI_STARTUP_COMPLETE = 4,
-	UPDATE_BASED_ON_STAT          = 5
+    POWERED_ON_STATE_SEG          = 3
 }ONBOARD_HMI_SEG_CTRL;
 
 /* Enums for LCD segn=ment status */
@@ -276,6 +293,7 @@ typedef struct __obhmi_ctrl_data_frame
 typedef struct __obhmi_ctrl_sm
 {
     bool                        blink_tmr_status;
+    HMI_STARTUP_SEQ_STATE       hmi_starup_state;
     uint8_t                     last_btn_evt_cnt;
 	uint32_t                    cur_btn_evt_cnt;
     IVPMGR0STATE_ENUM           inv_state;
@@ -316,8 +334,6 @@ extern void start_hmi_wait_timer(uint32_t period_ms);
 extern void reset_hmi_wait_timer(void);
 
 extern void stop_hmi_wait_timer(void);
-
-//extern void start_subscribe(void);
 
 extern void change_onhmi_ctrl_state(ONBRDHMI_CTRL_STATE onbrd_hmi_ctrl_state);
 

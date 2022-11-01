@@ -22,26 +22,28 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define HARDWARE_MAJOR               4
 #define HARDWARE_MINOR               1
 
+#define STOCK_KEEPING_UNIT "1235424665"
+
 #ifdef INVENT_EOL_TESTING
 
 #define FIRMWARE_MAJOR				 0
 #define FIRMWARE_MINOR				 5
 #define FIRMWARE_BUILD_ID			"INV"
-#define FIRMWARE_STRING				"DICM Inventilate firmware"
-#define FIRMWARE_VERSION			"INVENT_PCBA_v0.0.5"
+#define FIRMWARE_STRING				"DICM Inventilate"
+#define FIRMWARE_VERSION			"1.0.5-rc.1"
 #define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
-#define DEFAULT_DEVICE_NAME_PREFIX	"GW_"
+#define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
 #define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
 #else
 
-#define FIRMWARE_MAJOR				 01
-#define FIRMWARE_MINOR				 03
+#define FIRMWARE_MAJOR				 0
+#define FIRMWARE_MINOR				 5
 #define FIRMWARE_BUILD_ID			"INV"
-#define FIRMWARE_STRING				"DICM Inventilate firmware"
-#define FIRMWARE_VERSION			"INVENT_v01.03"
+#define FIRMWARE_STRING				"DICM Inventilate"
+#define FIRMWARE_VERSION			"1.0.5-rc.1"
 #define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
-#define DEFAULT_DEVICE_NAME_PREFIX	"GW_"
+#define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
 #define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
 #endif
@@ -54,19 +56,29 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CHIP_TYPE_EXTERNAL_BME680  1
 #define CHIP_TYPE_INTERNAL_BME688  2
 #define CHIP_TYPE_EXTERNAL_BME688  3
-#define BME68X_CHIP_TYPE          CHIP_TYPE_INTERNAL_BME680
+#define BME68X_CHIP_TYPE           CHIP_TYPE_EXTERNAL_BME688
 
-#define INVENT_BATTERY_TESTING
+//#define INVENT_BATTERY_TESTING
+
+#define CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT (0)	// Connected to MCPWM_UNIT_0
+#define HAL_PWM_TIMER_0
+#define HAL_PWM_TIMER_1
+#define INVENTILATE_FAN_PULSE_CNT_PER_REVOL       ((uint8_t) 2u)
+#define INVENTILATE_MOTOR_ENG_PULSE_CNT_PER_REVOL ((uint8_t) 6u)
+#define CONNECTOR_PWM_FAN_MOTOR_CAPTURE_CHANNEL_0_0 INVENTILATE_FAN_PULSE_CNT_PER_REVOL
+#define CONNECTOR_PWM_FAN_MOTOR_CAPTURE_CHANNEL_0_1 INVENTILATE_FAN_PULSE_CNT_PER_REVOL
+#define CONNECTOR_PWM_FAN_MOTOR_CAPTURE_CHANNEL_0_2 INVENTILATE_MOTOR_ENG_PULSE_CNT_PER_REVOL
+
 
 #define INVERTED_PWM              ((uint32_t)     0u)
 #define NON_INVERTED_PWM          ((uint32_t)     1u)
 
 #define DEV_FAN1_MIN_RPM          ((uint32_t)     0u)
-#define DEV_FAN1_MAX_RPM          ((uint32_t)  2200u)
+#define DEV_FAN1_MAX_RPM          ((uint32_t)  2800u)
 #define DEV_FAN1_AIR_OUT_PWM_MODE INVERTED_PWM
 
 #define DEV_FAN2_MIN_RPM          ((uint32_t)     0u)
-#define DEV_FAN2_MAX_RPM          ((uint32_t)  2200u)
+#define DEV_FAN2_MAX_RPM          ((uint32_t)  2800u)
 #define DEV_FAN2_AIR_IN_PWM_MODE  INVERTED_PWM
 
 #define DEV_MOTOR_MIN_RPM         ((uint32_t)     0u)
@@ -78,28 +90,31 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #define WIFI_NETWORK
 #define WIFI_NETWORK_STA
-#define WIFI_NETWORK_AP
-//#define MULTICAST_DNS
-//#define MULTICAST_DNS_SERVICE_NAME   "Dometic Inventilate"
+//#define WIFI_NETWORK_AP
+#define MULTICAST_DNS
+#define MULTICAST_DNS_SERVICE_NAME   "Dometic Inventilate"
 
 /* Connectors for Inventilate */
 #define CONNECTOR_WIFI
 #define CONNECTOR_BLE
-#define CONNECTOR_VOC_SENSOR
-#define CONNECTOR_ONBOARD_HMI
-#define CONNECTOR_LIGHT
-#define CONNECTOR_PWM_FAN_MOTOR
 #define CONNECTOR_BLE_PERIPHERAL_GATT
 #define CONNECTOR_BLE_CENTRAL_GATT
 #define CONNECTOR_BLE_CENTRAL_GAP
 #define CONNECTOR_BLE_PERIPHERAL_NO_BOND_REQUIRED
+#define CONNECTOR_VOC_SENSOR
+#define CONNECTOR_ONBOARD_HMI
+#define CONNECTOR_LIGHT
+#define CONNECTOR_PWM_FAN_MOTOR
+#define CONNECTOR_POWER_CONTROL_SERVICE
+#define CONNECTOR_USM
+#define CONNECTOR_US_DICM
 #ifndef INVENT_EOL_TESTING
 #define CONNECTOR_DP_SENS_SERVICE
 #endif
-#define CONNECTOR_POWER_CONTROL_SERVICE
 
 #ifdef INVENT_EOL_TESTING
 #define CONNECTOR_EOL_SERVICE
+#define USE_LIN
 #endif
 
 /* Application modules for Inventilate */
@@ -113,6 +128,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #ifdef CONNECTOR_EOL_SERVICE
 
 #define CONNECTOR_RVC
+#define CONNECTOR_RVC_CAN_RX		GPIO_NUM_22 
+#define CONNECTOR_RVC_CAN_TX		GPIO_NUM_21 
 #define CONNECTOR_LIN_COMM_TEST
 
 #if 1
@@ -124,15 +141,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CONNECTOR_UART_BUF_SIZE		256
 #endif
 
-#endif
-
-#ifdef CONNECTOR_DEBUG
-//#define INVENT_HW_TEST_PWM_FAN_MOTOR
-//#define INVENT_HW_TEST_PWM_LIGHT
-//#define INVENT_HW_TEST_LIN
-//#define INVENT_HW_TEST_CAN
-//#define INVENT_HW_TEST_RS_485
-#endif 
+#endif /* CONNECTOR_EOL_SERVICE */
 
 #define BLE_GATT
 #define BLE_GAP
@@ -150,15 +159,17 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define LEDC_PWM_MIN_DUTY_CYCLE     ((uint32_t)     0u)
 #define LEDC_PWM_MAX_DUTY_CYCLE     ((uint32_t)  ((pow(2, LEDC_PWM_DUTY_BIT_RESOLUTION)) - 1))
 
-#define LED_STRIP_ON_DUTY_CYCLE      LEDC_PWM_MAX_DUTY_CYCLE
-#define LED_STRIP_OFF_DUTY_CYCLE     LEDC_PWM_MIN_DUTY_CYCLE
+#define LED_DIMMER_ON_DUTY_CYCLE      LEDC_PWM_MAX_DUTY_CYCLE
+#define LED_DIMMER_OFF_DUTY_CYCLE     LEDC_PWM_MIN_DUTY_CYCLE
 
 /* Temporarily min duty cycle set as 100 
   later based on testing this will set to a value that user can easily control the LCD during power saving mode */
 #define ONBOARD_HMI_PWM_MIN_DUTY_CYCLE  LEDC_PWM_MAX_DUTY_CYCLE //2048
 
-#define ONBOARD_HMI_ON_DUTY_CYCLE      LEDC_PWM_MAX_DUTY_CYCLE
-#define ONBOARD_HMI_OFF_DUTY_CYCLE     LEDC_PWM_MAX_DUTY_CYCLE
+#define ONBOARD_HMI_MAX_DUTY_CYCLE           LEDC_PWM_MAX_DUTY_CYCLE //127 // 100% duty cycle  
+#define ONBOARD_HMI_MIN_DUTY_CYCLE            38 // 30%  duty cycle
+#define ONBOARD_HMI_OFF_DUTY_CYCLE             LEDC_PWM_MIN_DUTY_CYCLE //  0%  duty cycle
+
 
 #define HAL_PWM_CAP_COUNTER_U32_MAX     (4294967295uL)
 
@@ -172,79 +183,76 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define UC1510C_DRIVER_IC_SECONDARY_ADDR    ((uint8_t) 0x39u)
 #endif
 
-#define FAIL                                           ((uint8_t) 1u)
-#define SUCCESS                                        ((uint8_t) 0u)
+#define FAIL              								((uint8_t) 1u)
+#define SUCCESS                                        	((uint8_t) 0u)
 
 #ifndef CONNECTOR_EOL_SERVICE
 
-#define CONN_ONBOARD_HMI_PROCESS_STACK_DEPTH     	   ((unsigned short) 4096)
-#define CONN_ONBOARD_HMI_CTRL_TASK_STACK_DEPTH         ((unsigned short) 4096)
-#define CONN_LIGHT_PROCESS_TASK_STACK_DEPTH      	   ((unsigned short) 4096)
-#define CONN_PWR_CTRL_BMS_TASK_STACK_DEPTH      	   ((unsigned short) 4096)
-#define CONN_FAN_MOTOR_PROCESS_STACK_DEPTH    		   ((unsigned short) 4096)
-#define CONN_FAN_MOTOR_TACHO_READ_STACK_DEPTH    	   ((unsigned short) 4096)
-#define CONN_FAN_MOTOR_CTRL_STACK_DEPTH    	           ((unsigned short) 4096)
-#define CONN_VOC_PROCESS_TASK_STACK_DEPTH        	   ((unsigned short) 4096)
-#define CONN_VOC_I2C_RD_SERVICE_TASK_DEPTH       	   ((unsigned short) 4096)
-#define CONN_PWR_CTRL_PROCESS_TASK_DEPTH       	       ((unsigned short) 4096)
-#define CONN_PWR_CTRL_MNGR_TASK_DEPTH       	       ((unsigned short) 4096)
-#define CONN_DIFFPRESS_PROCESS_STACK_DEPTH       	   ((unsigned short) 4096)
-#define CONN_DIFFPRESS_READ_STACK_DEPTH       	       ((unsigned short) 4096)
-#define CONN_EOL_PROCESS_STACK_DEPTH		       	   ((unsigned short) 4096)
-#define CONN_EOL_CONTROL_STACK_DEPTH		       	   ((unsigned short) 4096)
+#define CONNECTOR_ONBOARD_HMI_PROCESS_STACK_DEPTH     	((unsigned short) 4096)
+#define CONNECTOR_ONBOARD_HMI_CTRL_TASK_STACK_DEPTH		((unsigned short) 4096)
+#define CONNECTOR_LIGHT_PROCESS_TASK_STACK_DEPTH		((unsigned short) 2048)
+#define CONNECTOR_PWR_CTRL_BMS_TASK_STACK_DEPTH			((unsigned short) 4096)
+#define CONNECTOR_FAN_MOTOR_PROCESS_STACK_DEPTH			((unsigned short) 4096)
+#define CONNECTOR_FAN_MOTOR_TACHO_READ_STACK_DEPTH		((unsigned short) 4096)
+#define CONNECTOR_VOC_PROCESS_TASK_STACK_DEPTH			((unsigned short) 4096)
+#define CONNECTOR_VOC_I2C_RD_SERVICE_TASK_DEPTH			((unsigned short) 4096)
+#define CONNECTOR_PWR_CTRL_PROCESS_TASK_DEPTH 			((unsigned short) 2048)
+#define CONNECTOR_PWR_CTRL_MNGR_TASK_DEPTH				((unsigned short) 4096)
+#define CONNECTOR_DIFFPRESS_PROCESS_STACK_DEPTH			((unsigned short) 2048)
+#define CONNECTOR_DIFFPRESS_READ_STACK_DEPTH			((unsigned short) 4096)
+#define CONNECTOR_EOL_PROCESS_STACK_DEPTH				((unsigned short) 4096)
+#define CONNECTOR_EOL_CONTROL_STACK_DEPTH				((unsigned short) 4096)
 
 #else
 
-#define CONN_ONBOARD_HMI_PROCESS_STACK_DEPTH     	   ((unsigned short) 2048)
-#define CONN_ONBOARD_HMI_CTRL_TASK_STACK_DEPTH         ((unsigned short) 4096)
-#define CONN_LIGHT_PROCESS_TASK_STACK_DEPTH      	   ((unsigned short) 2048)
-#define CONN_PWR_CTRL_BMS_TASK_STACK_DEPTH      	   ((unsigned short) 4096)
-#define CONN_FAN_MOTOR_PROCESS_STACK_DEPTH    		   ((unsigned short) 2048)
-#define CONN_FAN_MOTOR_TACHO_READ_STACK_DEPTH    	   ((unsigned short) 2048)
-#define CONN_FAN_MOTOR_CTRL_STACK_DEPTH    	           ((unsigned short) 2048)
-#define CONN_FAN_MOTOR_CTRL_STACK_DEPTH    	           ((unsigned short) 2048)
-#define CONN_VOC_PROCESS_TASK_STACK_DEPTH        	   ((unsigned short) 2048)
-#define CONN_VOC_I2C_RD_SERVICE_TASK_DEPTH       	   ((unsigned short) 4096)
-#define CONN_PWR_CTRL_PROCESS_TASK_DEPTH       	       ((unsigned short) 2048)
-#define CONN_PWR_CTRL_MNGR_TASK_DEPTH       	       ((unsigned short) 4096)
-#define CONN_DIFFPRESS_PROCESS_STACK_DEPTH       	   ((unsigned short) 2048)
-#define CONN_DIFFPRESS_READ_STACK_DEPTH       	       ((unsigned short) 4096)
-#define CONN_EOL_PROCESS_STACK_DEPTH		       	   ((unsigned short) 2048)
-#define CONN_EOL_CONTROL_STACK_DEPTH		       	   ((unsigned short) 4096)
+#define CONNECTOR_ONBOARD_HMI_PROCESS_STACK_DEPTH		((unsigned short) 2048)
+#define CONNECTOR_ONBOARD_HMI_CTRL_TASK_STACK_DEPTH 	((unsigned short) 4096)
+#define CONNECTOR_LIGHT_PROCESS_TASK_STACK_DEPTH   		((unsigned short) 2048)
+#define CONNECTOR_PWR_CTRL_BMS_TASK_STACK_DEPTH			((unsigned short) 4096)
+#define CONNECTOR_FAN_MOTOR_PROCESS_STACK_DEPTH 		((unsigned short) 2048)
+#define CONNECTOR_FAN_MOTOR_TACHO_READ_STACK_DEPTH		((unsigned short) 2048)
+#define CONNECTOR_VOC_PROCESS_TASK_STACK_DEPTH			((unsigned short) 2048)
+#define CONNECTOR_VOC_I2C_RD_SERVICE_TASK_DEPTH			((unsigned short) 4096)
+#define CONNECTOR_PWR_CTRL_PROCESS_TASK_DEPTH			((unsigned short) 2048)
+#define CONNECTOR_PWR_CTRL_MNGR_TASK_DEPTH				((unsigned short) 4096)
+#define CONNECTOR_DIFFPRESS_PROCESS_STACK_DEPTH			((unsigned short) 2048)
+#define CONNECTOR_DIFFPRESS_READ_STACK_DEPTH			((unsigned short) 4096)
+#define CONNECTOR_EOL_PROCESS_STACK_DEPTH				((unsigned short) 2048)
+#define CONNECTOR_EOL_CONTROL_STACK_DEPTH				((unsigned short) 4096)
 
 #endif
 
-#define CONN_EOL_CTRL_TASK_PRIORITY					  ((unsigned short)    5u)
-#define CONN_EOL_PROCESS_TASK_PRIORITY				  ((unsigned short)    6u)
-#define CONN_FAN_MOTOR_PROCESS_TASK_PRIORITY  		  ((unsigned short)    7u)
-#define CONN_FAN_MOTOR_TACHO_READ_TASK_PRIORITY       ((unsigned short)    8u)
-#define CONN_LIGHT_PROCESS_TASK_PRIORITY              ((unsigned short)   10u)
-#define CONN_ONBOARD_HMI_PROCESS_PRIORITY             ((unsigned short)   11u)
-#define CONN_VOC_PROCESS_TASK_PRIO  		          ((unsigned short)   12u) 
-#define CONN_PWR_CTRL_SERV_TASK_PRIORITY       	      ((unsigned short)   13u)
-#define CONN_PWR_CTRL_MNGR_TASK_PRIORITY       	      ((unsigned short)   14u)
-#define CONN_PWR_CTRL_BMS_TASK_PRIORITY               ((unsigned short)   15u)
-#define CONN_ONBOARD_HMI_CTRL_TASK_PRIORITY           ((unsigned short)   16u)
-#define CONN_DIFFPRESS_PROCESS_TASK_PRIORITY       	  ((unsigned short)   17u)
-#define CONN_DIFFPRESS_READ_TASK_PRIORITY       	  ((unsigned short)   18u)
-#define CONN_FAN_MOTOR_CTRL_TASK_PRIORITY       	  ((unsigned short)   19u)
-#define CONN_VOC_I2C_RD_SERVICE_TASK_PRIO             ((unsigned short)   20u)
+#define CONNECTOR_EOL_CTRL_TASK_PRIORITY				((unsigned short)    5u)
+#define CONNECTOR_EOL_PROCESS_TASK_PRIORITY				((unsigned short)    6u)
+#define CONNECTOR_FAN_MOTOR_PROCESS_TASK_PRIORITY		((unsigned short)    7u)
+#define CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_PRIORITY	((unsigned short)    8u)
+#define CONNECTOR_LIGHT_PROCESS_TASK_PRIORITY			((unsigned short)   10u)
+#define CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY			((unsigned short)   11u)
+#define CONNECTOR_VOC_PROCESS_TASK_PRIO					((unsigned short)   12u) 
+#define CONNECTOR_PWR_CTRL_SERV_TASK_PRIORITY			((unsigned short)   13u)
+#define CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY			((unsigned short)   14u)
+#define CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY			((unsigned short)   15u)
+#define CONNECTOR_ONBOARD_HMI_CTRL_TASK_PRIORITY		((unsigned short)   16u)
+#define CONNECTOR_DIFFPRESS_PROCESS_TASK_PRIORITY		((unsigned short)   17u)
+#define CONNECTOR_DIFFPRESS_READ_TASK_PRIORITY			((unsigned short)   18u)
+#define CONNECTOR_FAN_MOTOR_CTRL_TASK_PRIORITY			((unsigned short)   19u)
+#define CONNECTOR_VOC_I2C_RD_SERVICE_TASK_PRIO			((unsigned short)   20u)
 
-#define CONN_ONBOARDHMI_PROCESS_TASK_NAME             ((const char* const) "con_ohmi_pro_tk")
-#define CONN_ONBOARDHMI_PWR_CTRL_TASK_NAME            ((const char* const) "con_ohmi_pwc_tk")
-#define CONN_LIGHT_PROCESS_TASK_NAME                  ((const char* const) "con_ligh_pro_tk")
-#define CONN_PWR_CTRL_BMS_TASK_NAME                   ((const char* const) "con_batt_mgm_tk")
-#define CONN_FAN_MOTOR_PROCESS_TASK_NAME              ((const char* const) "con_fanm_pro_tk")
-#define CONN_FAN_MOTOR_TACHO_READ_TASK_NAME           ((const char* const) "con_tacho_rd_tk")
-#define CONN_FAN_MOTOR_CONTROL_TASK_NAME              ((const char* const) "con_fanm_ctr_tk")
-#define CONN_VOC_SENSOR_PROCESS_TASK_NAME             ((const char* const) "con_voc_proc_tk")
-#define CONN_VOC_SENSOR_CONTROL_TASK_NAME             ((const char* const) "con_voc_ctrl_tk")
-#define CONN_PWR_CTRL_SERV_PROCESS_TASK_NAME          ((const char* const) "con_pwr_proc_tk")
-#define CONN_PWR_CTRL_MANAGER_TASK_NAME               ((const char* const) "con_pwr_mngr_tk")
-#define CONN_DIFF_PRESS_PROCESS_TASK_NAME             ((const char* const) "con_dif_proc_tk")
-#define CONN_DIFF_PRESS_READ_TASK_NAME                ((const char* const) "con_dif_read_tk")
-#define CONN_EOL_PROCESS_TASK_NAME					  ((const char* const) "conn_eol_pro_tk")
-#define CONN_EOL_CONTROL_TASK_NAME					  ((const char* const) "conn_eol_ctr_tk")
+#define CONNECTOR_ONBOARDHMI_PROCESS_TASK_NAME			((const char* const) "con_ohmi_pro_tk")
+#define CONNECTOR_ONBOARDHMI_PWR_CTRL_TASK_NAME			((const char* const) "con_ohmi_pwc_tk")
+#define CONNECTOR_LIGHT_PROCESS_TASK_NAME             	((const char* const) "con_ligh_pro_tk")
+#define CONNECTOR_PWR_CTRL_BMS_TASK_NAME				((const char* const) "con_batt_mgm_tk")
+#define CONNECTOR_FAN_MOTOR_PROCESS_TASK_NAME			((const char* const) "con_fanm_pro_tk")
+#define CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_NAME        ((const char* const) "con_tacho_rd_tk")
+#define CONNECTOR_FAN_MOTOR_CONTROL_TASK_NAME			((const char* const) "con_fanm_ctr_tk")
+#define CONNECTOR_VOC_SENSOR_PROCESS_TASK_NAME			((const char* const) "con_voc_proc_tk")
+#define CONNECTOR_VOC_SENSOR_CONTROL_TASK_NAME  		((const char* const) "con_voc_ctrl_tk")
+#define CONNECTOR_PWR_CTRL_SERV_PROCESS_TASK_NAME		((const char* const) "con_pwr_proc_tk")
+#define CONNECTOR_PWR_CTRL_MANAGER_TASK_NAME     		((const char* const) "con_pwr_mngr_tk")
+#define CONNECTOR_DIFF_PRESS_PROCESS_TASK_NAME			((const char* const) "con_dif_proc_tk")
+#define CONNECTOR_DIFF_PRESS_READ_TASK_NAME				((const char* const) "con_dif_read_tk")
+#define CONNECTOR_EOL_PROCESS_TASK_NAME					((const char* const) "conn_eol_pro_tk")
+#define CONNECTOR_EOL_CONTROL_TASK_NAME					((const char* const) "conn_eol_ctr_tk")
 
 #define I2C_MASTER0
 #define I2C_MASTER0_PORT         	0
@@ -261,8 +269,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define DEVICE_TWAI_EN_PIN			GPIO_NUM_23
 
 
-//#define USE_LIN
-//#define USE_LIN_SLAVE
 
 #ifndef USE_RS485
 #define DE_VAL 0
@@ -313,23 +319,24 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 /* PWM Configuartion for LED Strip */
 #define LED_STRIP_GPIO_PIN                  GPIO_NUM_19
-#define LED_STRIP_PWM_SET_FREQUENCY         ((uint32_t)  20000u) //((uint32_t)  5000u)
+#define LED_STRIP_PWM_SET_FREQUENCY         ((uint32_t)  20000u)
 
 /* PWM Configuartion for HMI Backlight */
 #define HMI_BACKLIGHT_GPIO_PIN              GPIO_NUM_23          
-#define HMI_BACKLIGHT_PWM_SET_FREQUENCY     ((uint32_t)  20000u) //((uint32_t)  5000u)
+#define HMI_BACKLIGHT_PWM_SET_FREQUENCY     ((uint32_t)  20000u)
 
 #endif
 
 /* PWM Configuartion for FAN1 FAN2 and Motor */
-#define GPIO_PWM0A_OUT_FAN_1        GPIO_NUM_25    //Set GPIO 25 as PWM0A
-#define GPIO_PWM0B_OUT_FAN_2        GPIO_NUM_26    //Set GPIO 26 as PWM0B
-#define GPIO_PWM1A_OUT_MOTOR        GPIO_NUM_27    //Set GPIO 27 as PWM1A
+#define MCPWM_UNIT_0_GPIO_PWM0A_OUT        GPIO_NUM_25    //Set GPIO 25 as PWM0A-> FAN_1
+#define MCPWM_UNIT_0_GPIO_PWM0B_OUT        GPIO_NUM_26    //Set GPIO 26 as PWM0B -> FAN_2
+#define MCPWM_UNIT_0_GPIO_PWM1A_OUT        GPIO_NUM_27    //Set GPIO 27 as PWM1A -> MOTOR
 
 /* PWM Capture Configuartion for FAN1 FAN2 and Motor */
-#define GPIO_CAP0_IN_FAN_1          GPIO_NUM_34   // Set GPIO 34 as  CAP0
-#define GPIO_CAP1_IN_FAN_2          GPIO_NUM_39   // Set GPIO 39 as  CAP1  //PIN SENSOR_VN
-#define GPIO_CAP2_IN_MOTOR          GPIO_NUM_35   // Set GPIO 35 as  CAP2
+#define MCPWM_UNIT_0_GPIO_CAP0_IN          GPIO_NUM_34   // Set GPIO 34 as  CAP0 -> FAN_1
+#define MCPWM_UNIT_0_GPIO_CAP1_IN          GPIO_NUM_39   // Set GPIO 39 as  CAP1 -> FAN_2  //PIN SENSOR_VN
+#define MCPWM_UNIT_0_GPIO_CAP2_IN          GPIO_NUM_35   // Set GPIO 35 as  CAP2 -> MOTOR
+
 
 typedef enum {
     IO_EX_GPIO_NUM_NC  = -1,     /*!< Use to signal not connected to S/W */
@@ -388,7 +395,7 @@ GPIO_PIN( 	     EN_RS485,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              
 	\param hpoint	        high point 
 */      
 #define LEDC_CONFIGURATION \
-LEDC_PWM(light_strip,          LED_STRIP_GPIO_PIN,   LEDC_PWM_DUTY_BIT_RESOLUTION,     LED_STRIP_PWM_SET_FREQUENCY,   LEDC_HIGH_SPEED_MODE, LEDC_TIMER_0, LEDC_AUTO_CLK, LEDC_CHANNEL_0,    0,       0) \
+LEDC_PWM(light_dimmer,          LED_STRIP_GPIO_PIN,   LEDC_PWM_DUTY_BIT_RESOLUTION,     LED_STRIP_PWM_SET_FREQUENCY,   LEDC_HIGH_SPEED_MODE, LEDC_TIMER_0, LEDC_AUTO_CLK, LEDC_CHANNEL_0,    0,       0) \
 LEDC_PWM(hmi_backlight,    HMI_BACKLIGHT_GPIO_PIN,   LEDC_PWM_DUTY_BIT_RESOLUTION, HMI_BACKLIGHT_PWM_SET_FREQUENCY,   LEDC_HIGH_SPEED_MODE, LEDC_TIMER_1, LEDC_AUTO_CLK, LEDC_CHANNEL_1,    0,       0) \
 //              name,           gpio_num,              duty_resolution,        freq(HZ),                         speed_mode,       timer_num,     clk_cfg,        channel,       duty,  hpoint
 #endif 

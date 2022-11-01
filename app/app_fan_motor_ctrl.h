@@ -89,6 +89,18 @@
 #define RELATIVE_HUMIDITY_ACCEPTABLE_MIN_VALUE   ((int32_t)      20)
 #define RELATIVE_HUMIDITY_ACCEPTABLE_MAX_VALUE   ((int32_t)      60)
 
+#define ROC_STEP_LEVEL_1_MIN_PERCENT 0
+#define ROC_STEP_LEVEL_1_MAX_PERCENT 5
+
+#define ROC_STEP_LEVEL_2_MIN_PERCENT 6
+#define ROC_STEP_LEVEL_2_MAX_PERCENT 20
+
+#define ROC_STEP_LEVEL_3_MIN_PERCENT 21
+#define ROC_STEP_LEVEL_3_MAX_PERCENT 40
+
+#define ROC_STEP_LEVEL_4_MIN_PERCENT 41
+#define ROC_STEP_LEVEL_4_MAX_PERCENT 60
+
 /*
 
 // This is actual storage time configuartion as per requiremnt 
@@ -153,21 +165,21 @@ typedef enum _invent_device_id
 	DEV_FAN2_AIR_IN  = 1,              // Supply FAN         ( Air In  )
     DEV_MOTOR        = 2,              // Ceramic Disc Motor ( Heat Exchange )
 	MAX_NUM_DEVICE   = 3
-}invent_device_id_t;
+} invent_device_id_t;
 
 typedef enum __dev_comp_config
 {
     IDLE_COMP_DEV  = 0,
 	IAQ_COMP_DEV   = 1,         
 	PRESS_COMP_DEV = 2,  
-}DEV_COMP_CONFIG;
+} DEV_COMP_CONFIG;
 
 typedef enum __error_code
 {
 	ERR_NONE = 0, 
 	ERR_INVALID_INPUT_PARAM = 1,
     ERR_OUT_OF_RANGE = 2
-}error_code;
+} error_code;
 
 typedef enum __rpm_step_level
 {
@@ -177,7 +189,7 @@ typedef enum __rpm_step_level
     RPM_STEP_LEVEL_4    = 3,
     RPM_STEP_LEVEL_5    = 4,
 	RPM_STEP_MAX_LEVEL  = 5
-}RPM_STEP_LEVEL;
+} RPM_STEP_LEVEL;
 
 typedef enum __data_type
 {
@@ -213,13 +225,13 @@ typedef enum __data_type
     IV_STORAGE_TMR_EXP     = 29,
     IV_HUMIDITY_DATA       = 30,
     INVALID_DATA_RECEIVED  = 31
-}DATA_ID;
+} DATA_ID;
 
 typedef enum __dp_sens_status
 {
     DP_SENSOR_NOT_AVAILABLE = 0,
     DP_SENSOR_AVAILABLE     = 1
-}DP_SENS_STATUS;
+} DP_SENS_STATUS;
 
 typedef enum __invent_control_state
 {
@@ -232,13 +244,13 @@ typedef enum __invent_control_state
 	INVENTILATE_STATE_IDLE                   = 6,
     INVENTILATE_STATE_PROCESS_STANDBY        = 7,
     INVENTILATE_STATE_STORAGE                = 8
-}INVENT_CONTROL_STATE;
+} INVENT_CONTROL_STATE;
 
 typedef struct _rpm_range
 {
     uint32_t min_rpm;
     uint32_t max_rpm;
-}rpm_range;
+} rpm_range;
 
 typedef struct _fan_motor_control_info_table
 {
@@ -246,25 +258,25 @@ typedef struct _fan_motor_control_info_table
     uint8_t         dev_pwm_mode;
     rpm_range       whole_rpm_range;
     rpm_range       rpm_range[NUM_OPERATING_MODES];
-}fan_motor_control_info_db_t;
+} fan_motor_control_info_db_t;
 
 typedef struct _percent_range
 {
     uint8_t min_percent;
     uint8_t max_percent;
-}percent_range_t;
+} percent_range_t;
 
 typedef struct __iv_data
 {
     int32_t     data;
     DATA_ID  data_id;
-}IV_DATA;
+} IV_DATA;
 
 typedef struct _iaq_index_range
 {
     uint32_t min;
     uint32_t max;
-}iaq_index_range;
+} iaq_index_range;
 
 typedef struct __iaq_range
 {
@@ -277,7 +289,7 @@ typedef enum __storage_timer_config
     STORAGE_TIMER_21H        = 0,
     STORAGE_TIMER_03H        = 1,
     STORAGE_TIMER_MAX_CONFIG = 2
-}STORAGE_TIMER_CONFIG;
+} STORAGE_TIMER_CONFIG;
 
 typedef struct __inventilate_control_algo
 {
@@ -332,7 +344,7 @@ typedef struct __inventilate_control_algo
     DP_SENS_STATUS        dp_senor_status;
     STORAGE_TIMER_CONFIG  storage_timer_config;
     TickType_t            storage_tmr_val_ticks[STORAGE_TIMER_MAX_CONFIG];
-}INVENTILATE_CONTROL_ALGO;
+} INVENTILATE_CONTROL_ALGO;
 
 typedef struct __nvs_config_conn_fan_mtr
 {
@@ -345,7 +357,7 @@ typedef struct __nvs_config_conn_fan_mtr
    uint32_t             ddm;
    void*                data_ptr;
    char*                nvs_key;
-}nvs_config_conn_fan_mtr;
+} nvs_config_conn_fan_mtr;
 
 extern INVENTILATE_CONTROL_ALGO  iv_ctrl_algo;
 extern INVENTILATE_CONTROL_ALGO* ptr_ctrl_algo;

@@ -12,9 +12,7 @@
 #include "osal.h"
 
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
-#include "bme680_defs.h"
-#include "bsec_1_x/bsec_interface.h"
-#include "bsec_1_x/bsec_integration.h"
+#include "bsec_integration.h"
 #endif
 
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
@@ -33,8 +31,6 @@
 
 #define BSEC_NEXT_CALL_TIME_OFFSET        ((uint32_t) 100u)
 
-#define VOC_SENSOR_STATUS_INIT_FAILED     ((uint8_t)  1u)
-#define VOC_SENSOR_STATUS_INIT_SUCCESS    ((uint8_t)  0u)
 #define BME68X_TEMPERATURE_OFFSET         ((float)  0.0f)
 
 typedef enum _voc_rd_sm_state
@@ -67,26 +63,6 @@ typedef struct _read_voc_data_service
   volatile uint32_t     wait_time_ms;
   uint32_t              bsec_ctrl_time_stamp;
 }read_voc_data_service;
-
-//extern read_voc_data_service inst_read_service;
-
-//extern osal_queue_handle_t voc_sens_queue;
-
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
-
-uint8_t init_bme680_sensor(void);
-
-void update_voc_sens_to_broker(bme680_bsec_output *bsec_out);
-
-#endif
-
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
-
-void update_voc_sens_to_broker(bme68x_bsec_output *bsec_out);
-
-#endif
-
-extern int8_t get_bmestatus(void);
 
 #endif /*APP_VOC_SENSOR*/
 

@@ -9,6 +9,10 @@
 #include "app_onboard_hmi_ctrl.h"
 #include "app_fan_motor_ctrl.h"
 #include "app_light_ctrl.h"
+
+#ifdef DEVICE_UC1510C
+#include "drv_uc1510c.h"
+#endif
 #include "hal_pwm.h"
 #include "hal_ledc.h"
 #include "ddm2.h"
@@ -141,9 +145,30 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     BTN_PRESSED_EVT           hmi_btn_evt = (BTN_PRESSED_EVT)(event_data & 0xFF);
     BTN_PRESS_EVENT_TYPE       event_type = (BTN_PRESS_EVENT_TYPE)((event_data >> 8) & 0x01 );
 
-    LOG(I, "hmi_btn_evt = %d event_type = %d", hmi_btn_evt, event_type);
-
-    for ( index = 0; index < ONBOARD_HMI_EVT_TABLE_SIZE; index++ ) 
+    if ( IVPMGR0STATE_STANDBY == inv_state )
+    {
+        /* When the inventilate is in STANDBY state, skip the processing of this MODE button events and long press events */
+        if ( ( BTN_MODE == hmi_btn_evt ) || ( BUTTON_EVT_LONG_PRESS == event_type ) )
+        {
+            LOG(W, "Skip mode/LP btn event");
+            index = ONBOARD_HMI_EVT_TABLE_SIZE; 
+        }
+    }
+    else if ( IVPMGR0STATE_STORAGE == inv_state )
+    {
+        if ( ( BTN_MODE == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) )
+        {
+            LOG(W, "Storage skip mode btn event");
+            /* When the inventilate is in STORAGE state, skip the processing of this MODE button events */
+            index = ONBOARD_HMI_EVT_TABLE_SIZE;
+        }
+    }
+    else
+    {
+        LOG(I, "process hmi_btn_evt = %d event_type = %d", hmi_btn_evt, event_type);
+    }
+    
+    for ( ;index < ONBOARD_HMI_EVT_TABLE_SIZE; index++ ) 
     {
         if ( hmi_btn_evt == onboard_hmi_btn_evt[index].hmi_btn_evt )
         {
@@ -165,11 +190,6 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
                     onbrd_hmi_evt = ptr_event->short_press_evt_cnt;
 
                     LOG(W, "sh pr onbrd_hmi_evt = %d", onbrd_hmi_evt);
-
-                    if ( ( BTN_MODE == hmi_btn_evt ) && ( IVPMGR0STATE_ACTIVE == inv_state ) )
-                    {
-                        obhmi_set_segment(UPDATE_SEG_MODE, onbrd_hmi_evt);
-                    }
                     break;
 
                 case BUTTON_EVT_LONG_PRESS:

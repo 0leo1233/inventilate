@@ -66,6 +66,16 @@ void onboard_hmi_interrupt_cb(int device, int port, int pin)
 //! \~ Optional board initalization routine invoked at the end of startup, does not need to return
 void board_initialization(void)
 {
+    // Workaround for spurious interrupts on GPIO_36 and GPIO_39. See adc1_get_raw()
+/*       @note ESP32:
+ *       When the power switch of SARADC1, SARADC2, HALL sensor and AMP sensor is turned on,
+ *       the input of GPIO36 and GPIO39 will be pulled down for about 80ns.
+ *       When enabling power for any of these peripherals, ignore input from GPIO36 and GPIO39.
+ *       Please refer to section 3.11 of 'ECO_and_Workarounds_for_Bugs_in_ESP32' for the description of this issue.
+ *       As a workaround, call adc_power_acquire() in the app. This will result in higher power consumption (by ~1mA),
+ *       but will remove the glitches on GPIO36 and GPIO39.
+ */
+
     adc_power_acquire();
 }
 #endif //BOARD_INITIALIZATION

@@ -353,7 +353,7 @@ typedef enum {
 /** @endcond */
 } io_exp_sgpio_num_t;
 
-
+#define BOARD_INITIALIZATION
 #ifdef HAL_GPIO
 
 /*! \brief GPIO pin definition X macro, used as pin configuration database

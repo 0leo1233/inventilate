@@ -5,6 +5,7 @@
 #include "configuration.h"
 
 
+#include "driver/adc.h"
 #ifdef HAL_GPIO
 
 #include "hal_i2c_master.h"
@@ -65,30 +66,6 @@ void onboard_hmi_interrupt_cb(int device, int port, int pin)
 //! \~ Optional board initalization routine invoked at the end of startup, does not need to return
 void board_initialization(void)
 {
-#ifdef HAL_GPIO
-    TRUE_CHECK(longpress_timer=xTimerCreate(NULL,pdMS_TO_TICKS(LONG_PRESS),pdFALSE,NULL,long_press));
-    TRUE_CHECK(release_timer=xTimerCreate(NULL,pdMS_TO_TICKS(RELEASED_PRESS),pdFALSE,NULL,short_press));
-#endif
-    uint8_t ntag0[17]={0,0xaa,0,0,0,0,0,0,0,0,0,0,0,0xe1,0x10,0x6d,0x00};
-
-    uint8_t *m=(uint8_t*)device_information.id;
-
-    uint8_t ntag1[17]={1,0x03,0x2c,0xd2,0x20,0x09,'a' ,'p' ,'p' ,'l' ,'i', 'c' ,'a' ,'t' ,'i' ,'o' ,'n' ,};
-    uint8_t ntag2[17]={2,'/' ,'v' ,'n' ,'d' ,'.' ,'b' ,'l' ,'u' ,'e' ,'t' ,'o', 'o' ,'t' ,'h' ,'.' ,'l' ,};
-    uint8_t ntag3[17]={3,'e' ,'.' ,'o' ,'o' ,'b' ,0x08,0x1b,m[5]|2,m[4],m[3],m[2],m[1],m[0],0x00,0xfe};
-
-
-    vTaskDelay(1);
-    ZERO_CHECK(hal_i2c_master_write(0, 0x55, ntag0, sizeof(ntag0)));
-    vTaskDelay(1);
-    ZERO_CHECK(hal_i2c_master_write(0, 0x55, ntag1, sizeof(ntag1)));
-    vTaskDelay(1);
-    ZERO_CHECK(hal_i2c_master_write(0, 0x55, ntag2, sizeof(ntag2)));
-    vTaskDelay(1);
-    ZERO_CHECK(hal_i2c_master_write(0, 0x55, ntag3, sizeof(ntag3)));
+    adc_power_acquire();
 }
 #endif //BOARD_INITIALIZATION
-
-
-
-

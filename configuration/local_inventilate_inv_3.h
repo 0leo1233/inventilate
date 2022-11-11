@@ -150,6 +150,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 /* HAL layers */
 #define HAL_GPIO
 #define HAL_LEDC_PWM
+#define HAL_PWM
 #define HAL_I2C_MASTER
 
 #include <math.h>

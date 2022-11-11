@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 idf_component_register(SRC_DIRS "." 
 					   INCLUDE_DIRS "." 
 					   PRIV_REQUIRES hal_fw main drv lib
+					   REQUIRES app
 					  )
 #Adding extra build define from local config
 if (EXTRA_BUILD_DEFINES)

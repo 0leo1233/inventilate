@@ -30,7 +30,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define FIRMWARE_MINOR				 5
 #define FIRMWARE_BUILD_ID			"INV"
 #define FIRMWARE_STRING				"DICM Inventilate"
-#define FIRMWARE_VERSION			"1.0.5-rc.1"
+
 #define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
 #define INVENT_HARWARE_VERSION      HW_VERSION_4_1

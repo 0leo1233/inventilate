@@ -9,15 +9,5 @@ if (EXTRA_BUILD_DEFINES)
     #idf_build_set_property(COMPILE_DEFINITIONS ${EXTRA_BUILD_DEFINES_STRING} APPEND)
     component_compile_options(${EXTRA_BUILD_DEFINES_STRING})
 endif()
-set_source_files_properties("app_fan_motor_ctrl.c"
-    PROPERTIES COMPILE_FLAGS
-    -DNDEBUG
-)
-set_source_files_properties("app_onboard_hmi_ctrl.c"
-    PROPERTIES COMPILE_FLAGS
-    -DNDEBUG
-)
-set_source_files_properties("app_voc_sensor.c"
-    PROPERTIES COMPILE_FLAGS
-    -DNDEBUG
-)
+idf_component_get_property(dir app COMPONENT_DIR)
+component_compile_options(-fmacro-prefix-map=${dir}=app)

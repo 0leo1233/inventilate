@@ -7,8 +7,7 @@ idf_component_register(SRC_DIRS "."
 					  )
 #Adding extra build define from local config
 if (EXTRA_BUILD_DEFINES)
-    #idf_build_set_property(COMPILE_DEFINITIONS ${EXTRA_BUILD_DEFINES_STRING} APPEND)
-    component_compile_options(${EXTRA_BUILD_DEFINES_STRING})
+    component_compile_definitions(${EXTRA_BUILD_DEFINES_STRING})
 endif()
 set_property(TARGET ${COMPONENT_LIB} APPEND PROPERTY LINK_INTERFACE_MULTIPLICITY 5)
 

@@ -48,6 +48,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #endif
 
+#define CONFIG_RTC_CLK_SWITCH_TO_EXT_XTAL 0
+
 #define COMM_BLE                   0
 #define COMM_I2C                   1
 #define SDP3X_SENS_BOARD_COMM      COMM_BLE

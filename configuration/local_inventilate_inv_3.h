@@ -47,6 +47,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
 #endif
+// Disable switching to external crystal due to hardware bug (missing resistor)
+#define CONFIG_RTC_CLK_SWITCH_TO_EXT_XTAL 0
 
 #define COMM_BLE                   0
 #define COMM_I2C                   1

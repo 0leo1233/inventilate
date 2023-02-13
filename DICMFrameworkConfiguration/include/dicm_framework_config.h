@@ -130,6 +130,18 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define APP_DIFF_PRESSURE_SENSOR
 #define APP_LIGHT_CONTROL
 
+#define DICM_APPLICATION_CONNECTOR_EXTERN()\
+        extern CONNECTOR connector_voc_sensor;\
+        extern CONNECTOR connector_onboard_hmi;\
+        extern CONNECTOR connector_pwr_ctrl_service;\
+        extern CONNECTOR connector_pwm_fan_motor;
+
+#define DICM_APPLICATION_CONNECTORS()\
+        &connector_voc_sensor,\
+        &connector_onboard_hmi,\
+        &connector_pwr_ctrl_service,\
+        &connector_pwm_fan_motor,
+
 #define CONNECTOR_EOL_CTRL_TASK_PRIORITY                ((unsigned short)    5u)
 #define CONNECTOR_EOL_PROCESS_TASK_PRIORITY             ((unsigned short)    6u)
 #define CONNECTOR_FAN_MOTOR_PROCESS_TASK_PRIORITY       ((unsigned short)    7u)

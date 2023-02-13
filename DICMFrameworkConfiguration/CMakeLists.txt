@@ -4,7 +4,7 @@ project(DICMFrameworkConfiguration)
 
 file(GLOB SRC_FILES CONFIGURE_DEPENDS "source/*.c" )
 
-file(GLOB APP_SRC_FILES CONFIGURE_DEPENDS "app/*.c" )
+file(GLOB APP_SRC_FILES CONFIGURE_DEPENDS "source/app/*.c" )
 add_compile_definitions(${EXTRA_COMPILER_DEFINITIONS})
 add_compile_options(${EXTRA_COMPILER_OPTIONS})
 
@@ -15,6 +15,6 @@ target_include_directories(${PROJECT_NAME}
 								$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/source>
 							PUBLIC
 								$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-								$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/app>
+								$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/source/app>
 							)
 target_link_libraries(${PROJECT_NAME} PRIVATE idf::esp32 idf::nvs_flash DICMOsal DICMHal DICMCommonLibs DICMGeneralDefinitions DICMConnectors)

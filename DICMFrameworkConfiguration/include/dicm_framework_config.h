@@ -108,7 +108,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #endif
 
 #if defined(CONNECTOR_SYSTEM)
-#define ESP32_USE_INTERNAL_RTC
 //#define CONNECTOR_SYSTEM_NTP_SERVER "0.se.pool.ntp.org"
 //#define CONNECTOR_SYSTEM_STAT_ENABLE 1
 #endif

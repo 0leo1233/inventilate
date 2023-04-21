@@ -108,6 +108,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define MULTICAST_DNS_SERVICE_NAME   "Dometic Inventilate"
 
 /* Connectors for Inventilate */
+#define CONNECTOR_MQTT
 #define CONNECTOR_WIFI
 #define CONNECTOR_BLE
 #define CONNECTOR_BLE_PERIPHERAL_GATT

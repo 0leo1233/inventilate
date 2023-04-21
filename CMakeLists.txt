@@ -10,13 +10,17 @@ if (CCACHE_ENABLE)
 	endif()
 endif()
 
+# Prepare to setup project
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/DICMFramework/tools/cmake)
+include(framework_setup)
+
+# Setup and check depending environment and cmake variables, Replace with esp32s3 for other target
+setup_target("esp32")
+
 #inventilate
 project(INV C CXX ASM)
 
 # Setup project
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/DICMFramework/tools/cmake)
-include(framework_setup)
-
 #Include storage partition in full binary, address see partition table
 #Include hmi_data partition in full binary, address see partition table
 setup_project()

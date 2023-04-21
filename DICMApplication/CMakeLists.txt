@@ -24,22 +24,10 @@ list(APPEND ConnectorLIBS DICMConnectorPwmFanMotor)
 add_subdirectory(pwm_fan_motor)
 endif()
 
+list(APPEND ConnectorLIBS DICMConnectorApp)
+add_subdirectory(app)
+
 project(DICMApplication)
 
-file(GLOB SRC_FILES CONFIGURE_DEPENDS "app/*.c" )
-
-file(TOUCH ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}dummy.c)
-add_library(${PROJECT_NAME} STATIC ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}dummy.c)
-add_library(${PROJECT_NAME}Obj OBJECT ${SRC_FILES})
-
-#set(CMAKE_C_COMPILE_OBJECT "${CMAKE_C_COMPILE_OBJECT} -Wa,-alh=<OBJECT>.lst")
-target_include_directories(${PROJECT_NAME} 
-							PUBLIC	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-							)
-target_include_directories(${PROJECT_NAME}Obj 
-                            PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-                            )
-target_link_libraries(${PROJECT_NAME}Obj PRIVATE idf::esp32 DICMFramework DICMFrameworkConfiguration)
-target_link_libraries(${PROJECT_NAME}Obj PUBLIC ${ConnectorLIBS})
-target_link_libraries(${PROJECT_NAME} PRIVATE idf::esp32 DICMFramework DICMFrameworkConfiguration)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${ConnectorLIBS} $<TARGET_OBJECTS:${PROJECT_NAME}Obj>)
+add_library(${PROJECT_NAME} INTERFACE)
+target_link_libraries(${PROJECT_NAME} INTERFACE ${ConnectorLIBS})

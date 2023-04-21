@@ -112,6 +112,9 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 //#define CONNECTOR_SYSTEM_STAT_ENABLE 1
 #endif
 
+#if defined(CONNECTOR_MQTT)
+
+#endif
 #ifndef INVENT_EOL_TESTING
 //#define CONNECTOR_DP_SENS_SERVICE
 #endif
@@ -216,7 +219,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #ifdef CONNECTOR_RVC
 #define CONNECTOR_RVC_CAN_RX		GPIO_NUM_22 
 #define CONNECTOR_RVC_CAN_TX		GPIO_NUM_21 
-#define CONNECTOR_LIN_COMM_TEST
+//#define CONNECTOR_LIN_COMM_TEST
+
 #endif //CONNECTOR_RVC
 /* UART for communication with EOL/PCBA Windows Application */
 #ifdef CONNECTOR_UART
@@ -236,6 +240,17 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define HAL_LEDC_PWM
 #define HAL_PWM
 #define HAL_I2C_MASTER
+
+#if defined(CONNECTOR_RVC)
+#define CAN1_EN(x)
+#define DEVICE_TWAI                 // Enable support for internal can
+#define DEVICE_TWAI_EN(x)           CAN1_EN((x) ? 0 : 1)
+#define DEVICE_TWAI_RX              GPIO_NUM_22
+#define DEVICE_TWAI_TX              GPIO_NUM_21
+#define CAN_SLEEP_PIN               GPIO_NUM_34 // Use as invalid pin for now, input only
+#define CAN_SLEEP_LEVEL             0   // Dummy value for now
+//#define DEVICE_TWAI_EN_PIN          GPIO_NUM_23 ??
+#endif
 
 #define BOARD_INITIALIZATION
 

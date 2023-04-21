@@ -24,6 +24,17 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #define STOCK_KEEPING_UNIT "1235424665"
 
+// MIC Production or TEST environment
+#ifndef MIC_BUILD_PRODUCTION_ENVIRONMENT
+#define MIC_TEST_ENVIRONMENT
+#endif
+
+#ifndef MIC_TEST_ENVIRONMENT
+#else
+#define THING_TYPE_ID               (67)  // root
+#define NTW_THING_TYPE_ID           (68) // Ntw
+#endif
+
 #ifdef INVENT_EOL_TESTING
 
 #define FIRMWARE_MAJOR				 0

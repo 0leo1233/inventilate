@@ -185,6 +185,12 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define ONBOARD_HMI_MIN_DUTY_CYCLE            38 // 30%  duty cycle
 #define ONBOARD_HMI_OFF_DUTY_CYCLE             LEDC_PWM_MIN_DUTY_CYCLE //  0%  duty cycle
 
+#define HAL_HW_TIMER_DIVIDER				(80u)
+#define HAL_HW_TIMER_INTERVAL				(10000u)
+#define INV_TIMER_GRP      					TIMER_GROUP_0
+#define INV_TIMER_NUM      					TIMER_0
+#define HAL_HW_TIMER_INT_MODE 				TIMER_INTR_LEVEL
+#define HAL_HW_TIMER_COUNT_DIR				TIMER_COUNT_UP
 
 #define HAL_PWM_CAP_COUNTER_U32_MAX     (4294967295uL)
 
@@ -217,6 +223,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CONNECTOR_DIFFPRESS_READ_STACK_DEPTH			((unsigned short) 4096)
 #define CONNECTOR_EOL_PROCESS_STACK_DEPTH				((unsigned short) 4096)
 #define CONNECTOR_EOL_CONTROL_STACK_DEPTH				((unsigned short) 4096)
+#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH			((unsigned short) 2048)
 
 #else
 
@@ -252,6 +259,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CONNECTOR_DIFFPRESS_READ_TASK_PRIORITY			((unsigned short)   18u)
 #define CONNECTOR_FAN_MOTOR_CTRL_TASK_PRIORITY			((unsigned short)   19u)
 #define CONNECTOR_VOC_I2C_RD_SERVICE_TASK_PRIO			((unsigned short)   20u)
+#define CONNECTOR_OBHMI_BTN_TASK_TASK_PRIORITY			((unsigned short)   8u)
 
 #define CONNECTOR_ONBOARDHMI_PROCESS_TASK_NAME			((const char* const) "con_ohmi_pro_tk")
 #define CONNECTOR_ONBOARDHMI_PWR_CTRL_TASK_NAME			((const char* const) "con_ohmi_pwc_tk")
@@ -268,6 +276,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CONNECTOR_DIFF_PRESS_READ_TASK_NAME				((const char* const) "con_dif_read_tk")
 #define CONNECTOR_EOL_PROCESS_TASK_NAME					((const char* const) "conn_eol_pro_tk")
 #define CONNECTOR_EOL_CONTROL_TASK_NAME					((const char* const) "conn_eol_ctr_tk")
+#define CONNECTOR_OBHMI_BTN_TASK_NAME					((const char* const) "conn_btn_evnt_tk")
 
 #define I2C_MASTER0
 #define I2C_MASTER0_PORT         	0

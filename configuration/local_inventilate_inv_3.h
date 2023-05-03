@@ -1,5 +1,6 @@
 /*! \file inventilate_inv_3.h
-	\brief General configuration for inventilate board
+	\brief General configuration for inventilate board 
+	Error code
 */
 
 #ifndef INVENTILATE_INV_3_H_

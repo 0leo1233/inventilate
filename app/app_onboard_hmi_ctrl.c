@@ -176,7 +176,7 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     {
         LOG(W, "Error_handle short press");
         error_check_ack();
-        /*Update info to LCD to blink icon*/
+        update_blink_info(0);
         for (seg = 0; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++ )
         {
             uc1510c_set_segment(seg, seg_stat[seg]);

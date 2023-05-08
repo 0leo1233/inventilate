@@ -9,6 +9,7 @@
 #include "app_onboard_hmi_ctrl.h"
 #include "app_fan_motor_ctrl.h"
 #include "app_light_ctrl.h"
+#include "connector_onboardhmi.h"
 
 #ifdef DEVICE_UC1510C
 #include "drv_uc1510c.h"
@@ -113,7 +114,6 @@ LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT] =
 
 static uint8_t errack = 0;
 
-extern void error_check_ack(void);
 
 static void onboard_hmi_mode_seg_update(LCDSEG_STATUS* ptr_mode_seg);
 
@@ -146,7 +146,7 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     ONBOARD_HMI_BUTTON_EVENT*   ptr_event = NULL;
     BTN_PRESSED_EVT           hmi_btn_evt = (BTN_PRESSED_EVT)(event_data & 0xFF);
     BTN_PRESS_EVENT_TYPE       event_type = (BTN_PRESS_EVENT_TYPE)((event_data >> 8) & 0x01 );
-    uint8_t                    seg = 0;
+    uint8_t                           seg = 0;
 
     if ( IVPMGR0STATE_STANDBY == inv_state )
     {

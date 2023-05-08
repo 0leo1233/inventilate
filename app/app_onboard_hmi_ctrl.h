@@ -344,7 +344,10 @@ extern void update_and_send_value_to_broker(uint32_t ddm_parameter, int32_t valu
 uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM inv_state);
 
 extern void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value);
+
 extern void update_blink_info(const uint32_t error_code);
+
+extern void error_check_ack(void);
 
 #endif /* APP_ONBOARD_HMI_CONTROL */
 

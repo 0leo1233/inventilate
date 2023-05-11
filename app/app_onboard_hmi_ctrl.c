@@ -9,7 +9,6 @@
 #include "app_onboard_hmi_ctrl.h"
 #include "app_fan_motor_ctrl.h"
 #include "app_light_ctrl.h"
-#include "connector_onboardhmi.h"
 
 #ifdef DEVICE_UC1510C
 #include "drv_uc1510c.h"

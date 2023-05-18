@@ -111,7 +111,8 @@ LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT] =
 
 #endif
 
-//
+static uint8_t errack = 0;
+
 
 static void onboard_hmi_mode_seg_update(LCDSEG_STATUS* ptr_mode_seg);
 
@@ -144,6 +145,7 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     ONBOARD_HMI_BUTTON_EVENT*   ptr_event = NULL;
     BTN_PRESSED_EVT           hmi_btn_evt = (BTN_PRESSED_EVT)(event_data & 0xFF);
     BTN_PRESS_EVENT_TYPE       event_type = (BTN_PRESS_EVENT_TYPE)((event_data >> 8) & 0x01 );
+    uint8_t                           seg = 0;
 
     if ( IVPMGR0STATE_STANDBY == inv_state )
     {
@@ -167,6 +169,21 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     {
         LOG(I, "process hmi_btn_evt = %d event_type = %d", hmi_btn_evt, event_type);
     }
+    
+
+    if ( ( BTN_MODE == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) && (errack != 0) )
+    {
+        LOG(W, "Error_handle short press");
+        error_check_ack();
+        update_blink_info(0);
+        for (seg = 0; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++ )
+        {
+            uc1510c_set_segment(seg, seg_stat[seg]);
+        }
+        index = ONBOARD_HMI_EVT_TABLE_SIZE;
+        errack = 0;
+    }
+
     
     for ( ;index < ONBOARD_HMI_EVT_TABLE_SIZE; index++ ) 
     {
@@ -531,6 +548,17 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
         default:
             break;
 	}
+}
+
+/**
+ * @brief Set the err ackstate object
+ * Set error acknowledgement value
+ * 
+ * @param errack_l  Set ot Reset value
+ */
+void set_err_ackstate(uint8_t errack_l)
+{
+    errack = errack_l;
 }
 
 #endif /* APP_ONBOARD_HMI_CONTROL */

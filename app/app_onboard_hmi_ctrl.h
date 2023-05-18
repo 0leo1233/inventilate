@@ -329,6 +329,8 @@ void onboard_hmi_ctrl_sm(ONBRD_HMI_CTRL_SM* obhmi_ctrl_sm);
 
 void parse_obhmi_ctrl_frame(ONBRD_HMI_CTRL_SM* obhmi_ctrl_sm, OBHMI_CTRL_DATA_FRAME* obhmi_ctrl_data_frame);
 
+void reset_hmi_btn_ctrl_variables(void);
+
 extern void start_hmi_wait_timer(uint32_t period_ms);
 
 extern void reset_hmi_wait_timer(void);
@@ -343,7 +345,9 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
 
 extern void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value);
 
-void reset_hmi_btn_ctrl_variables(void);
+extern void update_blink_info(const uint32_t error_code);
+
+extern void error_check_ack(void);
 
 #endif /* APP_ONBOARD_HMI_CONTROL */
 

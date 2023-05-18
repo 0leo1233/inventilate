@@ -1,5 +1,6 @@
 /*! \file inventilate_inv_3.h
-	\brief General configuration for inventilate board
+	\brief General configuration for inventilate board 
+	Error code
 */
 
 #ifndef INVENTILATE_INV_3_H_
@@ -204,8 +205,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define UC1510C_DRIVER_IC_SECONDARY_ADDR    ((uint8_t) 0x39u)
 #endif
 
-#define FAIL              								((uint8_t) 1u)
-#define SUCCESS                                        	((uint8_t) 0u)
+#define INV_FAIL              							((uint8_t) 1u)
+#define INV_SUCCESS                                     ((uint8_t) 0u)
 
 #ifndef CONNECTOR_EOL_SERVICE
 

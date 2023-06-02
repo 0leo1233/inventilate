@@ -41,6 +41,8 @@ typedef enum __invent_err_code_bit_pos
     MAX_NUM_ERROR_CODES              = 26
 }INVENT_ERR_CODE_BIT_POS;
 
+#define DPSENS_PLAUSIBLE_UPRANGE      (uint16_t)25000
+#define DPSENS_PLAUSIBLE_DOWNRANGE    (int16_t)-25000
 #endif /* APP_ERROR_CODE_H_ */
 
 

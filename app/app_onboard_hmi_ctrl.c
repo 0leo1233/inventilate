@@ -18,6 +18,7 @@
 #include "ddm2.h"
 #include <string.h>
 
+void set_err_ackstate(uint8_t errack_l);
 static const hmi_domain_to_ddm_system_t hmi_btn_power_to_ddmp[] = 
 {
     //          hmi_domain_value               ddm_parameter        ddm_system_value
@@ -89,6 +90,27 @@ LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT] =
 #else
 
 LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT] = 
+{
+    SEG_OFF,  // SEG_AIR_QUALITY_LEVEL_1_LOW              
+    SEG_OFF,  // SEG_FILTER_STATUS            
+    SEG_OFF,  // SEG_WARNING_STATUS           
+    SEG_OFF,  // SEG_MODE_AUTO                
+    SEG_OFF,  // SEG_MODE_TURBO               
+    SEG_OFF,  // SEG_MODE_SLEEP               
+    SEG_OFF,  // SEG_MODE_MENU_LINE           
+    SEG_OFF,  // SEG_STORAGE_MODE             
+    SEG_OFF,  // SEG_SOLAR_BATTERY_STATUS     
+    SEG_OFF,  // SEG_WIFI_STATUS              
+    SEG_OFF,  // SEG_LIGHT_BUTTON            
+    SEG_OFF,  // SEG_MODE_BUTTON             
+    SEG_OFF,  // SEG_POWER_BUTTON
+    SEG_OFF,  // S13_BLE_STATUS
+    SEG_OFF,  // S14_IONIZER_STATUS,
+    SEG_OFF,  // S15_AIR_QUALITY_LEVEL_3_HIGH,
+    SEG_OFF   // S16_AIR_QUALITY_LEVEL_2_MID,   
+};
+
+LCDSEG_STATUS prev_seg_stat[ONBOARD_HMI_MAX_SEGEMENT] = 
 {
     SEG_OFF,  // SEG_AIR_QUALITY_LEVEL_1_LOW              
     SEG_OFF,  // SEG_FILTER_STATUS            

@@ -224,7 +224,16 @@ typedef enum __data_type
     DP_SENSOR_STATUS       = 28,
     IV_STORAGE_TMR_EXP     = 29,
     IV_HUMIDITY_DATA       = 30,
-    INVALID_DATA_RECEIVED  = 31
+    IV_FAN1_TACHO          = 31,
+    IV_FAN2_TACHO          = 32,
+    IV_MTR_TACHO           = 33,
+    DEV_VALIDATION_TMR_EXP = 34,
+    IV_ERROR_STATUS        = 35,
+    IV_DP_BATTERY_LEVEL    = 36,
+    IV_IVSETT              = 37,
+    IV_STORAGE_GETTIME     = 38,
+    IV_STORAGE_HUMID_CHK_TMR_EXP = 39,
+    INVALID_DATA_RECEIVED  = 40
 } DATA_ID;
 
 typedef enum __dp_sens_status
@@ -326,6 +335,13 @@ typedef struct __inventilate_control_algo
     int32_t               dp_data_count;
     int32_t               humidity_data_count;
     uint32_t              constant_rpm_motor;
+    uint32_t              dev_tacho[MAX_NUM_DEVICE];
+    uint8_t               rated_speed_percent[MAX_NUM_DEVICE];
+    uint32_t              min_counter;
+    uint32_t              invent_error_status;
+    uint32_t              invent_prev_err_status;
+    uint32_t              fan_mtr_dev_curr_stat;
+    uint32_t              fan_mtr_dev_prev_stat;
     invent_device_id_t    prim_dev_id;
     invent_device_id_t    sec_dev_id;
     DEV_COMP_CONFIG       dev_comp_config[MAX_NUM_DEVICE];

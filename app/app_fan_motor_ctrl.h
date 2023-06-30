@@ -22,7 +22,7 @@
 #include "hal_nvs.h"
 #include <math.h>
 
-#define INV_ALGO_DEBUG 1
+#define INV_ALGO_DEBUG 0
 
 #define OFF_MODE_RPM_MIN_PERCENT      ((uint8_t)      0u)
 #define OFF_MODE_RPM_MAX_PERCENT      ((uint8_t)      0u)

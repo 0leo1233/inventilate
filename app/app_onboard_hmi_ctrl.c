@@ -174,7 +174,8 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
         /* When the inventilate is in STANDBY state, skip the processing of this MODE button events and long press events */
         if ( ( BTN_MODE == hmi_btn_evt ) || ( BUTTON_EVT_LONG_PRESS == event_type ) )
         {
-            LOG(W, "Skip mode/LP btn event");
+            
+            //("Skip mode/LP btn event");
             index = ONBOARD_HMI_EVT_TABLE_SIZE; 
         }
     }
@@ -182,7 +183,7 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     {
         if ( ( BTN_MODE == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) )
         {
-            LOG(W, "Storage skip mode btn event");
+            //("Storage skip mode btn event");
             /* When the inventilate is in STORAGE state, skip the processing of this MODE button events */
             index = ONBOARD_HMI_EVT_TABLE_SIZE;
         }

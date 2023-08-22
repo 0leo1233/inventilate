@@ -18,6 +18,7 @@
 #include "ddm2.h"
 #include <string.h>
 
+void set_err_ackstate(uint8_t errack_l);
 static const hmi_domain_to_ddm_system_t hmi_btn_power_to_ddmp[] = 
 {
     //          hmi_domain_value               ddm_parameter        ddm_system_value
@@ -109,6 +110,27 @@ LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT] =
     SEG_OFF   // S16_AIR_QUALITY_LEVEL_2_MID,   
 };
 
+LCDSEG_STATUS prev_seg_stat[ONBOARD_HMI_MAX_SEGEMENT] = 
+{
+    SEG_OFF,  // SEG_AIR_QUALITY_LEVEL_1_LOW              
+    SEG_OFF,  // SEG_FILTER_STATUS            
+    SEG_OFF,  // SEG_WARNING_STATUS           
+    SEG_OFF,  // SEG_MODE_AUTO                
+    SEG_OFF,  // SEG_MODE_TURBO               
+    SEG_OFF,  // SEG_MODE_SLEEP               
+    SEG_OFF,  // SEG_MODE_MENU_LINE           
+    SEG_OFF,  // SEG_STORAGE_MODE             
+    SEG_OFF,  // SEG_SOLAR_BATTERY_STATUS     
+    SEG_OFF,  // SEG_WIFI_STATUS              
+    SEG_OFF,  // SEG_LIGHT_BUTTON            
+    SEG_OFF,  // SEG_MODE_BUTTON             
+    SEG_OFF,  // SEG_POWER_BUTTON
+    SEG_OFF,  // S13_BLE_STATUS
+    SEG_OFF,  // S14_IONIZER_STATUS,
+    SEG_OFF,  // S15_AIR_QUALITY_LEVEL_3_HIGH,
+    SEG_OFF   // S16_AIR_QUALITY_LEVEL_2_MID,   
+};
+
 #endif
 
 static uint8_t errack = 0;
@@ -152,7 +174,8 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
         /* When the inventilate is in STANDBY state, skip the processing of this MODE button events and long press events */
         if ( ( BTN_MODE == hmi_btn_evt ) || ( BUTTON_EVT_LONG_PRESS == event_type ) )
         {
-            LOG(W, "Skip mode/LP btn event");
+            
+            //("Skip mode/LP btn event");
             index = ONBOARD_HMI_EVT_TABLE_SIZE; 
         }
     }
@@ -160,7 +183,7 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     {
         if ( ( BTN_MODE == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) )
         {
-            LOG(W, "Storage skip mode btn event");
+            //("Storage skip mode btn event");
             /* When the inventilate is in STORAGE state, skip the processing of this MODE button events */
             index = ONBOARD_HMI_EVT_TABLE_SIZE;
         }

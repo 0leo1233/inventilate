@@ -86,20 +86,21 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define INVERTED_PWM              ((uint32_t)     0u)
 #define NON_INVERTED_PWM          ((uint32_t)     1u)
 
-#define DEV_FAN1_MIN_RPM          ((uint32_t)     0u)
-#define DEV_FAN1_MAX_RPM          ((uint32_t)  2800u)
+#define DEV_FAN1_RATED_SPEED_PERCENT   ((uint32_t)    40u)
+#define DEV_FAN1_MIN_RPM               ((uint32_t)     0u)
+#define DEV_FAN1_MAX_RPM               ((uint32_t)  2800u)
 #define DEV_FAN1_AIR_OUT_PWM_MODE INVERTED_PWM
 
-#define DEV_FAN2_MIN_RPM          ((uint32_t)     0u)
-#define DEV_FAN2_MAX_RPM          ((uint32_t)  2800u)
+#define DEV_FAN2_RATED_SPEED_PERCENT  ((uint32_t)    40u)
+#define DEV_FAN2_MIN_RPM              ((uint32_t)     0u)
+#define DEV_FAN2_MAX_RPM              ((uint32_t)  2800u)
 #define DEV_FAN2_AIR_IN_PWM_MODE  INVERTED_PWM
 
-#define DEV_MOTOR_MIN_RPM         ((uint32_t)     0u)
-#define DEV_MOTOR_MAX_RPM         ((uint32_t)  2200u)
+#define DEV_MOTOR_RATED_SPEED_PERCENT  ((uint32_t)    40u)
+#define DEV_MOTOR_MIN_RPM              ((uint32_t)     0u)
+#define DEV_MOTOR_MAX_RPM              ((uint32_t)  2200u)
 #define DEV_MOTOR_PWM_MODE        NON_INVERTED_PWM
 
-//#define BUILD_STATION_SSID			"AP-ESP32"
-//#define BUILD_STATION_PASSWORD		"987654321"
 
 #define WIFI_NETWORK
 #define WIFI_NETWORK_STA

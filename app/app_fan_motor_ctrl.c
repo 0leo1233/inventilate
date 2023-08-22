@@ -164,16 +164,20 @@ void update_data_in_nvm(DATA_ID data_id, uint32_t data)
 
     if ( ( NVS_DB_SIZE != db_idx ) )
     {
+#if INV_ALGO_DEBUG         
         LOG(I, "NVS Write data_id = %d data = %d db_idx = %d", data_id, data, db_idx);
+#endif        
         /* Update the data in the pointer */
         *((uint32_t*)(nvs_db[db_idx].data_ptr)) = data;
         /* write the data in the NVS */
         nvs_err = hal_nvs_write(nvs_db[db_idx].nvs_key, nvs_db[db_idx].data_type, nvs_db[db_idx].data_ptr, nvs_db[db_idx].data_size);
         /* Validate the error code */
+#if INV_ALGO_DEBUG         
         if ( HAL_NVS_OK != nvs_err )
         {
             LOG(E, "NVS Write failed = %d", nvs_err);
         }
+#endif        
     }
     else
     {
@@ -488,8 +492,9 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
         /* Check the wait timer expired or not */
         if ( true == ptr_iv->wait_tmr_exp )
         {
-            LOG(I, "pr comp tmr exp");
-            /* Reset the timer exp flag */
+            
+            
+            /* "pr comp tmr exp" Reset the timer exp flag */
             ptr_iv->wait_tmr_exp = false;
 
             /* Validate the compensation */
@@ -586,9 +591,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 // 4. Even after this, If still the pressure is not compensated then set same RPM on both the FANS
                 // 5. Run for configuarable time
                 // 6. Reset all variables related to pressure compensation
-    #if INV_ALGO_DEBUG 
-                LOG(E, "OVP Cond");
-    #endif
+                //Over pressure 
                 ptr_iv->prim_dev_id = DEV_FAN1_AIR_OUT;
                 ptr_iv->sec_dev_id  = DEV_FAN2_AIR_IN;
             }
@@ -600,9 +603,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 // 3. FAN1 (Exhaust FAN / Air Out) speed shall be reduce to compensate the pressure
                 // 4. Even after this, If the pressure is not compensated then set same RPM on both the FANS
                 // 5. Run both the FANS with same RPM for 10 min.
-    #if INV_ALGO_DEBUG 
-                LOG(E, "UP Cond");
-    #endif
+                //Under pressure condition
                 ptr_iv->prim_dev_id = DEV_FAN2_AIR_IN;
                 ptr_iv->sec_dev_id  = DEV_FAN1_AIR_OUT;
             }
@@ -689,10 +690,10 @@ INVENT_CONTROL_STATE aq_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
             /* Get the RPM step level from the ROC of IAQ */
             ptr_iv->step_table_index_iaq = get_step_level(abs(roc_iaq_percent));
 
-    #if INV_ALGO_DEBUG 
+#if INV_ALGO_DEBUG 
             LOG(I, "roc_iaq=%d curr_data=%d prev_data=%d roc_max_val=%d", \
             roc_iaq_percent, *ptr_iv->ptr_curr_data, *ptr_iv->ptr_prev_data, ptr_iv->roc_max_val);
-    #endif
+#endif
             
             if ( roc_iaq_percent >= 0 )
             {
@@ -728,7 +729,7 @@ INVENT_CONTROL_STATE aq_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
     }
     else
     {
-        LOG(I, "AQ good");
+        //("AQ good");
         /* Reset the timer flag, Before Start */
         ptr_ctrl_algo->wait_tmr_exp = false;
         /* Set the compensation configuration */
@@ -867,8 +868,6 @@ void update_dp_comp_threshold_val(INVENTILATE_CONTROL_ALGO* ptr_iv)
     {
 
     }
-
-    LOG(I, "dp_thr=%d", ptr_iv->dp_comp_thr_val);
 }
 
 /**

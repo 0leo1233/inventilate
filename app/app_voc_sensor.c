@@ -50,7 +50,7 @@
 
 #endif
 
-#define APP_VOC_DEBUG_LOG 1
+#define APP_VOC_DEBUG_LOG 0
 #define BSEC_FLASH_KEY (const char *)"bsec"
 
 /* Struct instance for read_service */
@@ -412,8 +412,7 @@ const BME6X_BSEC_LIB_INTERFACE g_bsec_lib_intf =
 static void state_save_func(const uint8_t *state_buffer, uint32_t length)
 {
     if ( state_buffer != NULL )
-    {
-        LOG(I, "BSEC State write size = %d", length);
+    {       
         hal_nvs_write(BSEC_FLASH_KEY, HAL_NVS_DATA_TYPE_BLOB, (const void *)state_buffer, length);
     }
 }
@@ -433,13 +432,15 @@ static uint32_t state_load_func(uint8_t *state_buffer, uint32_t n_buffer)
     {
         hal_nvs_read(BSEC_FLASH_KEY, HAL_NVS_DATA_TYPE_BLOB, (void*)state_buffer, n_buffer);
        
+#if APP_VOC_DEBUG_LOG
+
         LOG(I, "BSEC State read size = %d", n_buffer);
-        
         for ( index = 0; index < n_buffer; index++ )
         {
             LOG(I, "Stored Data [%d] = %d", index, state_buffer[index]);
         }
-       
+#endif
+
         size = n_buffer;
     }
     

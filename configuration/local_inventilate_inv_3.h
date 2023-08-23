@@ -199,7 +199,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define HAL_HW_TIMER_INT_MODE 				TIMER_INTR_LEVEL
 #define HAL_HW_TIMER_COUNT_DIR				TIMER_COUNT_UP
 
-#define HAL_PWM_CAP_COUNTER_U32_MAX     (4294967295uL)
+#define HAL_PWM_CAP_COUNTER_LIMIT     (4294967295uL)
 
 #define LCD_DRIVER_ENABLE
 #define LCD_DRIVER_IC_INIT_VERSION_200623

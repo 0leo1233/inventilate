@@ -183,20 +183,28 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define ONBOARD_HMI_PWM_MIN_DUTY_CYCLE  LEDC_PWM_MAX_DUTY_CYCLE //2048
 
 #define ONBOARD_HMI_MAX_DUTY_CYCLE           LEDC_PWM_MAX_DUTY_CYCLE //127 // 100% duty cycle  
-#define ONBOARD_HMI_MIN_DUTY_CYCLE            38 // 30%  duty cycle
-#define ONBOARD_HMI_OFF_DUTY_CYCLE             LEDC_PWM_MIN_DUTY_CYCLE //  0%  duty cycle
+#define ONBOARD_HMI_MIN_DUTY_CYCLE           38 // 30%  duty cycle
+#define ONBOARD_HMI_OFF_DUTY_CYCLE           LEDC_PWM_MIN_DUTY_CYCLE //  0%  duty cycle
+#define ONBOARD_HMI_50_DUTY_CYCLE			 50
+#define ONBOARD_HMI_10_DUTY_CYCLE			 15
+#define ONBOARD_HMI_1_DUTY_CYCLE			 1
+#define ONBOARD_HMI_5_DUTY_CYCLE			 6
+#define ONBOARD_HMI_0_DUTY_CYCLE			 0
 
-#define HAL_HW_TIMER_DIVIDER				(80u)
-#define HAL_HW_TIMER_INTERVAL				(10000u)
+
+#define HAL_HW_TIMER_DIVIDER				(16u)
+#define HAL_HW_TIMER_INTERVAL				(TIMER_BASE_CLK / 4096)
 #define INV_TIMER_GRP      					TIMER_GROUP_0
 #define INV_TIMER_NUM      					TIMER_0
 #define HAL_HW_TIMER_INT_MODE 				TIMER_INTR_LEVEL
 #define HAL_HW_TIMER_COUNT_DIR				TIMER_COUNT_UP
 
-#define HAL_PWM_CAP_COUNTER_U32_MAX     (4294967295uL)
+#define HAL_PWM_CAP_COUNTER_LIMIT     UINT32_MAX
 
-#define LCD_DRIVER_IC_VERSION_NEW
-//#define LCD_DRIVER_IC_VERSION_OLD
+#define LCD_DRIVER_ENABLE
+#define LCD_DRIVER_IC_INIT_VERSION_200623
+
+
 
 #define DEVICE_UC1510C
 #ifdef LCD_DRIVER_IC_VERSION_OLD

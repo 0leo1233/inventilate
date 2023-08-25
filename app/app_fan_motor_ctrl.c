@@ -27,6 +27,7 @@ static IAQ_RANGE iaq_range_level[IAQ_RANGE_LEVELS] =
     {   { IAQ_DEF_WORSE_MIN,   IAQ_DEF_WORSE_MAX },   IV0AQST_AIR_QUALITY_WORSE }
 };
 
+EXT_RAM_ATTR IV0_SETTINGS   ivsett_config;
 /* Table for RPM Min and Max Percentage for modes */
 static percent_range_t percent_range[NUM_OPERATING_MODES] =
 {

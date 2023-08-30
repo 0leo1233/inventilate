@@ -395,7 +395,18 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 
         case UPDATE_SEG_IONIZER:
             {
+#ifdef EN_IONIZER_FLAG                
+                if (ivsett_config.EN_DIS_IONIZER == true)
+                {
                 seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+                }
+                else
+                {
+                    seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
+                }
+#else
+                seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+#endif                
                 LOG(I, "SEG_IONIZER_STATUS = %d", seg_stat[SEG_IONIZER_STATUS]);
                 uc1510c_set_segment(SEG_IONIZER_STATUS, seg_stat[SEG_IONIZER_STATUS]);
             }
@@ -479,7 +490,20 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             break;
 
         case UPDATE_SEG_IONIZER:
+#ifdef EN_IONIZER_FLAG             
+            if (ivsett_config.EN_DIS_IONIZER == true)
+            {
+                seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+            }
+            else
+            {
+                seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
+     
+            }
+#else
             seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+
+#endif            
             break;
 			
         default:

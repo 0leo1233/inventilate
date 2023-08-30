@@ -292,6 +292,21 @@ typedef struct __iaq_range
     iaq_index_range   iaq_range;
     IV0AQST_ENUM      iaq_status;
 }IAQ_RANGE;
+typedef union
+{
+    uint8_t byte;
+    struct 
+    {
+        uint8_t EN_DIS_SOLAR        : 1;
+        uint8_t EN_DIS_IONIZER      : 1;
+        uint8_t RESERVED_2          : 1;
+        uint8_t RESERVED_3          : 1;
+        uint8_t RESERVED_4          : 1;
+        uint8_t RESERVED_5          : 1;
+        uint8_t RESERVED_6          : 1;
+        uint8_t RESERVED_7          : 1;
+    }__attribute__((packed));
+}IV0_SETTINGS;
 
 typedef enum __storage_timer_config
 {
@@ -377,6 +392,7 @@ typedef struct __nvs_config_conn_fan_mtr
 
 extern INVENTILATE_CONTROL_ALGO  iv_ctrl_algo;
 extern INVENTILATE_CONTROL_ALGO* ptr_ctrl_algo;
+extern EXT_RAM_ATTR IV0_SETTINGS   ivsett_config;
 
 void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* iv_algo);
 

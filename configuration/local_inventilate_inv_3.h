@@ -1,5 +1,5 @@
 /*! \file inventilate_inv_3.h
-	\brief General configuration for inventilate board 
+	\brief General configuration for inventilate board
 */
 
 #ifndef INVENTILATE_INV_3_H_
@@ -101,6 +101,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define DEV_MOTOR_MAX_RPM              ((uint32_t)  2200u)
 #define DEV_MOTOR_PWM_MODE        NON_INVERTED_PWM
 
+/*Uncomment below macro to use Inoizer hardware */
+//#define EN_IONIZER_FLAG
 
 #define WIFI_NETWORK
 #define WIFI_NETWORK_STA

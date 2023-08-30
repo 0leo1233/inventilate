@@ -161,8 +161,8 @@
 
 typedef enum _invent_device_id
 {
-	DEV_FAN1_AIR_OUT = 0,              // Exhaust FAN        ( Air Out )
-	DEV_FAN2_AIR_IN  = 1,              // Supply FAN         ( Air In  )
+	DEV_FAN1_AIR_IN = 0,              // Supply FAN        ( Air In )
+	DEV_FAN2_AIR_OUT  = 1,              // Exhaust FAN         ( Air Out  )
     DEV_MOTOR        = 2,              // Ceramic Disc Motor ( Heat Exchange )
 	MAX_NUM_DEVICE   = 3
 } invent_device_id_t;
@@ -375,6 +375,8 @@ typedef struct __inventilate_control_algo
     DP_SENS_STATUS        dp_senor_status;
     STORAGE_TIMER_CONFIG  storage_timer_config;
     TickType_t            storage_tmr_val_ticks[STORAGE_TIMER_MAX_CONFIG];
+    uint8_t               dp_exceed_count;
+    IV0PWRSRC_ENUM        selected_power_source;  
 } INVENTILATE_CONTROL_ALGO;
 
 typedef struct __nvs_config_conn_fan_mtr

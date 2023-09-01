@@ -28,6 +28,7 @@ static IAQ_RANGE iaq_range_level[IAQ_RANGE_LEVELS] =
 };
 
 EXT_RAM_ATTR IV0_SETTINGS   ivsett_config;
+EXT_RAM_ATTR FILTER_INFO filter_data;
 /* Table for RPM Min and Max Percentage for modes */
 static percent_range_t percent_range[NUM_OPERATING_MODES] =
 {
@@ -57,6 +58,9 @@ static nvs_config_conn_fan_mtr nvs_db[NVS_DB_SIZE] =
     {IV_IAQ_GOOD_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,    IAQ_DEF_GOOD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.max             ,  "mx_gd_aq" },
     {IV_IAQ_BAD_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_BAD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.max              ,  "mx_bd_aq" },
     {IV_IAQ_WORSE_MAX ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,   IAQ_DEF_WORSE_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_WORSE].iaq_range.max            ,  "mx_wr_aq" },
+    {IV_IVSETT        ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_IVSETT_MIN,         IV_IVSETT_MAX,   IV_IVSETT_DEFAULT,   IV0SETT|DDM2_PARAMETER_INSTANCE(0),    (void*)&ivsett_config.byte                                                  ,  "iv_ivsett" },
+    {IV_FILTER_TIMER  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX,IV_FILTER_MIN_MIN,   IV0FILST,                             (void*)&filter_data.filter_min                                              ,  "iv_filter_min" },
+    {IV_FILTER_STATUS  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX,IV_FILTER_MIN_MIN,   IV0FILST,                             (void*)&filter_data.filter_status                                          ,  "iv_filter_sts" },
 };
 
 /**
@@ -333,8 +337,6 @@ void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* ptr_iv)
     calc_mode_min_max_rpm();
 }
 
-
-
 /**
   * @brief  Function to reset the accumulated data
   * @param  pointer to struct instance type INVENTILATE_CONTROL_ALGO.
@@ -396,24 +398,34 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
   */
 IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
 {
-    IV0PRST_ENUM pressure_stat;
+    IV0PRST_ENUM pressure_stat = IV0PRST_PRESS_STATUS_UNKNOWN;
 
-    if ( ptr_iv->dp_data_count > 0 )
+    if ( ptr_iv->dp_data_count > DP_ZERO_COUNT )
     {
         /* Find the pressure compensation status */
         if ( ptr_iv->curr_avg_dp_value < ptr_iv->dp_neg_acceptable_lim )
         {
-            pressure_stat = IV0PRST_UNDER_PRESS;
+            /* Under pressure */
+            ptr_iv->dp_exceed_count ++;
+            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
+            {
+                pressure_stat = IV0PRST_UNDER_PRESS;
+            }
         }
         else if ( ptr_iv->curr_avg_dp_value > ptr_iv->dp_pos_acceptable_lim )
         {
-            pressure_stat = IV0PRST_OVER_PRESS;
+            ptr_iv->dp_exceed_count ++;
+            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
+            {
+                pressure_stat = IV0PRST_OVER_PRESS;
+            }
         }
         else
         {
             /* Differential pressure is within the acceptable range -5 to +5
                So pressure compensation not needed */
             pressure_stat = IV0PRST_VALID_PRESS_LEVEL;
+            ptr_iv->dp_exceed_count = 0;
         }
     }
     else
@@ -739,7 +751,7 @@ INVENT_CONTROL_STATE aq_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
     }
     else
     {
-        //("AQ good");
+        /* IAQ good */
         /* Reset the timer flag, Before Start */
         ptr_ctrl_algo->wait_tmr_exp = false;
         /* Set the compensation configuration */

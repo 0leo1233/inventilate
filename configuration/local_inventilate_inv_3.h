@@ -89,17 +89,18 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define DEV_FAN1_RATED_SPEED_PERCENT   ((uint32_t)    40u)
 #define DEV_FAN1_MIN_RPM               ((uint32_t)     0u)
 #define DEV_FAN1_MAX_RPM               ((uint32_t)  2800u)
-#define DEV_FAN1_AIR_OUT_PWM_MODE INVERTED_PWM
+#define DEV_FAN1_AIR_IN_PWM_MODE      INVERTED_PWM
 
 #define DEV_FAN2_RATED_SPEED_PERCENT  ((uint32_t)    40u)
 #define DEV_FAN2_MIN_RPM              ((uint32_t)     0u)
 #define DEV_FAN2_MAX_RPM              ((uint32_t)  2800u)
-#define DEV_FAN2_AIR_IN_PWM_MODE  INVERTED_PWM
+#define DEV_FAN2_AIR_OUT_PWM_MODE      INVERTED_PWM
 
 #define DEV_MOTOR_RATED_SPEED_PERCENT  ((uint32_t)    40u)
 #define DEV_MOTOR_MIN_RPM              ((uint32_t)     0u)
 #define DEV_MOTOR_MAX_RPM              ((uint32_t)  2200u)
-#define DEV_MOTOR_PWM_MODE        NON_INVERTED_PWM
+#define DEV_MOTOR_PWM_MODE            NON_INVERTED_PWM
+
 
 /*Uncomment below macro to use Inoizer hardware */
 //#define EN_IONIZER_FLAG

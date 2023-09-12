@@ -82,6 +82,14 @@
 #define IAQ_CONFIG_MIN     ((uint32_t)     0u)
 #define IAQ_CONFIG_MAX     ((uint32_t)   500u)
 
+#define IV_IVSETT_MIN      ((uint32_t)     0u)
+#define IV_IVSETT_MAX      ((uint32_t)     0xFFFF)              //Actual value = 0xFFFFFFFF
+#define IV_IVSETT_DEFAULT  ((uint32_t)      0u) 
+
+#define IV_FILTER_MIN_MIN   ((uint32_t)      0u)
+#define IV_FILTER_MIN_MAX   ((uint32_t)      0xFFFF)
+
+
 #define FAN_MOTOR_MAX_DUTY_CYCLE                 ((uint32_t)   100u)
 #define NVS_DB_SIZE                              ((uint32_t)    12u)
 #define PRESS_COMP_EXCEEDS_LIMIT_RPM             ((uint32_t)     0u)
@@ -158,11 +166,13 @@
 #define INVENT_CONTROL_PERIODIC_TMR_TICKS         pdMS_TO_TICKS(MIN_TO_MSEC(IV_CONTROL_PROCESSING_INTERVAL_MIN))
 #define RV_IDLE_COND_SETTLE_WAIT_TIME_TICKS       pdMS_TO_TICKS(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN))
 #define RV_PRESS_COMP_WAIT_TIME_TICKS             pdMS_TO_TICKS(MIN_TO_MSEC(RV_PRESS_COMP_WAIT_TIME_MIN))
+#define DP_ZERO_COUNT                                 0u
+#define DP_EXCEED_LIMIT                               1u
 
 typedef enum _invent_device_id
 {
-	DEV_FAN1_AIR_OUT = 0,              // Exhaust FAN        ( Air Out )
-	DEV_FAN2_AIR_IN  = 1,              // Supply FAN         ( Air In  )
+	DEV_FAN1_AIR_IN = 0,              // Supply FAN        ( Air In )
+	DEV_FAN2_AIR_OUT  = 1,              // Exhaust FAN         ( Air Out  )
     DEV_MOTOR        = 2,              // Ceramic Disc Motor ( Heat Exchange )
 	MAX_NUM_DEVICE   = 3
 } invent_device_id_t;
@@ -233,7 +243,10 @@ typedef enum __data_type
     IV_IVSETT              = 37,
     IV_STORAGE_GETTIME     = 38,
     IV_STORAGE_HUMID_CHK_TMR_EXP = 39,
-    INVALID_DATA_RECEIVED  = 40
+    IV_POWER_SOURCE        = 40,
+    IV_FILTER_TIMER        = 41,
+    IV_FILTER_STATUS       = 42,
+    INVALID_DATA_RECEIVED  = 43
 } DATA_ID;
 
 typedef enum __dp_sens_status
@@ -292,6 +305,12 @@ typedef struct __iaq_range
     iaq_index_range   iaq_range;
     IV0AQST_ENUM      iaq_status;
 }IAQ_RANGE;
+typedef struct __filter_info
+{
+    uint32_t    filter_min;
+    uint32_t    filter_status;
+}FILTER_INFO;
+
 typedef union
 {
     uint8_t byte;
@@ -375,6 +394,8 @@ typedef struct __inventilate_control_algo
     DP_SENS_STATUS        dp_senor_status;
     STORAGE_TIMER_CONFIG  storage_timer_config;
     TickType_t            storage_tmr_val_ticks[STORAGE_TIMER_MAX_CONFIG];
+    uint8_t               dp_exceed_count;
+    IV0PWRSRC_ENUM        selected_power_source;  
 } INVENTILATE_CONTROL_ALGO;
 
 typedef struct __nvs_config_conn_fan_mtr

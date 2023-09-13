@@ -11,6 +11,9 @@
 #include "osal.h"
 #include "app_fan_motor_ctrl.h"
 
+int32_t bme68x_humid_value;
+int32_t bm_humid_prev;
+int32_t bm_humid_curr;
 static uint32_t calc_percentage(uint32_t value, uint32_t percent);
 static int8_t calc_rate_of_change(float curr_val, float prev_val, float max_val);
 static uint8_t get_step_level(int32_t roc);

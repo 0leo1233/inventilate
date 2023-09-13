@@ -22,7 +22,7 @@
 #include "hal_nvs.h"
 #include <math.h>
 
-#define INV_ALGO_DEBUG 1
+#define INV_ALGO_DEBUG 0
 
 #define OFF_MODE_RPM_MIN_PERCENT      ((uint8_t)      0u)
 #define OFF_MODE_RPM_MAX_PERCENT      ((uint8_t)      0u)
@@ -81,6 +81,14 @@
 
 #define IAQ_CONFIG_MIN     ((uint32_t)     0u)
 #define IAQ_CONFIG_MAX     ((uint32_t)   500u)
+
+#define IV_IVSETT_MIN      ((uint32_t)     0u)
+#define IV_IVSETT_MAX      ((uint32_t)     0xFFFF)              //Actual value = 0xFFFFFFFF
+#define IV_IVSETT_DEFAULT  ((uint32_t)      0u) 
+
+#define IV_FILTER_MIN_MIN   ((uint32_t)      0u)
+#define IV_FILTER_MIN_MAX   ((uint32_t)      0xFFFF)
+
 
 #define FAN_MOTOR_MAX_DUTY_CYCLE                 ((uint32_t)   100u)
 #define NVS_DB_SIZE                              ((uint32_t)    12u)
@@ -158,11 +166,13 @@
 #define INVENT_CONTROL_PERIODIC_TMR_TICKS         pdMS_TO_TICKS(MIN_TO_MSEC(IV_CONTROL_PROCESSING_INTERVAL_MIN))
 #define RV_IDLE_COND_SETTLE_WAIT_TIME_TICKS       pdMS_TO_TICKS(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN))
 #define RV_PRESS_COMP_WAIT_TIME_TICKS             pdMS_TO_TICKS(MIN_TO_MSEC(RV_PRESS_COMP_WAIT_TIME_MIN))
+#define DP_ZERO_COUNT                                 0u
+#define DP_EXCEED_LIMIT                               1u
 
 typedef enum _invent_device_id
 {
-	DEV_FAN1_AIR_OUT = 0,              // Exhaust FAN        ( Air Out )
-	DEV_FAN2_AIR_IN  = 1,              // Supply FAN         ( Air In  )
+	DEV_FAN1_AIR_IN = 0,              // Supply FAN        ( Air In )
+	DEV_FAN2_AIR_OUT  = 1,              // Exhaust FAN         ( Air Out  )
     DEV_MOTOR        = 2,              // Ceramic Disc Motor ( Heat Exchange )
 	MAX_NUM_DEVICE   = 3
 } invent_device_id_t;
@@ -224,7 +234,19 @@ typedef enum __data_type
     DP_SENSOR_STATUS       = 28,
     IV_STORAGE_TMR_EXP     = 29,
     IV_HUMIDITY_DATA       = 30,
-    INVALID_DATA_RECEIVED  = 31
+    IV_FAN1_TACHO          = 31,
+    IV_FAN2_TACHO          = 32,
+    IV_MTR_TACHO           = 33,
+    DEV_VALIDATION_TMR_EXP = 34,
+    IV_ERROR_STATUS        = 35,
+    IV_DP_BATTERY_LEVEL    = 36,
+    IV_IVSETT              = 37,
+    IV_STORAGE_GETTIME     = 38,
+    IV_STORAGE_HUMID_CHK_TMR_EXP = 39,
+    IV_POWER_SOURCE        = 40,
+    IV_FILTER_TIMER        = 41,
+    IV_FILTER_STATUS       = 42,
+    INVALID_DATA_RECEIVED  = 43
 } DATA_ID;
 
 typedef enum __dp_sens_status
@@ -283,6 +305,27 @@ typedef struct __iaq_range
     iaq_index_range   iaq_range;
     IV0AQST_ENUM      iaq_status;
 }IAQ_RANGE;
+typedef struct __filter_info
+{
+    uint32_t    filter_min;
+    uint32_t    filter_status;
+}FILTER_INFO;
+
+typedef union
+{
+    uint8_t byte;
+    struct 
+    {
+        uint8_t EN_DIS_SOLAR        : 1;
+        uint8_t EN_DIS_IONIZER      : 1;
+        uint8_t RESERVED_2          : 1;
+        uint8_t RESERVED_3          : 1;
+        uint8_t RESERVED_4          : 1;
+        uint8_t RESERVED_5          : 1;
+        uint8_t RESERVED_6          : 1;
+        uint8_t RESERVED_7          : 1;
+    }__attribute__((packed));
+}IV0_SETTINGS;
 
 typedef enum __storage_timer_config
 {
@@ -326,6 +369,13 @@ typedef struct __inventilate_control_algo
     int32_t               dp_data_count;
     int32_t               humidity_data_count;
     uint32_t              constant_rpm_motor;
+    uint32_t              dev_tacho[MAX_NUM_DEVICE];
+    uint8_t               rated_speed_percent[MAX_NUM_DEVICE];
+    uint32_t              min_counter;
+    uint32_t              invent_error_status;
+    uint32_t              invent_prev_err_status;
+    uint32_t              fan_mtr_dev_curr_stat;
+    uint32_t              fan_mtr_dev_prev_stat;
     invent_device_id_t    prim_dev_id;
     invent_device_id_t    sec_dev_id;
     DEV_COMP_CONFIG       dev_comp_config[MAX_NUM_DEVICE];
@@ -344,6 +394,8 @@ typedef struct __inventilate_control_algo
     DP_SENS_STATUS        dp_senor_status;
     STORAGE_TIMER_CONFIG  storage_timer_config;
     TickType_t            storage_tmr_val_ticks[STORAGE_TIMER_MAX_CONFIG];
+    uint8_t               dp_exceed_count;
+    IV0PWRSRC_ENUM        selected_power_source;  
 } INVENTILATE_CONTROL_ALGO;
 
 typedef struct __nvs_config_conn_fan_mtr
@@ -361,6 +413,7 @@ typedef struct __nvs_config_conn_fan_mtr
 
 extern INVENTILATE_CONTROL_ALGO  iv_ctrl_algo;
 extern INVENTILATE_CONTROL_ALGO* ptr_ctrl_algo;
+extern EXT_RAM_ATTR IV0_SETTINGS   ivsett_config;
 
 void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* iv_algo);
 

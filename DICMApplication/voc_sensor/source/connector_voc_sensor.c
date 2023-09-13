@@ -7,6 +7,7 @@
 #include "configuration.h"
 
 #ifdef CONNECTOR_VOC_SENSOR
+
 #include <stdint.h>
 #include "osal.h"
 #include "connector_voc_sensor.h"
@@ -126,6 +127,7 @@ static void conn_voc_process_task(void *pvParameter)
 		switch (pframe->frame.control)
 		{
 		case DDMP2_CONTROL_PUBLISH:/*Send the changed data to broker*/
+            //fallthrough
 		case DDMP2_CONTROL_SET:
             process_set_and_publish_request(pframe->frame.publish.parameter, pframe->frame.publish.value.int32, pframe->frame.control);
 			break;
@@ -284,9 +286,6 @@ static void handle_subscribe(uint32_t ddm_parameter)
       
                     /* Multiply with the factor */
                     value = param_db->i32Value * factor;
-#if CONN_VOC_ENABLE_LOGS                    
-                    LOG(I, "After factored i32value = %d", value);
-#endif
                     /* Frame and send the publish request */
 		            publish_data_to_broker(ddm_parameter, value);
                     /* Update flag */
@@ -338,10 +337,6 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
         if ( -1 != i32Index )
         {
-
-#if CONN_PWM_DEBUG_LOG
-            LOG(I, "i32Index = %d", i32Index);
-#endif
             if (  i32Index < DDM2_PARAMETER_COUNT )
                 i32Factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[i32Index].in_unit];
             else
@@ -351,10 +346,6 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
             {
                 i32value = i32value / i32Factor;
             }
-                
-#if CONN_PWM_DEBUG_LOG
-            LOG(I, "After factored factor_value = %d", factor_value);
-#endif
             if ( i32value != param_db->i32Value )
             {
                 /* Update the received value in the database table*/
@@ -417,9 +408,6 @@ bool update_and_publish_to_broker(uint32_t ddm_parameter, int32_t i32Value)
         
                 /* Multiply with the factor */
                 value = param_db->i32Value * factor;
-#if CONN_VOC_ENABLE_LOGS
-                LOG(I, "After factored i32value = %d", value);
-#endif 
                 /* Frame and send the publish request */
 		        publish_data_to_broker(ddm_parameter, value);
 

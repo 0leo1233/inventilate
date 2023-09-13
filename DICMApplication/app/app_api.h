@@ -7,5 +7,6 @@
 #include "app_onboard_hmi_ctrl.h"
 #include "app_power_ctrl_service.h"
 #include "app_voc_sensor.h"
+#include "app_error_code.h"
 
 #endif /* APP_API_H */

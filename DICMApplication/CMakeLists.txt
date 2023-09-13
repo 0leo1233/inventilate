@@ -3,6 +3,12 @@ cmake_minimum_required(VERSION 3.5)
 add_compile_definitions(${EXTRA_COMPILER_DEFINITIONS})
 add_compile_options(${EXTRA_COMPILER_OPTIONS})
 
+if (CONFIG_CONNECTOR_DP_SENS_SERVICE)
+add_compile_definitions(CONNECTOR_DP_SENS_SERVICE)
+list (APPEND ConnectorLIBS DICMConnectorDiffPressSensService)
+add_subdirectory(diff_press_sensor_service)
+endif()
+
 if (CONFIG_CONNECTOR_ONBOARD_HMI)
 add_compile_definitions(CONNECTOR_ONBOARD_HMI)
 list(APPEND ConnectorLIBS DICMConnectorOnboardHmi)

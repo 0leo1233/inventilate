@@ -19,6 +19,7 @@
 #include "ddm2.h"
 #include <string.h>
 
+void set_err_ackstate(uint8_t errack_l);
 static const hmi_domain_to_ddm_system_t hmi_btn_power_to_ddmp[] = 
 {
     //          hmi_domain_value               ddm_parameter        ddm_system_value
@@ -110,9 +111,31 @@ LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT] =
     SEG_OFF   // S16_AIR_QUALITY_LEVEL_2_MID,   
 };
 
+LCDSEG_STATUS prev_seg_stat[ONBOARD_HMI_MAX_SEGEMENT] = 
+{
+    SEG_OFF,  // SEG_AIR_QUALITY_LEVEL_1_LOW              
+    SEG_OFF,  // SEG_FILTER_STATUS            
+    SEG_OFF,  // SEG_WARNING_STATUS           
+    SEG_OFF,  // SEG_MODE_AUTO                
+    SEG_OFF,  // SEG_MODE_TURBO               
+    SEG_OFF,  // SEG_MODE_SLEEP               
+    SEG_OFF,  // SEG_MODE_MENU_LINE           
+    SEG_OFF,  // SEG_STORAGE_MODE             
+    SEG_OFF,  // SEG_SOLAR_BATTERY_STATUS     
+    SEG_OFF,  // SEG_WIFI_STATUS              
+    SEG_OFF,  // SEG_LIGHT_BUTTON            
+    SEG_OFF,  // SEG_MODE_BUTTON             
+    SEG_OFF,  // SEG_POWER_BUTTON
+    SEG_OFF,  // S13_BLE_STATUS
+    SEG_OFF,  // S14_IONIZER_STATUS,
+    SEG_OFF,  // S15_AIR_QUALITY_LEVEL_3_HIGH,
+    SEG_OFF   // S16_AIR_QUALITY_LEVEL_2_MID,   
+};
+
 #endif
 
-//
+static uint8_t errack = 0;
+
 
 static void onboard_hmi_mode_seg_update(LCDSEG_STATUS* ptr_mode_seg);
 
@@ -145,13 +168,15 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     ONBOARD_HMI_BUTTON_EVENT*   ptr_event = NULL;
     BTN_PRESSED_EVT           hmi_btn_evt = (BTN_PRESSED_EVT)(event_data & 0xFF);
     BTN_PRESS_EVENT_TYPE       event_type = (BTN_PRESS_EVENT_TYPE)((event_data >> 8) & 0x01 );
+    uint8_t                           seg = 0;
 
     if ( IVPMGR0STATE_STANDBY == inv_state )
     {
         /* When the inventilate is in STANDBY state, skip the processing of this MODE button events and long press events */
         if ( ( BTN_MODE == hmi_btn_evt ) || ( BUTTON_EVT_LONG_PRESS == event_type ) )
         {
-            LOG(W, "Skip mode/LP btn event");
+            
+            //("Skip mode/LP btn event");
             index = ONBOARD_HMI_EVT_TABLE_SIZE; 
         }
     }
@@ -159,7 +184,7 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     {
         if ( ( BTN_MODE == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) )
         {
-            LOG(W, "Storage skip mode btn event");
+            //("Storage skip mode btn event");
             /* When the inventilate is in STORAGE state, skip the processing of this MODE button events */
             index = ONBOARD_HMI_EVT_TABLE_SIZE;
         }
@@ -168,6 +193,21 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     {
         LOG(I, "process hmi_btn_evt = %d event_type = %d", hmi_btn_evt, event_type);
     }
+    
+
+    if ( ( BTN_MODE == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) && (errack != 0) )
+    {
+        LOG(W, "Error_handle short press");
+        error_check_ack();
+        update_blink_info(0);
+        for (seg = 0; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++ )
+        {
+            uc1510c_set_segment(seg, seg_stat[seg]);
+        }
+        index = ONBOARD_HMI_EVT_TABLE_SIZE;
+        errack = 0;
+    }
+
     
     for ( ;index < ONBOARD_HMI_EVT_TABLE_SIZE; index++ ) 
     {
@@ -306,7 +346,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 		case UPDATE_SEG_MODE:
             {
                 LOG(I, "IV0MODE = %d", i32value);
-                if ( (int32_t)NUM_OPERATING_MODES > i32value )
+                if ( NUM_OPERATING_MODES > i32value )
                 {
                     LOG(I, "IV0MODE = %d", i32value);
                     onboard_hmi_mode_seg_update((LCDSEG_STATUS*)&hmi_mode_seg_stat[(IV0MODE_ENUM)i32value][0u]);
@@ -340,7 +380,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 
         case UPDATE_SEG_BLE:
             {
-                seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+                seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_DEVICE_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
                 LOG(I, "SEG_BLE_STATUS = %d", seg_stat[SEG_BLE_STATUS]);
                 uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
             }
@@ -356,7 +396,18 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 
         case UPDATE_SEG_IONIZER:
             {
+#ifdef EN_IONIZER_FLAG                
+                if (ivsett_config.EN_DIS_IONIZER == true)
+                {
                 seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+                }
+                else
+                {
+                    seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
+                }
+#else
+                seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+#endif                
                 LOG(I, "SEG_IONIZER_STATUS = %d", seg_stat[SEG_IONIZER_STATUS]);
                 uc1510c_set_segment(SEG_IONIZER_STATUS, seg_stat[SEG_IONIZER_STATUS]);
             }
@@ -432,7 +483,7 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             break;
 
         case UPDATE_SEG_BLE:
-            seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+            seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_DEVICE_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
             break;
 
         case UPDATE_SEG_DP_SENS_STAT:
@@ -440,7 +491,20 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             break;
 
         case UPDATE_SEG_IONIZER:
+#ifdef EN_IONIZER_FLAG             
+            if (ivsett_config.EN_DIS_IONIZER == true)
+            {
+                seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+            }
+            else
+            {
+                seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
+     
+            }
+#else
             seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+
+#endif            
             break;
 			
         default:
@@ -532,6 +596,17 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
         default:
             break;
 	}
+}
+
+/**
+ * @brief Set the err ackstate object
+ * Set error acknowledgement value
+ * 
+ * @param errack_l  Set ot Reset value
+ */
+void set_err_ackstate(uint8_t errack_l)
+{
+    errack = errack_l;
 }
 
 #endif /* APP_ONBOARD_HMI_CONTROL */

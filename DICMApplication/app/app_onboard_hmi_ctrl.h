@@ -86,7 +86,9 @@ typedef enum __obhmi_ctrl_data_id
     BLINK_SEG_FILT_STAT           = 15,
     BLINK_SEG_BLE_STAT            = 16,
     HMI_BACK_LIGHT_TEST           = 17,
-    INVALID_DATA_ID               = 18
+    INV_ERROR_STATUS              = 18,
+    UPDATE_SEG_AQ_OFF             = 19,
+    INVALID_DATA_ID               = 20
 }OBHMI_CTRL_DATA_ID;
 
 typedef enum __obhmi_blink_ctrl_data_id
@@ -302,6 +304,8 @@ typedef struct __obhmi_ctrl_sm
     OBHMI_CTRL_DATA_FRAME       data_frame;
 	ONBRDHMI_CTRL_STATE         onbrd_hmi_ctrl_state;
     ONBRDHMI_BLINK_CTRL_STATE   blink_ctrl_state;
+    uint32_t                    invent_error_status;
+    uint32_t                    invent_prev_err_status;
 }ONBRD_HMI_CTRL_SM;
 
 typedef struct _onboard_hmi_button_event
@@ -318,6 +322,8 @@ typedef struct _onboard_hmi_button_event
 
 extern LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT];
 
+extern LCDSEG_STATUS prev_seg_stat[ONBOARD_HMI_MAX_SEGEMENT];
+
 extern ONBOARD_HMI_BUTTON_EVENT onboard_hmi_btn_evt[];
 
 uint8_t process_onboardhmi_btn_status(BTN_PRESSED_EVT btn_press_evt, BTN_PRESS_EVENT_TYPE evt_type, hmi_evt_process_res* evt_process_res);
@@ -329,6 +335,8 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd);
 void onboard_hmi_ctrl_sm(ONBRD_HMI_CTRL_SM* obhmi_ctrl_sm);
 
 void parse_obhmi_ctrl_frame(ONBRD_HMI_CTRL_SM* obhmi_ctrl_sm, OBHMI_CTRL_DATA_FRAME* obhmi_ctrl_data_frame);
+
+void reset_hmi_btn_ctrl_variables(void);
 
 extern void start_hmi_wait_timer(uint32_t period_ms);
 
@@ -344,7 +352,10 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
 
 extern void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value);
 
-void reset_hmi_btn_ctrl_variables(void);
+extern void update_blink_info(const uint32_t error_code);
+
+extern void error_check_ack(void);
+extern void set_err_ackstate(uint8_t errack_l);
 
 #endif /* APP_ONBOARD_HMI_CONTROL */
 

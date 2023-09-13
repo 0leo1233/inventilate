@@ -43,7 +43,6 @@ typedef struct _mtr_tacho_data_event_t
 /* Static Function declarations */
 static int initialize_connector_fan_motor(void);
 static void conn_fan_motor_process_task(void *pvParameter);
-//static void conn_fan_mot_tacho_read_task(void *pvParameter);
 static void conn_fan_mtr_ctrl_task(void *pvParameter);
 static void install_parameters(void);
 static void start_subscribe(void);
@@ -102,45 +101,52 @@ CONNECTOR connector_pwm_fan_motor =
 /* DDM Parameter table for connector fan motor */
 static conn_fan_motor_parameter_t conn_fan_motor_param_db[] =
 {
-	//  ddm_parameter                       type       pub sub      i32Value                 cb_func
-    {MTR0DEVID|DDM2_PARAMETER_INSTANCE(0), 	DDM2_TYPE_INT32_T, 	1, 	0, 	    DEV_FAN1_AIR_OUT,                      NULL},
-	{MTR0DEVID|DDM2_PARAMETER_INSTANCE(1), 	DDM2_TYPE_INT32_T, 	1, 	0,       DEV_FAN2_AIR_IN,                      NULL},
-	{MTR0DEVID|DDM2_PARAMETER_INSTANCE(2), 	DDM2_TYPE_INT32_T, 	1, 	0, 	           DEV_MOTOR,                      NULL},
-    {MTR0SETSPD|DDM2_PARAMETER_INSTANCE(0),  	DDM2_TYPE_INT32_T, 	1, 	1, 	                   0,        handle_invsub_data},
-	{MTR0SETSPD|DDM2_PARAMETER_INSTANCE(1),  	DDM2_TYPE_INT32_T, 	1, 	1, 	                   0,        handle_invsub_data},
-	{MTR0SETSPD|DDM2_PARAMETER_INSTANCE(2),  	DDM2_TYPE_INT32_T, 	1, 	1, 	                   0,        handle_invsub_data},	
-    {MTR0TACHO|DDM2_PARAMETER_INSTANCE(0),  	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,                      NULL},
-	{MTR0TACHO|DDM2_PARAMETER_INSTANCE(1), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,                      NULL},
-	{MTR0TACHO|DDM2_PARAMETER_INSTANCE(2), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,                      NULL},
-    {MTR0MINSPD|DDM2_PARAMETER_INSTANCE(0),  	DDM2_TYPE_INT32_T, 	1, 	0, 	    DEV_FAN1_MIN_RPM,        handle_invsub_data},
-	{MTR0MINSPD|DDM2_PARAMETER_INSTANCE(1), 	DDM2_TYPE_INT32_T, 	1, 	0, 	    DEV_FAN2_MIN_RPM,        handle_invsub_data},
-	{MTR0MINSPD|DDM2_PARAMETER_INSTANCE(2), 	DDM2_TYPE_INT32_T, 	1, 	0, 	   DEV_MOTOR_MIN_RPM,        handle_invsub_data},
-	{MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(0), 	DDM2_TYPE_INT32_T, 	1, 	0, 	    DEV_FAN1_MAX_RPM,        handle_invsub_data},
-	{MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(1), 	DDM2_TYPE_INT32_T, 	1, 	0, 	    DEV_FAN2_MAX_RPM,        handle_invsub_data},
-	{MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(2), 	DDM2_TYPE_INT32_T, 	1, 	0, 	   DEV_MOTOR_MAX_RPM,        handle_invsub_data},
-    {MTR0DIR|DDM2_PARAMETER_INSTANCE(0), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
-	{MTR0DIR|DDM2_PARAMETER_INSTANCE(1), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
-	{MTR0DIR|DDM2_PARAMETER_INSTANCE(2), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
-    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
-    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
-    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
-    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
-    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
-    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2), 	DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
-	{IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0), 	DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
-    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1), 	DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
-    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2), 	DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
-    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0), 	DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
-    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1), 	DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
-    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2), 	DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
-    {SBMEB0IAQ				   ,    DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
-    {SBMEB0AQR                 ,    DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
-    {SBMEB0HUM                 ,    DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
-    {SDP0AVL                   ,    DDM2_TYPE_INT32_T,  0,  1,                     0,        handle_invsub_data},
-    {SDP0DP                    ,   	DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
-    {IV0MODE                   ,    DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
-    {IVPMGR0STATE              ,    DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
-    {IV0IONST                  ,    DDM2_TYPE_INT32_T, 	1, 	0, 	         IV0IONST_ON,        handle_invsub_data},
+	//  ddm_parameter                               type       pub sub      i32Value                 cb_func
+    {MTR0DEVID|DDM2_PARAMETER_INSTANCE(0) , DDM2_TYPE_INT32_T, 	1, 	0, 	     DEV_FAN1_AIR_IN,                      NULL},
+	{MTR0DEVID|DDM2_PARAMETER_INSTANCE(1) , DDM2_TYPE_INT32_T, 	1, 	0,      DEV_FAN2_AIR_OUT,                      NULL},
+	{MTR0DEVID|DDM2_PARAMETER_INSTANCE(2) , DDM2_TYPE_INT32_T, 	1, 	0, 	           DEV_MOTOR,                      NULL},
+    {MTR0SETSPD|DDM2_PARAMETER_INSTANCE(0), DDM2_TYPE_INT32_T, 	1, 	1, 	                   0,        handle_invsub_data},
+	{MTR0SETSPD|DDM2_PARAMETER_INSTANCE(1), DDM2_TYPE_INT32_T, 	1, 	1, 	                   0,        handle_invsub_data},
+	{MTR0SETSPD|DDM2_PARAMETER_INSTANCE(2), DDM2_TYPE_INT32_T, 	1, 	1, 	                   0,        handle_invsub_data},	
+    {MTR0TACHO|DDM2_PARAMETER_INSTANCE(0) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+	{MTR0TACHO|DDM2_PARAMETER_INSTANCE(1) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+	{MTR0TACHO|DDM2_PARAMETER_INSTANCE(2) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+    {MTR0MINSPD|DDM2_PARAMETER_INSTANCE(0), DDM2_TYPE_INT32_T, 	1, 	0, 	    DEV_FAN1_MIN_RPM,        handle_invsub_data},
+	{MTR0MINSPD|DDM2_PARAMETER_INSTANCE(1), DDM2_TYPE_INT32_T, 	1, 	0, 	    DEV_FAN2_MIN_RPM,        handle_invsub_data},
+	{MTR0MINSPD|DDM2_PARAMETER_INSTANCE(2), DDM2_TYPE_INT32_T, 	1, 	0, 	   DEV_MOTOR_MIN_RPM,        handle_invsub_data},
+	{MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(0), DDM2_TYPE_INT32_T, 	1, 	0, 	    DEV_FAN1_MAX_RPM,        handle_invsub_data},
+	{MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(1), DDM2_TYPE_INT32_T, 	1, 	0, 	    DEV_FAN2_MAX_RPM,        handle_invsub_data},
+	{MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(2), DDM2_TYPE_INT32_T, 	1, 	0, 	   DEV_MOTOR_MAX_RPM,        handle_invsub_data},
+    {MTR0TACHO|DDM2_PARAMETER_INSTANCE(0) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,                      NULL},
+	{MTR0TACHO|DDM2_PARAMETER_INSTANCE(1) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,                      NULL},
+	{MTR0TACHO|DDM2_PARAMETER_INSTANCE(2) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,                      NULL},
+    
+    {MTR0DIR|DDM2_PARAMETER_INSTANCE(0)   , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+	{MTR0DIR|DDM2_PARAMETER_INSTANCE(1)   , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+	{MTR0DIR|DDM2_PARAMETER_INSTANCE(2)   , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2) , DDM2_TYPE_INT32_T, 	1, 	0, 	                   0,        handle_invsub_data},
+	{IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0) , DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
+    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1) , DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
+    {IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2) , DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
+    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0) , DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
+    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1) , DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
+    {IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2) , DDM2_TYPE_INT32_T,  1,  0,                     0, 	     handle_invsub_data},
+    {SBMEB0IAQ				              , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
+    {SBMEB0AQR                            , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
+    {SBMEB0HUM                            , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
+    {SDP0AVL                              , DDM2_TYPE_INT32_T,  0,  1,                     0,        handle_invsub_data},
+    {SDP0DP                               , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
+    {IV0MODE                              , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
+    {IVPMGR0STATE                         , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
+    {IV0IONST                             , DDM2_TYPE_INT32_T, 	1, 	0, 	         IV0IONST_ON,        handle_invsub_data},
+    {IV0ERRST                             , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
+    {IV0SETT                              , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
+    {IV0PWRSRC                            , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
 };
 
 /* Calculate the connector fan motor database table num elements */
@@ -165,6 +171,26 @@ static int initialize_connector_fan_motor(void)
 
 	/* Initialize the RPM ranges of devices FAN Motor */
 	read_data_from_nvs();
+#if CONN_PWM_DEBUG_LOG
+    LOG(I,"[IV0Sett = %d ]",ivsett_config.byte );
+    if(ivsett_config.EN_DIS_IONIZER == true)
+    {
+        LOG(I,"Ionizer Enabled");
+    }
+    else
+    {
+        LOG(I,"Ionizer Disbled");
+    }
+
+    if(ivsett_config.EN_DIS_SOLAR == true)
+    {
+        LOG(I,"Solar Enabled");
+    }
+    else
+    {
+        LOG(I,"Solar Disbled");
+    }
+#endif
 
 	/* Initialize the fan and motor */
     initialize_fan_motor();
@@ -184,13 +210,8 @@ static int initialize_connector_fan_motor(void)
     /* Task for handling the DDMP request */
 	TRUE_CHECK(osal_task_create(conn_fan_motor_process_task, CONNECTOR_FAN_MOTOR_PROCESS_TASK_NAME, CONNECTOR_FAN_MOTOR_PROCESS_STACK_DEPTH, NULL, CONNECTOR_FAN_MOTOR_PROCESS_TASK_PRIORITY, NULL));
 
-    /* Task for reading tacho feedaback from motor/fan */
-//	TRUE_CHECK(osal_task_create(conn_fan_mot_tacho_read_task, CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_NAME, CONNECTOR_FAN_MOTOR_TACHO_READ_STACK_DEPTH, NULL, CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_PRIORITY, NULL));
-
-//#ifndef CONNECTOR_EOL_SERVICE
     /* Task for control the RPM of Fan and Motor by an algorithm designed based on IAQ and Differential pressure sensor data */
     TRUE_CHECK(osal_task_create(conn_fan_mtr_ctrl_task, CONNECTOR_FAN_MOTOR_CONTROL_TASK_NAME, CONNECTOR_FAN_MOTOR_TACHO_READ_STACK_DEPTH, iv_ctrl_que_handle, CONNECTOR_FAN_MOTOR_CTRL_TASK_PRIORITY, NULL));
-//#endif
 
 	/* Install parameters in the Inventory of broker */
 	install_parameters();
@@ -392,33 +413,7 @@ static void conn_fan_motor_process_task(void *pvParameter)
     }
 }
 
-#if 0
-/**
-  * @brief  Task for connector fan motor to read the RPM of FAN and Motor and publish to broker
-  * @param  pvParameter.
-  * @retval none.
-  */
-static void conn_fan_mot_tacho_read_task(void *pvParameter)
-{
-    capture_info_t     dev_capt[MAX_NUM_DEVICE];
-    invent_device_id_t dev_id;
 
-    while (1)
-    {
-		if ( pdPASS == xQueueReceive(capture_tacho_sig_que_handle, (void *)&dev_capt, portMAX_DELAY) )
-		{
-            for ( dev_id = 0; dev_id < MAX_NUM_DEVICE; dev_id++ )
-            {
-#if CONN_PWM_DEBUG_LOG
-                LOG(I, "dev_id %d RPM = %d", dev_id, dev_capt[dev_id].dev_rpm);
-#endif
-                /* Send the RPM values to the broker */
-                update_and_send_val_to_broker(MTR0TACHO|DDM2_PARAMETER_INSTANCE(dev_id), dev_capt[dev_id].dev_rpm);
-            }
-		}   
-    }
-}
-#endif
 //#ifndef CONNECTOR_EOL_SERVICE
 /**
   * @brief  Task to control Fan and Motor based on IAQ and Differential pressure sensor
@@ -466,14 +461,10 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                     ptr_ctrl_algo->prev_pr_stat = ptr_ctrl_algo->curr_pr_stat;
                 }
 
-            #if INV_ALGO_DEBUG 
+#if INV_ALGO_DEBUG 
                 LOG(I, "iaq_st=%d pr_st=%d", ptr_ctrl_algo->curr_iaq_stat, ptr_ctrl_algo->curr_pr_stat);
-            #endif
+#endif
             }
-
-            #if INV_ALGO_DEBUG 
-                LOG(I, "cur_st=%d", ptr_ctrl_algo->curr_state);
-            #endif
 
             /* State machine to control the inventilate */                       
             switch ( ptr_ctrl_algo->curr_state )
@@ -488,12 +479,24 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                             ptr_ctrl_algo->cur_sel_mode      = IV0MODE_AUTO;
                             /* Reset the dev configuration */                            
                             reset_dev_config();
-#if ( INVENT_HARWARE_VERSION == HW_VERSION_4_1 )
+#if ( INVENT_HARWARE_VERSION >= HW_VERSION_4_1 )
                             // Power ON Ionizer when the inventilate is powered ON by user 
+#ifdef EN_IONIZER_FLAG
+                            if(ivsett_config.EN_DIS_IONIZER == true)
+                            {
+                                EN_IONIZER(1);
+                                ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_ON;
+                            }
+                            else
+                            {
+                                EN_IONIZER(0);
+                                ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_OFF;
+                            }
+#else
                             EN_IONIZER(1);
-#endif
                             ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_ON;
-
+#endif
+#endif
                             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0IONST, &ptr_ctrl_algo->ionizer_status, sizeof(int32_t), \
                                         connector_pwm_fan_motor.connector_id, portMAX_DELAY));
                             /* Reset the accuracy status */
@@ -617,11 +620,28 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                          ( IV0AQST_AIR_QUALITY_GOOD    != ptr_ctrl_algo->curr_iaq_stat ) || 
                          ( ptr_ctrl_algo->cur_sel_mode != ptr_ctrl_algo->prev_sel_mode ) )
                     {
-#if ( INVENT_HARWARE_VERSION == HW_VERSION_4_1 )
+#if ( INVENT_HARWARE_VERSION >= HW_VERSION_4_1 )
                         // Power ON Ionizer
-                        EN_IONIZER(1);
+
+#ifdef EN_IONIZER_FLAG
+                        if(ivsett_config.EN_DIS_IONIZER == true)
+                        {
+                            EN_IONIZER(1);
+                            ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_ON;
+                        }
+                        else
+                        {
+                            EN_IONIZER(0);
+                            ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_OFF;
+                        }
+#else
+                            EN_IONIZER(1);
+                            ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_ON;
+
+#endif 
+
 #endif
-                        ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_ON;
+                        
 
                         TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0IONST, &ptr_ctrl_algo->ionizer_status, sizeof(int32_t), \
                                     connector_pwm_fan_motor.connector_id, portMAX_DELAY));
@@ -636,7 +656,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                     }
                     else if ( true == ptr_ctrl_algo->wait_tmr_exp )
                     {
-#if ( INVENT_HARWARE_VERSION == HW_VERSION_4_1 )
+#if ( INVENT_HARWARE_VERSION >= HW_VERSION_4_1 )
                         // Power OFF Ionizer
                         EN_IONIZER(0);
 #endif
@@ -649,11 +669,11 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                         /* Reset the timer flag */
                         ptr_ctrl_algo->wait_tmr_exp = false;
                         /* Set zero RPM */
-                        ptr_ctrl_algo->set_rpm[DEV_FAN1_AIR_OUT]         = 0;
-                        ptr_ctrl_algo->set_rpm[DEV_FAN2_AIR_IN]          = 0;
+                        ptr_ctrl_algo->set_rpm[DEV_FAN1_AIR_IN]         = 0;
+                        ptr_ctrl_algo->set_rpm[DEV_FAN2_AIR_OUT]          = 0;
                         /* Set the compensation configuration to IDLE */
-                        ptr_ctrl_algo->dev_comp_config[DEV_FAN1_AIR_OUT] = IDLE_COMP_DEV;
-                        ptr_ctrl_algo->dev_comp_config[DEV_FAN2_AIR_IN]  = IDLE_COMP_DEV;
+                        ptr_ctrl_algo->dev_comp_config[DEV_FAN1_AIR_IN] = IDLE_COMP_DEV;
+                        ptr_ctrl_algo->dev_comp_config[DEV_FAN2_AIR_OUT]  = IDLE_COMP_DEV;
                         /* Set the state to be transfer */
                         ptr_ctrl_algo->curr_state = INVENTILATE_STATE_IDLE;
                     }
@@ -746,9 +766,20 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                         ptr_ctrl_algo->storage_mode_ctrl = ptr_ctrl_algo->cur_sel_mode;
 
                         /* Set the FAN1 and FAN2 rpm */
-                        ptr_ctrl_algo->set_rpm[DEV_FAN1_AIR_OUT]  = fan_motor_control_db[DEV_FAN1_AIR_OUT].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm;
-                        ptr_ctrl_algo->set_rpm[DEV_FAN2_AIR_IN]   = fan_motor_control_db[DEV_FAN2_AIR_IN].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm;
-
+                        if(ptr_ctrl_algo->selected_power_source == IV0PWRSRC_12V_CAR_BATTERY_INPUT)
+                        {
+                            /* Running in CAR battery run fan at full speed*/
+                            ptr_ctrl_algo->set_rpm[DEV_FAN1_AIR_IN]  = fan_motor_control_db[DEV_FAN1_AIR_IN].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm;
+                            ptr_ctrl_algo->set_rpm[DEV_FAN2_AIR_OUT]   = fan_motor_control_db[DEV_FAN2_AIR_OUT].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm;
+                        }
+                        else
+                        {
+                            /*Solar is enabled */
+                            ptr_ctrl_algo->set_rpm[DEV_FAN1_AIR_IN]  = (fan_motor_control_db[DEV_FAN1_AIR_IN].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm)/2;
+                            ptr_ctrl_algo->set_rpm[DEV_FAN2_AIR_OUT]   = (fan_motor_control_db[DEV_FAN2_AIR_OUT].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm)/2;
+                        }
+                        ptr_ctrl_algo->set_rpm[DEV_MOTOR] = 0;
+                        LOG(I,"[Storage_RPM %d %d]",ptr_ctrl_algo->set_rpm[DEV_FAN1_AIR_IN],ptr_ctrl_algo->set_rpm[DEV_FAN2_AIR_OUT]);
                         /* Configure the timer based on the storage timer selection */
                         change_storage_timer_period(ptr_ctrl_algo->storage_tmr_val_ticks[ptr_ctrl_algo->storage_timer_config]);
                     }
@@ -848,7 +879,6 @@ void parse_received_data(void)
             break;
 
         case IV_MODE:
-            LOG(I, "Received mode = %d prev mode = %d", ptr_ctrl_algo->iv_data.data, ptr_ctrl_algo->cur_sel_mode);
             ptr_ctrl_algo->cur_sel_mode = ptr_ctrl_algo->iv_data.data;             /* Get the user selected mode */
             break;
 
@@ -856,40 +886,40 @@ void parse_received_data(void)
             ptr_ctrl_algo->per_tmr_exp = true;                                      /* Timer expired */
             break;
 
-        case IV_RPM_STEP_LVL1:
-        case IV_RPM_STEP_LVL2:
-        case IV_RPM_STEP_LVL3:
-        case IV_RPM_STEP_LVL4:
+        case IV_RPM_STEP_LVL1:                                                      //Set RPM in steps                   
+        case IV_RPM_STEP_LVL2:                                                      
+        case IV_RPM_STEP_LVL3:                                                      
+        case IV_RPM_STEP_LVL4:                                                      
         case IV_RPM_STEP_LVL5:
             /* Set the rpm step */
             set_iv_rpm_step_level((ptr_ctrl_algo->iv_data.data_id - IV_RPM_STEP_LVL1), ptr_ctrl_algo->iv_data.data);
             break;
 
-        case IV_FAN1_RPM_MIN:
-        case IV_FAN2_RPM_MIN:
-        case IV_MTR_RPM_MIN:
-        case IV_FAN1_RPM_MAX:
-        case IV_FAN2_RPM_MAX:
-        case IV_MTR_RPM_MAX:
+        case IV_FAN1_RPM_MIN:                                                       //Update minimum level RPM for Fan1 in NVS 
+        case IV_FAN2_RPM_MIN:                                                       //Update minimum level RPM for Fan2 in NVS
+        case IV_MTR_RPM_MIN:                                                        //Update minimum level RPM for Motor in NVS
+        case IV_FAN1_RPM_MAX:                                                       //Update maximum level RPM for Fan1 in NVS
+        case IV_FAN2_RPM_MAX:                                                       //Update maximum level RPM for Fan2 in NVS
+        case IV_MTR_RPM_MAX:                                                        //Update maximum level RPM for Motor in NVS
             /* Update the min RPM range database table */
             update_data_in_nvm(ptr_ctrl_algo->iv_data.data_id, ptr_ctrl_algo->iv_data.data);
             /* Calc and update min and max rpm corresponding to mode */
             calc_mode_min_max_rpm();
             break;
 
-        case IV_IAQ_GOOD_MIN:
-        case IV_IAQ_BAD_MIN:
-        case IV_IAQ_WORSE_MIN:
-        case IV_IAQ_GOOD_MAX:
-        case IV_IAQ_BAD_MAX:
-        case IV_IAQ_WORSE_MAX:
+        case IV_IAQ_GOOD_MIN:                                                       //Update IAQ Good mimimum level in NVS
+        case IV_IAQ_BAD_MIN:                                                        //Update IAQ Bad minimum level in NVS
+        case IV_IAQ_WORSE_MIN:                                                      //Update IAQ worst minimum level in NVS    
+        case IV_IAQ_GOOD_MAX:                                                       //Update IAQ Good maximum level in NVS
+        case IV_IAQ_BAD_MAX:                                                        //Update IAQ Bad maximum level in NVS
+        case IV_IAQ_WORSE_MAX:                                                      //Update IAQ Worst maximum level in NVS
             /* Update the received IAQ range in the NVM and variables */
             update_data_in_nvm(ptr_ctrl_algo->iv_data.data_id, ptr_ctrl_algo->iv_data.data);
             break;
 
-        case IV_FAN1_SET_RPM:
-        case IV_FAN2_SET_RPM:
-        case IV_MTR_SET_RPM:
+        case IV_FAN1_SET_RPM:                                                       //Set FAN1 RPM
+        case IV_FAN2_SET_RPM:                                                       //Set FAN2 RPM    
+        case IV_MTR_SET_RPM:                                                        //Set MOTOR RPM
             /* set the requested RPM to the corresponding device */
             set_fan_motor_rpm((invent_device_id_t)(ptr_ctrl_algo->iv_data.data_id - IV_FAN1_SET_RPM), ptr_ctrl_algo->iv_data.data);
             break;
@@ -930,11 +960,6 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
     LOG(I, "Received ddm_param = 0x%x i32value = %d", ddm_param, i32value);
 #endif
 
-    if ( SDP0DP == ddm_param )
-    {
-        LOG(I, "Received DP data i32value = %d", i32value);
-    }
-
 	/* Validate the DDM parameter received */
 	db_idx = get_ddm_index_from_db(ddm_param);
  
@@ -956,9 +981,6 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
         if ( -1 != i32Index )
         {
-#if CONN_PWM_DEBUG_LOG
-            LOG(I, "i32Index = %d", i32Index);
-#endif
             i32Factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[i32Index].in_unit];
             
             /* Differential pressure value should be handle with the decimal point resolution 
@@ -969,10 +991,6 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
             i32Factor = ( ( i32Factor == 0 ) || ( SDP0DP == ddm_param ) ) ? 1 : i32Factor;
 
             i32value  = i32value / i32Factor;  /* Divide by factor */
-            
-#if CONN_PWM_DEBUG_LOG
-            LOG(I, "After factored i32value = %d Prev value %d", i32value, param_db->i32Value);
-#endif
             if ( i32value != param_db->i32Value )
             {
                 /* Update the received value in the database table*/
@@ -1033,9 +1051,6 @@ static void process_subscribe_request(uint32_t ddm_param)
                 
                 /* Multiply with the factor */
                 value = param_db->i32Value * factor;
-#if CONN_PWM_DEBUG_LOG
-                LOG(I, "After factored i32value = %d", value);
-#endif
                 /* Frame and send the publish request */
                 TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &value, sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
             }
@@ -1097,10 +1112,6 @@ void update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t value)
                 
             /* Multiply with the factor */
             factor_value = param_db->i32Value * factor;
-            
-#if CONN_PWM_DEBUG_LOG
-            LOG(I, "After factored i32value = %d factor = %d", factor_value, factor);
-#endif
             /* Frame and send the publish request */
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_parameter, &factor_value, \
                        sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
@@ -1207,17 +1218,14 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
             break;
 
         case MTR0SETSPD|DDM2_PARAMETER_INSTANCE(0):
-            LOG(I, "IV_FAN1_SET_RPM rpm = %d", iv_data.data);
             iv_data.data_id = IV_FAN1_SET_RPM;
             break;
 
         case MTR0SETSPD|DDM2_PARAMETER_INSTANCE(1):
-            LOG(I, "IV_FAN2_SET_RPM rpm = %d", iv_data.data);
             iv_data.data_id = IV_FAN2_SET_RPM;
             break;
 
         case MTR0SETSPD|DDM2_PARAMETER_INSTANCE(2):
-            LOG(I, "IV_MTR_SET_RPM rpm = %d", iv_data.data);
             iv_data.data_id = IV_MTR_SET_RPM;
             break;
 
@@ -1284,33 +1292,24 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
   */
 void initialize_fan_motor(void)
 {
-	// Create Queue for capture signal data trasmit from interrupt handler
-//	capture_tacho_sig_que_handle = osal_queue_create(TACHO_READ_QUEUE_LENGTH, TACHO_READ_QUEUE_SIZE); 
+    // Get config from application config
+    hal_pwm_init_gpio(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT);
+    gpio_pulldown_en(MCPWM_UNIT_0_GPIO_CAP0_IN);                                      //Enable pull down on CAP0   signal
+    gpio_pulldown_en(MCPWM_UNIT_0_GPIO_CAP1_IN);                                      //Enable pull down on CAP1   signal
+    gpio_pulldown_en(MCPWM_UNIT_0_GPIO_CAP2_IN);                                      //Enable pull down on CAP2   signal
 
-//	if ( NULL != capture_tacho_sig_que_handle )
-	{
-#if CONN_PWM_DEBUG_LOG
-		LOG(I, "Queue creation done for tacho reading");
-#endif
-        // Get config from application config
-    	hal_pwm_init_gpio(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT);
-        gpio_pulldown_en(MCPWM_UNIT_0_GPIO_CAP0_IN);                                      //Enable pull down on CAP0   signal
-        gpio_pulldown_en(MCPWM_UNIT_0_GPIO_CAP1_IN);                                      //Enable pull down on CAP1   signal
-        gpio_pulldown_en(MCPWM_UNIT_0_GPIO_CAP2_IN);                                      //Enable pull down on CAP2   signal
+    pulse_count_per_revol[DEV_FAN1_AIR_IN] = CONNECTOR_PWM_FAN_MOTOR_CAPTURE_CHANNEL_0_0;
+    pulse_count_per_revol[DEV_FAN2_AIR_OUT] = CONNECTOR_PWM_FAN_MOTOR_CAPTURE_CHANNEL_0_1;
+    pulse_count_per_revol[DEV_MOTOR] = CONNECTOR_PWM_FAN_MOTOR_CAPTURE_CHANNEL_0_2;
 
-        pulse_count_per_revol[DEV_FAN1_AIR_OUT] = CONNECTOR_PWM_FAN_MOTOR_CAPTURE_CHANNEL_0_0;
-        pulse_count_per_revol[DEV_FAN2_AIR_IN] = CONNECTOR_PWM_FAN_MOTOR_CAPTURE_CHANNEL_0_1;
-        pulse_count_per_revol[DEV_MOTOR] = CONNECTOR_PWM_FAN_MOTOR_CAPTURE_CHANNEL_0_2;
-
-		hal_pwm_init(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT);
-        /* Turn OFF the FAN and Motor at start of the system */
-        hal_pwm_capture_enable(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_FAN1_AIR_OUT, pwm_cap_isr_cb);
-        hal_pwm_set_duty_cycle(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_FAN1_AIR_OUT, 100);  /* FAN1 and FAN2 need inverted PWM signal */
-        hal_pwm_capture_enable(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_FAN2_AIR_IN, pwm_cap_isr_cb);
-        hal_pwm_set_duty_cycle(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_FAN2_AIR_IN,  100);
-        hal_pwm_capture_enable(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_MOTOR, pwm_cap_isr_cb);
-        hal_pwm_set_duty_cycle(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_MOTOR,          0);  /* Motor need non-inverted PWM signal */
-	}
+	hal_pwm_init(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT);
+    /* Turn OFF the FAN and Motor at start of the system */
+    hal_pwm_capture_enable(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_FAN1_AIR_IN, pwm_cap_isr_cb);
+    hal_pwm_set_duty_cycle(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_FAN1_AIR_IN, 100);  /* FAN1 and FAN2 need inverted PWM signal */
+    hal_pwm_capture_enable(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_FAN2_AIR_OUT, pwm_cap_isr_cb);
+    hal_pwm_set_duty_cycle(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_FAN2_AIR_OUT,  100);
+    hal_pwm_capture_enable(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_MOTOR, pwm_cap_isr_cb);
+    hal_pwm_set_duty_cycle(CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT, DEV_MOTOR,          0);  /* Motor need non-inverted PWM signal */
 }
 
 /**
@@ -1543,7 +1542,7 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
             }
             else
             {
-                current_cap_value[capture_signal] = (HAL_PWM_CAP_COUNTER_U32_MAX - previous_cap_value[capture_signal]) + capture_counter[capture_signal];
+                current_cap_value[capture_signal] = (HAL_PWM_CAP_COUNTER_LIMIT - previous_cap_value[capture_signal]) + capture_counter[capture_signal];
             }
 
             // Update the previous capture value	

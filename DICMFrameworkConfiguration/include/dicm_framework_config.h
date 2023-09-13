@@ -24,6 +24,17 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #define STOCK_KEEPING_UNIT "1235424665"
 
+// MIC Production or TEST environment
+#ifndef MIC_BUILD_PRODUCTION_ENVIRONMENT
+#define MIC_TEST_ENVIRONMENT
+#endif
+
+#ifndef MIC_TEST_ENVIRONMENT
+#else
+#define THING_TYPE_ID               (67)  // root
+#define NTW_THING_TYPE_ID           (68) // Ntw
+#endif
+
 #ifdef INVENT_EOL_TESTING
 
 #define FIRMWARE_MAJOR				 0
@@ -45,11 +56,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
 #define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
-#endif // INVENT_EOL_TESTING
-
-// MIC Production or TEST environment
-#ifndef MIC_BUILD_PRODUCTION_ENVIRONMENT
-#define MIC_TEST_ENVIRONMENT
 #endif
 
 // Disable switching to external crystal due to hardware bug (missing resistor)
@@ -77,17 +83,23 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define INVERTED_PWM              ((uint32_t)     0u)
 #define NON_INVERTED_PWM          ((uint32_t)     1u)
 
-#define DEV_FAN1_MIN_RPM          ((uint32_t)     0u)
-#define DEV_FAN1_MAX_RPM          ((uint32_t)  2800u)
-#define DEV_FAN1_AIR_OUT_PWM_MODE INVERTED_PWM
+#define DEV_FAN1_RATED_SPEED_PERCENT   ((uint32_t)    40u)
+#define DEV_FAN1_MIN_RPM               ((uint32_t)     0u)
+#define DEV_FAN1_MAX_RPM               ((uint32_t)  2800u)
+#define DEV_FAN1_AIR_IN_PWM_MODE      INVERTED_PWM
 
-#define DEV_FAN2_MIN_RPM          ((uint32_t)     0u)
-#define DEV_FAN2_MAX_RPM          ((uint32_t)  2800u)
-#define DEV_FAN2_AIR_IN_PWM_MODE  INVERTED_PWM
+#define DEV_FAN2_RATED_SPEED_PERCENT  ((uint32_t)    40u)
+#define DEV_FAN2_MIN_RPM              ((uint32_t)     0u)
+#define DEV_FAN2_MAX_RPM              ((uint32_t)  2800u)
+#define DEV_FAN2_AIR_OUT_PWM_MODE      INVERTED_PWM
 
-#define DEV_MOTOR_MIN_RPM         ((uint32_t)     0u)
-#define DEV_MOTOR_MAX_RPM         ((uint32_t)  2200u)
-#define DEV_MOTOR_PWM_MODE        NON_INVERTED_PWM
+#define DEV_MOTOR_RATED_SPEED_PERCENT  ((uint32_t)    40u)
+#define DEV_MOTOR_MIN_RPM              ((uint32_t)     0u)
+#define DEV_MOTOR_MAX_RPM              ((uint32_t)  2200u)
+#define DEV_MOTOR_PWM_MODE            NON_INVERTED_PWM
+
+/*Uncomment below macro to use Inoizer hardware */
+//#define EN_IONIZER_FLAG
 
 /* Connectors for Inventilate */
 #if defined(CONNECTOR_WIFI)
@@ -104,7 +116,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #if defined(CONNECTOR_DEVICE_DISCOVERY)
 #define CONNECTOR_DEVICE_DISCOVERY_QUERY_TIMEOUT_MS 10000
 //#define CONNECTOR_DEVICE_DISCOVERY_DEBOUNCE_TIMES 	1
-#define MULTICAST_DNS_SERVICE_NAME   "INVENTILATE"
+#define MULTICAST_DNS_SERVICE_NAME   "Dometic Inventilate"
 #endif
 
 #if defined(CONNECTOR_SYSTEM)
@@ -133,48 +145,52 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define APP_LIGHT_CONTROL
 
 #define DICM_APPLICATION_CONNECTOR_EXTERN()\
+        extern CONNECTOR connector_diffpress_sensor;\
         extern CONNECTOR connector_voc_sensor;\
         extern CONNECTOR connector_onboard_hmi;\
         extern CONNECTOR connector_pwr_ctrl_service;\
         extern CONNECTOR connector_pwm_fan_motor;
 
 #define DICM_APPLICATION_CONNECTORS()\
+        &connector_diffpress_sensor,\
         &connector_voc_sensor,\
         &connector_onboard_hmi,\
         &connector_pwr_ctrl_service,\
         &connector_pwm_fan_motor,
 
-#define CONNECTOR_EOL_CTRL_TASK_PRIORITY                ((unsigned short)    5u)
-#define CONNECTOR_EOL_PROCESS_TASK_PRIORITY             ((unsigned short)    6u)
-#define CONNECTOR_FAN_MOTOR_PROCESS_TASK_PRIORITY       ((unsigned short)    7u)
-#define CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_PRIORITY    ((unsigned short)    8u)
-#define CONNECTOR_LIGHT_PROCESS_TASK_PRIORITY           ((unsigned short)   10u)
-#define CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY          ((unsigned short)   11u)
-#define CONNECTOR_VOC_PROCESS_TASK_PRIO                 ((unsigned short)   12u)
-#define CONNECTOR_PWR_CTRL_SERV_TASK_PRIORITY           ((unsigned short)   13u)
-#define CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY           ((unsigned short)   14u)
-#define CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY            ((unsigned short)   15u)
-#define CONNECTOR_ONBOARD_HMI_CTRL_TASK_PRIORITY        ((unsigned short)   16u)
-#define CONNECTOR_DIFFPRESS_PROCESS_TASK_PRIORITY       ((unsigned short)   17u)
-#define CONNECTOR_DIFFPRESS_READ_TASK_PRIORITY          ((unsigned short)   18u)
-#define CONNECTOR_FAN_MOTOR_CTRL_TASK_PRIORITY          ((unsigned short)   19u)
-#define CONNECTOR_VOC_I2C_RD_SERVICE_TASK_PRIO          ((unsigned short)   20u)
+#define CONNECTOR_EOL_CTRL_TASK_PRIORITY				((unsigned short)    5u)
+#define CONNECTOR_EOL_PROCESS_TASK_PRIORITY				((unsigned short)    6u)
+#define CONNECTOR_FAN_MOTOR_PROCESS_TASK_PRIORITY		((unsigned short)    7u)
+#define CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_PRIORITY	((unsigned short)    8u)
+#define CONNECTOR_LIGHT_PROCESS_TASK_PRIORITY			((unsigned short)   10u)
+#define CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY			((unsigned short)   11u)
+#define CONNECTOR_VOC_PROCESS_TASK_PRIO					((unsigned short)   12u) 
+#define CONNECTOR_PWR_CTRL_SERV_TASK_PRIORITY			((unsigned short)   13u)
+#define CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY			((unsigned short)   14u)
+#define CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY			((unsigned short)   15u)
+#define CONNECTOR_ONBOARD_HMI_CTRL_TASK_PRIORITY		((unsigned short)   16u)
+#define CONNECTOR_DIFFPRESS_PROCESS_TASK_PRIORITY		((unsigned short)   17u)
+#define CONNECTOR_DIFFPRESS_READ_TASK_PRIORITY			((unsigned short)   18u)
+#define CONNECTOR_FAN_MOTOR_CTRL_TASK_PRIORITY			((unsigned short)   19u)
+#define CONNECTOR_VOC_I2C_RD_SERVICE_TASK_PRIO			((unsigned short)   20u)
+#define CONNECTOR_OBHMI_BTN_TASK_TASK_PRIORITY			((unsigned short)   8u)
 
-#define CONNECTOR_ONBOARDHMI_PROCESS_TASK_NAME          ((const char* const) "con_ohmi_pro_tk")
-#define CONNECTOR_ONBOARDHMI_PWR_CTRL_TASK_NAME         ((const char* const) "con_ohmi_pwc_tk")
-#define CONNECTOR_LIGHT_PROCESS_TASK_NAME               ((const char* const) "con_ligh_pro_tk")
-#define CONNECTOR_PWR_CTRL_BMS_TASK_NAME                ((const char* const) "con_batt_mgm_tk")
-#define CONNECTOR_FAN_MOTOR_PROCESS_TASK_NAME           ((const char* const) "con_fanm_pro_tk")
+#define CONNECTOR_ONBOARDHMI_PROCESS_TASK_NAME			((const char* const) "con_ohmi_pro_tk")
+#define CONNECTOR_ONBOARDHMI_PWR_CTRL_TASK_NAME			((const char* const) "con_ohmi_pwc_tk")
+#define CONNECTOR_LIGHT_PROCESS_TASK_NAME             	((const char* const) "con_ligh_pro_tk")
+#define CONNECTOR_PWR_CTRL_BMS_TASK_NAME				((const char* const) "con_batt_mgm_tk")
+#define CONNECTOR_FAN_MOTOR_PROCESS_TASK_NAME			((const char* const) "con_fanm_pro_tk")
 #define CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_NAME        ((const char* const) "con_tacho_rd_tk")
-#define CONNECTOR_FAN_MOTOR_CONTROL_TASK_NAME           ((const char* const) "con_fanm_ctr_tk")
-#define CONNECTOR_VOC_SENSOR_PROCESS_TASK_NAME          ((const char* const) "con_voc_proc_tk")
-#define CONNECTOR_VOC_SENSOR_CONTROL_TASK_NAME          ((const char* const) "con_voc_ctrl_tk")
-#define CONNECTOR_PWR_CTRL_SERV_PROCESS_TASK_NAME       ((const char* const) "con_pwr_proc_tk")
-#define CONNECTOR_PWR_CTRL_MANAGER_TASK_NAME            ((const char* const) "con_pwr_mngr_tk")
-#define CONNECTOR_DIFF_PRESS_PROCESS_TASK_NAME          ((const char* const) "con_dif_proc_tk")
-#define CONNECTOR_DIFF_PRESS_READ_TASK_NAME             ((const char* const) "con_dif_read_tk")
-#define CONNECTOR_EOL_PROCESS_TASK_NAME                 ((const char* const) "conn_eol_pro_tk")
-#define CONNECTOR_EOL_CONTROL_TASK_NAME                 ((const char* const) "conn_eol_ctr_tk")
+#define CONNECTOR_FAN_MOTOR_CONTROL_TASK_NAME			((const char* const) "con_fanm_ctr_tk")
+#define CONNECTOR_VOC_SENSOR_PROCESS_TASK_NAME			((const char* const) "con_voc_proc_tk")
+#define CONNECTOR_VOC_SENSOR_CONTROL_TASK_NAME  		((const char* const) "con_voc_ctrl_tk")
+#define CONNECTOR_PWR_CTRL_SERV_PROCESS_TASK_NAME		((const char* const) "con_pwr_proc_tk")
+#define CONNECTOR_PWR_CTRL_MANAGER_TASK_NAME     		((const char* const) "con_pwr_mngr_tk")
+#define CONNECTOR_DIFF_PRESS_PROCESS_TASK_NAME			((const char* const) "con_dif_proc_tk")
+#define CONNECTOR_DIFF_PRESS_READ_TASK_NAME				((const char* const) "con_dif_read_tk")
+#define CONNECTOR_EOL_PROCESS_TASK_NAME					((const char* const) "conn_eol_pro_tk")
+#define CONNECTOR_EOL_CONTROL_TASK_NAME					((const char* const) "conn_eol_ctr_tk")
+#define CONNECTOR_OBHMI_BTN_TASK_NAME					((const char* const) "conn_btn_evnt_tk")
 
 #ifndef CONNECTOR_EOL_SERVICE
 
@@ -192,6 +208,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CONNECTOR_DIFFPRESS_READ_STACK_DEPTH            ((unsigned short) 4096)
 #define CONNECTOR_EOL_PROCESS_STACK_DEPTH               ((unsigned short) 4096)
 #define CONNECTOR_EOL_CONTROL_STACK_DEPTH               ((unsigned short) 4096)
+#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH			((unsigned short) 2048)
 
 #else
 
@@ -235,12 +252,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define BLE_GAP
 #define DOMETIC_BLE_ID 0x0845
 
-/* HAL layers */
-#define HAL_GPIO
-#define HAL_LEDC_PWM
-#define HAL_PWM
-#define HAL_I2C_MASTER
-
 #if defined(CONNECTOR_RVC)
 #define CAN1_EN(x)
 #define DEVICE_TWAI                 // Enable support for internal can
@@ -251,6 +262,22 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CAN_SLEEP_LEVEL             0   // Dummy value for now
 //#define DEVICE_TWAI_EN_PIN          GPIO_NUM_23 ??
 #endif
+
+/* HAL layers */
+#define HAL_GPIO
+#define HAL_LEDC_PWM
+#define HAL_PWM
+#define HAL_I2C_MASTER
+
+#define HAL_HW_TIMER_DIVIDER				(16u)
+#define HAL_HW_TIMER_INTERVAL				(TIMER_BASE_CLK / 4096)
+#define INV_TIMER_GRP      					TIMER_GROUP_0
+#define INV_TIMER_NUM      					TIMER_0
+#define HAL_HW_TIMER_INT_MODE 				TIMER_INTR_LEVEL
+#define HAL_HW_TIMER_COUNT_DIR				TIMER_COUNT_UP
+
+#define HAL_PWM_CAP_COUNTER_LIMIT     UINT32_MAX
+
 
 #define BOARD_INITIALIZATION
 
@@ -267,6 +294,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #endif // HAL_GPIO
 
 #ifdef HAL_LEDC_PWM
+#include <math.h>
+
 #define LEDC_PWM_DUTY_BIT_RESOLUTION   LEDC_TIMER_7_BIT  // LEDC_TIMER_13_BIT for the frequency of 5000 Hz
 
 #define LEDC_PWM_MIN_DUTY_CYCLE     ((uint32_t)     0u)
@@ -275,20 +304,26 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define LED_DIMMER_ON_DUTY_CYCLE      LEDC_PWM_MAX_DUTY_CYCLE
 #define LED_DIMMER_OFF_DUTY_CYCLE     LEDC_PWM_MIN_DUTY_CYCLE
 
-/* Temporarily min duty cycle set as 100
+/* Temporarily min duty cycle set as 100 
   later based on testing this will set to a value that user can easily control the LCD during power saving mode */
 #define ONBOARD_HMI_PWM_MIN_DUTY_CYCLE  LEDC_PWM_MAX_DUTY_CYCLE //2048
 
-#define ONBOARD_HMI_MAX_DUTY_CYCLE           LEDC_PWM_MAX_DUTY_CYCLE //127 // 100% duty cycle
-#define ONBOARD_HMI_MIN_DUTY_CYCLE            38 // 30%  duty cycle
-#define ONBOARD_HMI_OFF_DUTY_CYCLE             LEDC_PWM_MIN_DUTY_CYCLE //  0%  duty cycle
+#define ONBOARD_HMI_MAX_DUTY_CYCLE           LEDC_PWM_MAX_DUTY_CYCLE //127 // 100% duty cycle  
+#define ONBOARD_HMI_MIN_DUTY_CYCLE           38 // 30%  duty cycle
+#define ONBOARD_HMI_OFF_DUTY_CYCLE           LEDC_PWM_MIN_DUTY_CYCLE //  0%  duty cycle
+#define ONBOARD_HMI_50_DUTY_CYCLE			 50
+#define ONBOARD_HMI_10_DUTY_CYCLE			 15
+#define ONBOARD_HMI_1_DUTY_CYCLE			 1
+#define ONBOARD_HMI_5_DUTY_CYCLE			 6
+#define ONBOARD_HMI_0_DUTY_CYCLE			 0
+#define LCD_DRIVER_ENABLE
 
-/* PWM Configuration for LED Strip */
+/* PWM Configuartion for LED Strip */
 #define LED_STRIP_GPIO_PIN                  GPIO_NUM_19
 #define LED_STRIP_PWM_SET_FREQUENCY         ((uint32_t)  20000u)
 
-/* PWM Configuration for HMI Backlight */
-#define HMI_BACKLIGHT_GPIO_PIN              GPIO_NUM_23
+/* PWM Configuartion for HMI Backlight */
+#define HMI_BACKLIGHT_GPIO_PIN              GPIO_NUM_23          
 #define HMI_BACKLIGHT_PWM_SET_FREQUENCY     ((uint32_t)  20000u)
 
 #endif // HAL_LEDC_PWM
@@ -332,6 +367,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #if defined(CONNECTOR_LINDEV)
 #define USE_LIN
 #define USE_LIN_SLAVE
+#define CONNECTOR_LINDEV_INVENT
 #endif
 
 #ifndef USE_RS485
@@ -410,7 +446,7 @@ GPIO_PIN( 	   EN_BAT_CHG,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              
 GPIO_PIN(     INT_BAT_CHG,	     HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_3,      HAL_GPIO_PINMODE_READ,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN(      EN_IONIZER,	     HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_4,     HAL_GPIO_PINMODE_WRITE,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN( 	     EN_EFUSE,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_5,     HAL_GPIO_PINMODE_WRITE,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
-GPIO_PIN( 	       EN_LIN,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_6,     HAL_GPIO_PINMODE_WRITE,      LIN_SLEEP_N,	        HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
+GPIO_PIN( 	       LIN_SLEEP,    HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_6,     HAL_GPIO_PINMODE_WRITE,      LIN_SLEEP_N,	        HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN( 	     EN_RS485,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_7,     HAL_GPIO_PINMODE_WRITE,           DE_VAL,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 //					 name,			       device,				   port,	              pin,	                pin_mode,	                  level,	           interrupt mode,	                 INT CB function
 #endif // HAL_GPIO

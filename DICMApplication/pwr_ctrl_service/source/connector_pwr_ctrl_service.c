@@ -33,6 +33,8 @@
 
 #define FILTER_TIMER_TICKS                pdMS_TO_TICKS(MIN_TO_MSEC(FILTER_TIMER_PERIOD_MIN))
 
+#define  STATUS_BIT_SOLAR       0
+#define  STATUS_BIT_IONIZER     1
 static int initialize_connector_pwrctrl_service(void);
 static error_type initialize_pwr_control_module(void);
 static void install_parameters(void);
@@ -447,6 +449,7 @@ static void conn_pwr_ctrl_bms_task(void *pvParameter)
         /* Reset the battery charger IC before it get expires */
         bq25792_wd_reset();
 
+#if CONN_PWR_DEBUG_LOG
         result = bq25792_read_reg(RECHARGE_CONTROL_REG0AH, &rechg_ctrl_reg.byte, 1u);
         LOG(I, "RECHARGE_CONTROL_REG0AH 0x%x", rechg_ctrl_reg.byte);
         LOG(I, "CELL   = 0x%x", rechg_ctrl_reg.CELL);
@@ -496,7 +499,7 @@ static void conn_pwr_ctrl_bms_task(void *pvParameter)
         LOG(I, "WD_STAT = %d", ch_stat_0.WD_STAT);
         LOG(I, "VINDPM_STAT = %d", ch_stat_0.VINDPM_STAT);
         LOG(I, "IINDPM_STAT = %d", ch_stat_0.IINDPM_STAT);
-
+#endif
         result = bq25792_read_reg(CHARGE_STATUS_1_REG1CH, &ch_stat_1.byte, 1u);
         LOG(I, "BC1_2_DONE_STAT = %d", ch_stat_1.BC1_2_DONE_STAT);
         LOG(I, "VBUS_STAT = %d", ch_stat_1.VBUS_STAT);
@@ -506,7 +509,7 @@ static void conn_pwr_ctrl_bms_task(void *pvParameter)
         {
             LOG(W, "Charging Status : %s", debug_arr_ch_stat[ch_stat_1.CHG_STAT]);
         }
-
+#if CONN_PWR_DEBUG_LOG
         result = bq25792_read_reg(CHARGE_STATUS_2_REG1DH, &ch_stat_2.byte, 1u);
         LOG(I, "VBAT_PRESENT_STAT = %d", ch_stat_2.VBAT_PRESENT_STAT);
         LOG(I, "DPDM_STAT = %d", ch_stat_2.DPDM_STAT);
@@ -550,7 +553,7 @@ static void conn_pwr_ctrl_bms_task(void *pvParameter)
 
         result = bq25792_read_reg(TERMINATION_CONTROL_REG09H, (uint8_t*)&term_ctrl_reg.byte, 1u);
         LOG(I, "ITERM = %d mA REG_RST = 0x%x", (term_ctrl_reg.ITERM * 40), term_ctrl_reg.REG_RST);
-
+#endif
         result = bq25792_read_reg(CHARGE_STATUS_3_REG1EH, &ch_stat_3.byte, 1u);
         LOG(I, "PRECHG_TMR_STAT = %d", ch_stat_3.PRECHG_TMR_STAT);
         LOG(I, "TRICHG_TMR_STAT = %d", ch_stat_3.TRICHG_TMR_STAT);
@@ -570,7 +573,7 @@ static void conn_pwr_ctrl_bms_task(void *pvParameter)
             data_2 = SWAP2(data_2);
             vbat = (float)data_2 / 1000.0f;
 
-#if 0
+#ifdef SET_MA_LIMIT
             if ( ( result == RES_PASS ) && ( data_2 >= 14000 ) && ( ch_stat_1.CHG_STAT == CHARGING_TERMINATION_DONE ) )
             {
                 LOG(W, "VBAT reached 14 volt change current limit");
@@ -678,10 +681,6 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 	uint16_t db_idx;
 	conn_pwr_ctrl_parameter_t* param_db;
 
-#if CONN_PWR_DEBUG_LOG
-    LOG(I, "Received ddm_param = 0x%x i32value = %d", ddm_param, i32value);
-#endif
-
 	/* Validate the DDM parameter received */
 	db_idx = get_ddm_index_from_db(ddm_param);
  
@@ -703,9 +702,6 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
         if ( -1 != i32Index )
         {
-#if CONN_PWR_DEBUG_LOG
-            LOG(I, "i32Index = %d", i32Index);
-#endif
             if (  i32Index < DDM2_PARAMETER_COUNT )
                 i32Factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[i32Index].in_unit];
             else
@@ -715,10 +711,6 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
             {
                 i32value = i32value / i32Factor;
             }
-                
-#if CONN_PWR_DEBUG_LOG
-            LOG(I, "After factored i32value = %d", i32value);
-#endif
             if ( i32value != param_db->i32Value )
             {
                 /* Update the received value in the database table*/
@@ -779,9 +771,6 @@ static void process_subscribe_request(uint32_t ddm_param)
                 
                 /* Multiply with the factor */
                 value = param_db->i32Value * factor;
-#if CONN_PWR_DEBUG_LOG
-                LOG(I, "After factored i32value = %d", value);
-#endif
                 /* Frame and send the publish request */
                 TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &value, sizeof(int32_t), \
                             connector_pwr_ctrl_service.connector_id, portMAX_DELAY));
@@ -844,9 +833,6 @@ static void l_update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t valu
                 
             /* Multiply with the factor */
             factor_value = param_db->i32Value * factor;
-#if CONN_PWR_DEBUG_LOG
-            LOG(I, "After factored i32value = %d factor = %d", factor_value, factor);
-#endif
             /* Frame and send the publish request */
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_parameter, &factor_value, \
                        sizeof(int32_t), connector_pwr_ctrl_service.connector_id, portMAX_DELAY));
@@ -937,6 +923,8 @@ static void init_pwr_ctrl_sm(PWR_CTRL_SM* ptr_ctrl_sm)
   */
 static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
 {
+    error_type result;
+
     switch (pwr_ctrl_data_frame->data_id)
     {
         case INVENT_POWER_STATUS:
@@ -971,15 +959,29 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
             }
             else
             {
-                LOG(E, "Filter timer not expired = %d", pwr_ctrl_data_frame->data);
+                LOG(I, "Filter timer not expired = %d", pwr_ctrl_data_frame->data);
             }
             break;
 
         case INV_FIL_TMR_EXP:
             /* Increment the minute counter */
             pwr_ctrl_sm.filter_min_counter++;
+            update_data_in_nvm(IV_FILTER_TIMER,pwr_ctrl_sm.filter_min_counter);
             LOG(W, "filter_min_counter = %d", pwr_ctrl_sm.filter_min_counter);
             validate_filter_time(&pwr_ctrl_sm);
+            break;
+
+        case INVENT_SET_CHARGING_CURRENT:
+            LOG(I,"Charge ichg  set to %d mA",pwr_ctrl_data_frame->data);
+            result = bq25792_set_charging_current_limit( pwr_ctrl_data_frame->data/10 ); 
+            break;
+
+        case INVENT_EN_DIS_SOLAR:                               //This case is mapped to DDMP IV0SETT
+            LOG(I,"Ionizer/Solar status %d solar Mode = %d old_conf",pwr_ctrl_data_frame->data, (pwr_ctrl_data_frame->data ? 1:0));
+            result = 0;
+            ivsett_config.EN_DIS_SOLAR      =   ( ( pwr_ctrl_data_frame->data & (1 << STATUS_BIT_SOLAR) )  >> STATUS_BIT_SOLAR ) ;
+            ivsett_config.EN_DIS_IONIZER    =   ( ( pwr_ctrl_data_frame->data & (1 << STATUS_BIT_IONIZER)) >> STATUS_BIT_IONIZER ) ;
+            update_data_in_nvm(IV_IVSETT,pwr_ctrl_data_frame->data);
             break;
 
         case INVENT_STORAGE_MODE_SEL:
@@ -987,14 +989,11 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
             break;
 
         case INVENT_POWER_SOURCE_CHANGED:
-            if ( pwr_ctrl_data_frame->data != (int32_t)pwr_ctrl_sm.active_power_src )
+            if ( pwr_ctrl_data_frame->data != pwr_ctrl_sm.active_power_src )
             {
                 int32_t pwr_src = pwr_ctrl_data_frame->data;
-
-                LOG(W, "Switched pwr_src = %d", pwr_src);
-
+                LOG(I, "Switched pwr_src = %d", pwr_src);
                 pwr_ctrl_sm.active_power_src = pwr_ctrl_data_frame->data;
-
                 TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0PWRSRC, &pwr_src, sizeof(int32_t), \
                            connector_pwr_ctrl_service.connector_id, portMAX_DELAY));
             }
@@ -1015,9 +1014,6 @@ static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data)
 {
     PWR_CTRL_DATA pwr_ctrl_data_frame;
 
-#if CONN_PWR_DEBUG_LOG
-    LOG(I, "ddm_param = 0x%x, data = %d", ddm_param, data);
-#endif
     /* set the data */
     pwr_ctrl_data_frame.data = data;
 
@@ -1038,6 +1034,14 @@ static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data)
         case IV0STORAGE:
             pwr_ctrl_data_frame.data_id = INVENT_STORAGE_MODE_SEL;
             break;
+
+        case IV0SETCHRGCRNT:
+            pwr_ctrl_data_frame.data_id = INVENT_SET_CHARGING_CURRENT;
+             break; 
+
+        case IV0SETT:
+            pwr_ctrl_data_frame.data_id = INVENT_EN_DIS_SOLAR;
+            break;    
 
         default:
             pwr_ctrl_data_frame.data_id = INVALID_DATA;
@@ -1065,7 +1069,7 @@ static void fil_timer_cb_func ( TimerHandle_t xTimer )
     filter_data.data    = 0;
     filter_data.data_id = INV_FIL_TMR_EXP;
 
-    LOG(I, "Filter Time elapsed");
+    /*Filter Time elapsed*/
 
     // Append the INV_FIL_TMR_EXP data in the Queue
     osal_base_type_t ret = osal_queue_send (inv_pwr_ctrl_que_hdle, &filter_data, 0);
@@ -1135,15 +1139,12 @@ static void stop_filter_timer(PWR_CTRL_SM* ptr_ctrl_sm)
         filter_elap_tim = filter_elap_tim / NUM_MILL_SEC_PER_SECOND;   // Elapsed time in seconds 
         LOG(I, "The elapsed time of filter = %d", filter_elap_tim);
         ptr_ctrl_sm->filter_sec_counter += filter_elap_tim;
-        LOG(I, "filter_sec_counter = %d", pwr_ctrl_sm.filter_sec_counter);
 
         /* If the filter second counter is equal or more than one min, increment the filter min counter */
         if ( ptr_ctrl_sm->filter_sec_counter >= SECONDS_PER_MINUTE )
         {
             ptr_ctrl_sm->filter_sec_counter    = ptr_ctrl_sm->filter_sec_counter % SECONDS_PER_MINUTE;
             ptr_ctrl_sm->filter_min_counter++;
-            LOG(I, "filter_min_counter = %d", pwr_ctrl_sm.filter_min_counter);
-            LOG(I, "filter_sec_counter = %d", pwr_ctrl_sm.filter_sec_counter);
         }
     }
 

@@ -25,10 +25,12 @@ static IAQ_RANGE iaq_range_level[IAQ_RANGE_LEVELS] =
 { 
     //          min                  max                Air Quality Status
     {   {  IAQ_DEF_GOOD_MIN,    IAQ_DEF_GOOD_MAX },   IV0AQST_AIR_QUALITY_GOOD  },
-    {   {   IAQ_DEF_BAD_MIN,     IAQ_DEF_BAD_MAX },   IV0AQST_AIR_QUALITY_BAD   },
-    {   { IAQ_DEF_WORSE_MIN,   IAQ_DEF_WORSE_MAX },   IV0AQST_AIR_QUALITY_WORSE }
+    {   {   IAQ_DEF_BAD_MIN,     IAQ_DEF_BAD_MAX },   IV0AQST_AIR_QUALITY_FAIR   },
+    {   { IAQ_DEF_WORSE_MIN,   IAQ_DEF_WORSE_MAX },   IV0AQST_AIR_QUALITY_BAD }
 };
 
+EXT_RAM_ATTR IV0_SETTINGS   ivsett_config;
+EXT_RAM_ATTR FILTER_INFO filter_data;
 /* Table for RPM Min and Max Percentage for modes */
 static percent_range_t percent_range[NUM_OPERATING_MODES] =
 {
@@ -46,18 +48,21 @@ INVENTILATE_CONTROL_ALGO iv_ctrl_algo;
 static nvs_config_conn_fan_mtr nvs_db[NVS_DB_SIZE] = 
 {
     //   data_id               data_type               data_size             min_val                max_val            default_val           ddmp                           data_ptr                                                          nvs_key
-    {IV_FAN1_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(0),  (void*)&fan_motor_control_db[DEV_FAN1_AIR_OUT].whole_rpm_range.min_rpm      ,  "mn_rpm_f1"},
-    {IV_FAN2_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_IN].whole_rpm_range.min_rpm       ,  "mn_rpm_f2"},
-    {IV_MTR_RPM_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(2),  (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.min_rpm             ,  "mn_rpm_mt"},
-    {IV_FAN1_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(0),  (void*)&fan_motor_control_db[DEV_FAN1_AIR_OUT].whole_rpm_range.max_rpm      ,  "mx_rpm_f1"},
-    {IV_FAN2_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_IN].whole_rpm_range.max_rpm       ,  "mx_rpm_f2"},
-    {IV_MTR_RPM_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(2),  (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.max_rpm             ,  "mx_rpm_mt"},
+    {IV_FAN1_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(0),  (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.min_rpm      ,  "mn_rpm_f1"},
+    {IV_FAN2_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.min_rpm     ,  "mn_rpm_f2"},
+    {IV_MTR_RPM_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(2),  (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.min_rpm            ,  "mn_rpm_mt"},
+    {IV_FAN1_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(0),  (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.max_rpm      ,  "mx_rpm_f1"},
+    {IV_FAN2_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.max_rpm     ,  "mx_rpm_f2"},
+    {IV_MTR_RPM_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(2),  (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.max_rpm            ,  "mx_rpm_mt"},
     {IV_IAQ_GOOD_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,    IAQ_DEF_GOOD_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.min             ,  "mn_gd_aq" },
-    {IV_IAQ_BAD_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_BAD_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.min              ,  "mn_bd_aq" },
-    {IV_IAQ_WORSE_MIN ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,   IAQ_DEF_WORSE_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_WORSE].iaq_range.min            ,  "mn_wr_aq" },
+    {IV_IAQ_BAD_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_BAD_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.min              ,  "mn_bd_aq" },
+    {IV_IAQ_WORSE_MIN ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,   IAQ_DEF_WORSE_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.min            ,  "mn_wr_aq" },
     {IV_IAQ_GOOD_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,    IAQ_DEF_GOOD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.max             ,  "mx_gd_aq" },
-    {IV_IAQ_BAD_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_BAD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.max              ,  "mx_bd_aq" },
-    {IV_IAQ_WORSE_MAX ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,   IAQ_DEF_WORSE_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_WORSE].iaq_range.max            ,  "mx_wr_aq" },
+    {IV_IAQ_BAD_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_BAD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.max              ,  "mx_bd_aq" },
+    {IV_IAQ_WORSE_MAX ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,   IAQ_DEF_WORSE_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.max            ,  "mx_wr_aq" },
+    {IV_IVSETT        ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_IVSETT_MIN,         IV_IVSETT_MAX,   IV_IVSETT_DEFAULT,   IV0SETT|DDM2_PARAMETER_INSTANCE(0),    (void*)&ivsett_config.byte                                                  ,  "iv_ivsett" },
+    {IV_FILTER_TIMER  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX,IV_FILTER_MIN_MIN,   IV0FILST,                             (void*)&filter_data.filter_min                                              ,  "iv_filter_min" },
+    {IV_FILTER_STATUS  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX,IV_FILTER_MIN_MIN,   IV0FILST,                             (void*)&filter_data.filter_status                                          ,  "iv_filter_sts" },
 };
 
 /**
@@ -166,16 +171,20 @@ void update_data_in_nvm(DATA_ID data_id, uint32_t data)
 
     if ( ( NVS_DB_SIZE != db_idx ) )
     {
+#if INV_ALGO_DEBUG         
         LOG(I, "NVS Write data_id = %d data = %d db_idx = %d", data_id, data, db_idx);
+#endif        
         /* Update the data in the pointer */
         *((uint32_t*)(nvs_db[db_idx].data_ptr)) = data;
         /* write the data in the NVS */
         nvs_err = hal_nvs_write(nvs_db[db_idx].nvs_key, nvs_db[db_idx].data_type, nvs_db[db_idx].data_ptr, nvs_db[db_idx].data_size);
         /* Validate the error code */
+#if INV_ALGO_DEBUG         
         if ( HAL_NVS_OK != nvs_err )
         {
             LOG(E, "NVS Write failed = %d", nvs_err);
         }
+#endif        
     }
     else
     {
@@ -322,11 +331,13 @@ void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* ptr_iv)
     ptr_iv->storage_tmr_val_ticks[STORAGE_TIMER_21H] = pdMS_TO_TICKS(MIN_TO_MSEC(STORAGE_MODE_SLEEP_TIME_21_HR));
     ptr_iv->storage_tmr_val_ticks[STORAGE_TIMER_03H] = pdMS_TO_TICKS(MIN_TO_MSEC(STORAGE_MODE_RUN_TIME_03_HR));
 
+    ptr_iv->rated_speed_percent[DEV_FAN1_AIR_IN] = DEV_FAN1_RATED_SPEED_PERCENT;
+    ptr_iv->rated_speed_percent[DEV_FAN2_AIR_OUT]  = DEV_FAN2_RATED_SPEED_PERCENT;
+    ptr_iv->rated_speed_percent[DEV_MOTOR]        = DEV_MOTOR_RATED_SPEED_PERCENT;
+
     /* Calculate and update min, max RPM according the modes */
     calc_mode_min_max_rpm();
 }
-
-
 
 /**
   * @brief  Function to reset the accumulated data
@@ -350,7 +361,7 @@ void reset_accumulated_data(INVENTILATE_CONTROL_ALGO* ptr_iv)
   */
 void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
 {
-    if ( ptr_iv->iaq_data_count > 0 )
+    if ( ptr_iv->iaq_data_count > 0u )
     {
         /* Calculate the average value of IAQ */
         ptr_iv->curr_avg_iaq_value = ptr_iv->curr_avg_iaq_value / ptr_iv->iaq_data_count;
@@ -361,7 +372,7 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
         ptr_iv->iaq_data_count = 1u;                                                     
     }
 
-    if ( ptr_iv->dp_data_count > 0 )
+    if ( ptr_iv->dp_data_count > 0u )
     {
         /* Calculate the average value of DP */
         ptr_iv->curr_avg_dp_value = ptr_iv->curr_avg_dp_value / ptr_iv->dp_data_count;
@@ -372,7 +383,7 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
         ptr_iv->dp_data_count = 1u;                                                     
     }
 
-    if ( ptr_iv->humidity_data_count > 0 )
+    if ( ptr_iv->humidity_data_count > 0u )
     {
         /* Calculate the average value of relative humidity */
         ptr_iv->curr_avg_hum_value = ptr_iv->curr_avg_hum_value / ptr_iv->humidity_data_count;
@@ -389,24 +400,34 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
   */
 IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
 {
-    IV0PRST_ENUM pressure_stat;
+    IV0PRST_ENUM pressure_stat = IV0PRST_PRESS_STATUS_UNKNOWN;
 
-    if ( ptr_iv->dp_data_count > 0 )
+    if ( ptr_iv->dp_data_count > DP_ZERO_COUNT )
     {
         /* Find the pressure compensation status */
         if ( ptr_iv->curr_avg_dp_value < ptr_iv->dp_neg_acceptable_lim )
         {
-            pressure_stat = IV0PRST_UNDER_PRESS;
+            /* Under pressure */
+            ptr_iv->dp_exceed_count ++;
+            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
+            {
+                pressure_stat = IV0PRST_UNDER_PRESS;
+            }
         }
         else if ( ptr_iv->curr_avg_dp_value > ptr_iv->dp_pos_acceptable_lim )
         {
-            pressure_stat = IV0PRST_OVER_PRESS;
+            ptr_iv->dp_exceed_count ++;
+            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
+            {
+                pressure_stat = IV0PRST_OVER_PRESS;
+            }
         }
         else
         {
             /* Differential pressure is within the acceptable range -5 to +5
                So pressure compensation not needed */
             pressure_stat = IV0PRST_VALID_PRESS_LEVEL;
+            ptr_iv->dp_exceed_count = 0;
         }
     }
     else
@@ -432,13 +453,13 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
     ptr_iv->ptr_prev_data  = &ptr_iv->prev_avg_iaq_value;
     ptr_iv->roc_max_val    = INVENT_IAQ_INDEX_MAX;
 
-    if ( ( ptr_iv->iaq_data_count > 0 ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) )
+    if ( ( ptr_iv->iaq_data_count > 0u ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) )
     {
         /* Find the Air Quality status from IAQ */
         for ( index = 0; index < IAQ_RANGE_LEVELS; index++ )
         {
-            if ( ( ptr_iv->curr_avg_iaq_value >= (int32_t)iaq_range_level[index].iaq_range.min ) &&
-                 ( ptr_iv->curr_avg_iaq_value <= (int32_t)iaq_range_level[index].iaq_range.max ) )
+            if ( ( ptr_iv->curr_avg_iaq_value >= iaq_range_level[index].iaq_range.min ) && 
+                 ( ptr_iv->curr_avg_iaq_value <= iaq_range_level[index].iaq_range.max ) )
             {
                 iaq_status = iaq_range_level[index].iaq_status;       /* Get the IAQ status */
                 index      = IAQ_RANGE_LEVELS;                        /* Exit from the loop */
@@ -446,7 +467,7 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
         }
 
         /* Validate the humidity when the air quality is good inside the RV */
-        if ( ( IV0AQST_AIR_QUALITY_GOOD == iaq_status ) && ( ptr_iv->humidity_data_count > 0 ) )
+        if ( ( IV0AQST_AIR_QUALITY_GOOD == iaq_status ) && ( ptr_iv->humidity_data_count > 0u ) )
         {
             /* Even when IAQ is GOOD, but the relative humdity is not within the acceptable range,
                then air quality will be considered as BAD */
@@ -457,7 +478,7 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 ptr_iv->ptr_curr_data  = &ptr_iv->curr_avg_hum_value;
                 ptr_iv->ptr_prev_data  = &ptr_iv->prev_avg_hum_value;
                 ptr_iv->roc_max_val    = INVENT_RELATIVE_HUMIDITY_MAX_VALUE;
-                iaq_status             = IV0AQST_AIR_QUALITY_BAD;
+                iaq_status             = IV0AQST_AIR_QUALITY_FAIR;
             }
         }
     }
@@ -490,8 +511,9 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
         /* Check the wait timer expired or not */
         if ( true == ptr_iv->wait_tmr_exp )
         {
-            LOG(I, "pr comp tmr exp");
-            /* Reset the timer exp flag */
+            
+            
+            /* "pr comp tmr exp" Reset the timer exp flag */
             ptr_iv->wait_tmr_exp = false;
 
             /* Validate the compensation */
@@ -523,7 +545,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 /* Check the primary device already changed */
                 if ( false == ptr_iv->change_dev )
                 {
-                    LOG(E, "pr_comp not working with pr dev=%d", ptr_iv->prim_dev_id);
+                    LOG(I, "pr_comp not working with pr dev=%d", ptr_iv->prim_dev_id);
                     /* Compensation not worked with primary fan..Try with the secondary fan */
                     ptr_iv->change_dev = true;
                     /* Update the DP threshold value as per the current DP value */
@@ -531,7 +553,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 }
                 else
                 {
-                    LOG(E, "pr_comp ex limit");
+                    LOG(I, "pr_comp ex limit");
                     // Pressure is not able to control by both primary and secondary fan due to unknown environmental condition
                     // Turn OFF both the FANS for 10 minutes and then start the pressure compensation action
                     
@@ -539,7 +561,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                     ptr_iv->change_dev = false;
 
                     /* Set constant RPM and run for 10 minutes */
-                    for ( dev_id = DEV_FAN1_AIR_OUT; dev_id <= DEV_FAN2_AIR_IN; dev_id++ )
+                    for ( dev_id = DEV_FAN1_AIR_IN; dev_id <= DEV_FAN2_AIR_OUT; dev_id++ )
                     {
                         ptr_iv->set_rpm[dev_id]         = PRESS_COMP_EXCEEDS_LIMIT_RPM;
                         ptr_iv->dev_comp_config[dev_id] = IDLE_COMP_DEV;
@@ -588,11 +610,12 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 // 4. Even after this, If still the pressure is not compensated then set same RPM on both the FANS
                 // 5. Run for configuarable time
                 // 6. Reset all variables related to pressure compensation
-    #if INV_ALGO_DEBUG 
-                LOG(E, "OVP Cond");
-    #endif
-                ptr_iv->prim_dev_id = DEV_FAN1_AIR_OUT;
-                ptr_iv->sec_dev_id  = DEV_FAN2_AIR_IN;
+                /* increase Fan out speed to push air out side*/
+                //Over pressure
+                ptr_iv->prim_dev_id = DEV_FAN2_AIR_OUT;
+                ptr_iv->sec_dev_id  = DEV_FAN1_AIR_IN;
+
+
             }
             else
             {
@@ -602,11 +625,11 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 // 3. FAN1 (Exhaust FAN / Air Out) speed shall be reduce to compensate the pressure
                 // 4. Even after this, If the pressure is not compensated then set same RPM on both the FANS
                 // 5. Run both the FANS with same RPM for 10 min.
-    #if INV_ALGO_DEBUG 
-                LOG(E, "UP Cond");
-    #endif
-                ptr_iv->prim_dev_id = DEV_FAN2_AIR_IN;
-                ptr_iv->sec_dev_id  = DEV_FAN1_AIR_OUT;
+                //Under pressure condition
+                /*Increase FAN in speed to supply air inside the cabin*/
+                ptr_iv->prim_dev_id = DEV_FAN1_AIR_IN;
+                ptr_iv->sec_dev_id  = DEV_FAN2_AIR_OUT;
+            
             }
 
             
@@ -641,7 +664,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 stop_wait_tmr();
 
                 /* Set constant RPM and run for 10 minutes */
-                for ( dev_id = DEV_FAN1_AIR_OUT; dev_id <= DEV_FAN2_AIR_IN; dev_id++ )
+                for ( dev_id = DEV_FAN1_AIR_IN; dev_id <= DEV_FAN2_AIR_OUT; dev_id++ )
                 {
                     ptr_iv->set_rpm[dev_id]         = PRESS_COMP_EXCEEDS_LIMIT_RPM;
                     ptr_iv->dev_comp_config[dev_id] = IDLE_COMP_DEV;
@@ -691,15 +714,15 @@ INVENT_CONTROL_STATE aq_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
             /* Get the RPM step level from the ROC of IAQ */
             ptr_iv->step_table_index_iaq = get_step_level(abs(roc_iaq_percent));
 
-    #if INV_ALGO_DEBUG 
+#if INV_ALGO_DEBUG 
             LOG(I, "roc_iaq=%d curr_data=%d prev_data=%d roc_max_val=%d", \
             roc_iaq_percent, *ptr_iv->ptr_curr_data, *ptr_iv->ptr_prev_data, ptr_iv->roc_max_val);
-    #endif
+#endif
             
             if ( roc_iaq_percent >= 0 )
             {
                 /* Rate of change increased, So increase the RPM to reduce the IAQ level */
-                for ( dev_id = DEV_FAN1_AIR_OUT; dev_id <= DEV_FAN2_AIR_IN; dev_id++ )
+                for ( dev_id = DEV_FAN1_AIR_IN; dev_id <= DEV_FAN2_AIR_OUT; dev_id++ )
                 {
                     ptr_iv->set_rpm[dev_id] += ptr_iv->rpm_step_table_iaq[ptr_iv->step_table_index_iaq];
                     /* set the device compenastion configuration */
@@ -709,7 +732,7 @@ INVENT_CONTROL_STATE aq_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
             else
             {
                 /* Rate of change decreased, So reduce the RPM */
-                for ( dev_id = DEV_FAN1_AIR_OUT; dev_id <= DEV_FAN2_AIR_IN; dev_id++ )
+                for ( dev_id = DEV_FAN1_AIR_IN; dev_id <= DEV_FAN2_AIR_OUT; dev_id++ )
                 {
                     if ( ptr_iv->set_rpm[dev_id] > ptr_iv->rpm_step_table_iaq[ptr_iv->step_table_index_iaq] )
                     {
@@ -730,12 +753,12 @@ INVENT_CONTROL_STATE aq_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
     }
     else
     {
-        LOG(I, "AQ good");
+        /* IAQ good */
         /* Reset the timer flag, Before Start */
         ptr_ctrl_algo->wait_tmr_exp = false;
         /* Set the compensation configuration */
-        ptr_iv->dev_comp_config[DEV_FAN1_AIR_OUT] = IAQ_COMP_DEV;
-        ptr_iv->dev_comp_config[DEV_FAN2_AIR_IN]  = IAQ_COMP_DEV;
+        ptr_iv->dev_comp_config[DEV_FAN1_AIR_IN] = IAQ_COMP_DEV;
+        ptr_iv->dev_comp_config[DEV_FAN2_AIR_OUT]  = IAQ_COMP_DEV;
         /* Start the timer */
         start_wait_tmr(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN));
         /* IAQ value is good ..Change the state to IDLE */
@@ -758,7 +781,7 @@ void update_dev_rpm(INVENTILATE_CONTROL_ALGO* ptr_iv, IV0MODE_ENUM mode)
 	uint32_t mode_max_rpm = 0u;
     invent_device_id_t  dev_id;
 
-	for ( dev_id = DEV_FAN1_AIR_OUT; dev_id < MAX_NUM_DEVICE; dev_id++ )
+	for ( dev_id = DEV_FAN1_AIR_IN; dev_id < MAX_NUM_DEVICE; dev_id++ )
     {
         // Add comments
         if ( ( PRESS_COMP_DEV != ptr_iv->dev_comp_config[dev_id] ) || ( IV0MODE_OFF == mode ) || ( IV0MODE_STORAGE == mode ) )
@@ -796,7 +819,7 @@ void update_dev_rpm(INVENTILATE_CONTROL_ALGO* ptr_iv, IV0MODE_ENUM mode)
         }
         else
         {
-            if ( ( ptr_iv->set_rpm[DEV_FAN1_AIR_OUT] > 0u ) || ( ptr_iv->set_rpm[DEV_FAN2_AIR_IN] > 0u ) )
+            if ( ( ptr_iv->set_rpm[DEV_FAN1_AIR_IN] > 0u ) || ( ptr_iv->set_rpm[DEV_FAN2_AIR_OUT] > 0u ) )
             {
                 /* Motor rpm shall not be controlled based IAQ or DP.
                    It is decided to run the ceramic disc motor in constant speed, when either the FAN1 or FAN2 is running */
@@ -869,8 +892,6 @@ void update_dp_comp_threshold_val(INVENTILATE_CONTROL_ALGO* ptr_iv)
     {
 
     }
-
-    LOG(I, "dp_thr=%d", ptr_iv->dp_comp_thr_val);
 }
 
 /**
@@ -988,10 +1009,9 @@ void calc_mode_min_max_rpm(void)
     invent_device_id_t dev_id;
     uint8_t mode_idx;
 
-    fan_motor_control_db[DEV_FAN1_AIR_OUT].dev_pwm_mode = DEV_FAN1_AIR_OUT_PWM_MODE;
-    fan_motor_control_db[DEV_FAN2_AIR_IN].dev_pwm_mode  = DEV_FAN2_AIR_IN_PWM_MODE;
-    fan_motor_control_db[DEV_MOTOR].dev_pwm_mode        = DEV_MOTOR_PWM_MODE;
-
+    fan_motor_control_db[DEV_FAN1_AIR_IN].dev_pwm_mode      = DEV_FAN1_AIR_IN_PWM_MODE;
+    fan_motor_control_db[DEV_FAN2_AIR_OUT].dev_pwm_mode     = DEV_FAN2_AIR_OUT_PWM_MODE;
+    fan_motor_control_db[DEV_MOTOR].dev_pwm_mode            = DEV_MOTOR_PWM_MODE;
     for ( dev_id = 0u; dev_id < MAX_NUM_DEVICE; dev_id++ )
 	{
 		for ( mode_idx = 0u; mode_idx < NUM_OPERATING_MODES; mode_idx++ )
@@ -1038,11 +1058,11 @@ static uint32_t calc_percentage(uint32_t value, uint32_t percent)
 void reset_dev_config(void)
 {
     /* Reset the dev compensation config status */
-    ptr_ctrl_algo->dev_comp_config[DEV_FAN1_AIR_OUT] = IDLE_COMP_DEV;
-    ptr_ctrl_algo->dev_comp_config[DEV_FAN2_AIR_IN]  = IDLE_COMP_DEV;
-    ptr_ctrl_algo->dev_comp_config[DEV_MOTOR]        = IDLE_COMP_DEV;       
-    ptr_ctrl_algo->set_rpm[DEV_FAN1_AIR_OUT]         = fan_motor_control_db[DEV_FAN1_AIR_OUT].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm;
-    ptr_ctrl_algo->set_rpm[DEV_FAN2_AIR_IN]          = fan_motor_control_db[DEV_FAN2_AIR_IN].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm;
+    ptr_ctrl_algo->dev_comp_config[DEV_FAN1_AIR_IN]     = IDLE_COMP_DEV;
+    ptr_ctrl_algo->dev_comp_config[DEV_FAN2_AIR_OUT]    = IDLE_COMP_DEV;
+    ptr_ctrl_algo->dev_comp_config[DEV_MOTOR]           = IDLE_COMP_DEV;       
+    ptr_ctrl_algo->set_rpm[DEV_FAN1_AIR_IN]             = fan_motor_control_db[DEV_FAN1_AIR_IN].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm;
+    ptr_ctrl_algo->set_rpm[DEV_FAN2_AIR_OUT]            = fan_motor_control_db[DEV_FAN2_AIR_OUT].rpm_range[ptr_ctrl_algo->cur_sel_mode].min_rpm;
 }
 
 #endif /* APP_FAN_MOTOR_CONTROL */

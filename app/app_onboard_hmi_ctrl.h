@@ -303,7 +303,6 @@ typedef struct __obhmi_ctrl_sm
     uint32_t                    invent_error_status;
     uint32_t                    invent_prev_err_status;
     INV_MODES                   selected_mode;
-    //IV0PWRSRC_ENUM              selected_pwr_src;
 }ONBRD_HMI_CTRL_SM;
 
 typedef struct _onboard_hmi_button_event

@@ -18,6 +18,9 @@
 #include "ddm2.h"
 #include <string.h>
 
+extern void error_check_ack(void);
+extern void update_blink_info(const uint32_t error_code);
+
 void set_err_ackstate(uint8_t errack_l);
 static const hmi_domain_to_ddm_system_t hmi_btn_power_to_ddmp[] = 
 {
@@ -41,11 +44,8 @@ static const hmi_domain_to_ddm_system_t hmi_btn_light_to_ddmp[] =
 {   
     //       hmi_domain_value               ddm_parameter       ddm_system_value
     {           SHORT_PRESS_ACT_LIGHT_OFF,     DIM0LVL,         DIM_LVL_DUTY_CYCLE_0  },
-    {   SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_1,     DIM0LVL,         DIM_LVL_DUTY_CYCLE_20 },
-    {   SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_2,     DIM0LVL,         DIM_LVL_DUTY_CYCLE_40 },
-    {   SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_3,     DIM0LVL,         DIM_LVL_DUTY_CYCLE_50 },
-    {   SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_4,     DIM0LVL,         DIM_LVL_DUTY_CYCLE_60 },
-    {   SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_5,     DIM0LVL,         DIM_LVL_DUTY_CYCLE_80 },
+    {   SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_1,     DIM0LVL,         DIM_LVL_DUTY_CYCLE_5 },
+    {   SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_3,     DIM0LVL,         DIM_LVL_DUTY_CYCLE_40 },
     { SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_MAX,     DIM0LVL,        DIM_LVL_DUTY_CYCLE_100 },
     {    LONG_PRESS_ACT_LIGHT_BTN_BT_SCAN,    IV0BLREQ,                IV0BLREQ_SCAN  },
     {    LONG_PRESS_ACT_LIGHT_BTN_BT_PAIR,    IV0BLREQ,                IV0BLREQ_PAIR  }
@@ -395,7 +395,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 
         case UPDATE_SEG_IONIZER:
             {
-#ifdef EN_IONIZER_FLAG                
+             
                 if (ivsett_config.EN_DIS_IONIZER == true)
                 {
                 seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
@@ -404,9 +404,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 {
                     seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
                 }
-#else
-                seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
-#endif                
+               
                 LOG(I, "SEG_IONIZER_STATUS = %d", seg_stat[SEG_IONIZER_STATUS]);
                 uc1510c_set_segment(SEG_IONIZER_STATUS, seg_stat[SEG_IONIZER_STATUS]);
             }
@@ -490,7 +488,7 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             break;
 
         case UPDATE_SEG_IONIZER:
-#ifdef EN_IONIZER_FLAG             
+           
             if (ivsett_config.EN_DIS_IONIZER == true)
             {
                 seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
@@ -500,10 +498,7 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
      
             }
-#else
-            seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
-
-#endif            
+           
             break;
 			
         default:

@@ -138,6 +138,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define APP_POWER_CONTROL_SERVICE
 #define APP_DIFF_PRESSURE_SENSOR
 #define APP_LIGHT_CONTROL
+//Uncomment EN_IONIZER_FLAG to configure using IV0sett DDMP
+//#define EN_IONIZER_FLAG
 
 #ifdef CONNECTOR_EOL_SERVICE
 

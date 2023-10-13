@@ -58,12 +58,14 @@ typedef struct _read_voc_data_service
   uint8_t               rd_seq_cnt;
   uint8_t               rd_err_cnt;
   uint32_t              iaq_index;
+  uint32_t              aqrc_lvl;
   uint32_t              read_sens_delay;
   volatile TickType_t   last_tick;
   volatile uint32_t     wait_time_ms;
   uint32_t              bsec_ctrl_time_stamp;
 }read_voc_data_service;
 
+extern uint32_t bsec_critical_error;
 #endif /*APP_VOC_SENSOR*/
 
 #endif /*APP_VOC_SENSOR_H_*/

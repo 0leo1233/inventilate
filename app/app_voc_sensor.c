@@ -50,11 +50,15 @@
 
 #endif
 
-#define APP_VOC_DEBUG_LOG 0
+#define APP_VOC_DEBUG_LOG   1
+#define APP_VOC_LOG         1
 #define BSEC_FLASH_KEY (const char *)"bsec"
 
 /* Struct instance for read_service */
 read_voc_data_service inst_read_service;
+
+uint32_t bsec_critical_error = 0;
+
 
 static uint32_t state_load_func(uint8_t *state_buffer, uint32_t n_buffer);
 static uint32_t config_load_func(uint8_t *config_buffer, uint32_t n_buffer);
@@ -132,7 +136,7 @@ static void bme680_output_ready_cb(bme680_bsec_output *bsec_out)
 	LOG(I, "Accuracy:[%d]", bsec_out->iaq.accuracy);
 	LOG(I, "Stabilization_status:[%d]", bsec_out->stabilization_status.data);
 	LOG(I, "run_in_status:[%d]", bsec_out->run_in_status.data);
-
+    bsec_critical_error = 0;
 #else
 	
     LOG_TEST(I, "IAQ:[%d]", bsec_out->iaq.data);
@@ -145,6 +149,7 @@ static void bme680_output_ready_cb(bme680_bsec_output *bsec_out)
     LOG_TEST(I, "Accuracy:[%d]", bsec_out->iaq.accuracy);
     LOG_TEST(I, "Stabilization_status:[%d]", bsec_out->stabilization_status.data);
     LOG_TEST(I, "run_in_status:[%d]", bsec_out->run_in_status.data);
+    bsec_critical_error = 0;
 	
 #endif
 
@@ -289,7 +294,7 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
 
 #ifndef CONFIG_DICM_SUPPORT_INVENT_SERIAL_BME68X_BSEC_LOGS
 
-    #ifdef BME68X_USE_FPU
+#ifdef BME68X_USE_FPU
         LOG(I, "IAQ:[%f]", bsec_out->iaq.data);
         LOG(I, "Temperature:[%f]", bsec_out->raw_temperature.data);
         LOG(I, "Pressure:[%f]", bsec_out->raw_pressure.data);
@@ -300,7 +305,7 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
         LOG(I, "Accuracy:[%d]", bsec_out->iaq.accuracy);
         LOG(I, "Stabilization_status:[%f]", bsec_out->stabilization_status.data);
         LOG(I, "run_in_status:[%f]", bsec_out->run_in_status.data);
-    #else        
+#else   //BME68X_USE_FPU       
         LOG(I, "IAQ:[%d]",                  bsec_out->iaq.data);
         LOG(I, "Temperature:[%d]",          bsec_out->raw_temperature.data);
         LOG(I, "Pressure:[%d]",             bsec_out->raw_pressure.data);
@@ -311,25 +316,26 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
         LOG(I, "Accuracy:[%d]",             bsec_out->iaq.accuracy);
         LOG(I, "Stabilization_status:[%d]", bsec_out->stabilization_status.data);
         LOG(I, "run_in_status:[%d]",        bsec_out->run_in_status.data);
-    #endif
+#endif  //BME68X_USE_FPU
 
-#else
-	
-    LOG_TEST(I, "IAQ:[%d]", bsec_out->iaq.data);
-    LOG_TEST(I, "Temperature:[%d]", bsec_out->raw_temperature.data);
-    LOG_TEST(I, "Pressure:[%d]", bsec_out->raw_pressure.data);
-    LOG_TEST(I, "Humidity:[%d]", bsec_out->raw_humidity.data);
-    LOG_TEST(I, "GasResistance:[%d]", bsec_out->raw_gas.data);
-    LOG_TEST(I, "CO2_equivalent:[%d]", bsec_out->co2_equivalent.data);
-    LOG_TEST(I, "Breath_voc_eq:[%d]", bsec_out->breath_voc_eq.data);
-    LOG_TEST(I, "Accuracy:[%d]", bsec_out->iaq.accuracy);
-    LOG_TEST(I, "Stabilization_status:[%d]", bsec_out->stabilization_status.data);
-    LOG_TEST(I, "run_in_status:[%d]", bsec_out->run_in_status.data);
-	
-#endif
+#else   // CONFIG_DICM_SUPPORT_INVENT_SERIAL_BME68X_BSEC_LOGS
+            
+        LOG_TEST(I, "IAQ:[%d]", bsec_out->iaq.data);
+        LOG_TEST(I, "Temperature:[%d]", bsec_out->raw_temperature.data);
+        LOG_TEST(I, "Pressure:[%d]", bsec_out->raw_pressure.data);
+        LOG_TEST(I, "Humidity:[%d]", bsec_out->raw_humidity.data);
+        LOG_TEST(I, "GasResistance:[%d]", bsec_out->raw_gas.data);
+        LOG_TEST(I, "CO2_equivalent:[%d]", bsec_out->co2_equivalent.data);
+        LOG_TEST(I, "Breath_voc_eq:[%d]", bsec_out->breath_voc_eq.data);
+        LOG_TEST(I, "Accuracy:[%d]", bsec_out->iaq.accuracy);
+        LOG_TEST(I, "Stabilization_status:[%d]", bsec_out->stabilization_status.data);
+        LOG_TEST(I, "run_in_status:[%d]", bsec_out->run_in_status.data);
+            
+#endif  // CONFIG_DICM_SUPPORT_INVENT_SERIAL_BME68X_BSEC_LOGS
 
-#endif
+#endif  //APP_VOC_DEBUG_LOG
 
+        /*Send IAQ data to broker whenever data changes*/
         if ( inst_read_service.iaq_index != bsec_out->iaq.data )
         {
             /* store the new IAQ index value */
@@ -337,6 +343,19 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
             /* Publish the value to broker */
 			update_voc_sens_to_broker(bsec_out);
         }
+
+         /*Send accuracy  to broker when accuracy is updated*/
+        if (inst_read_service.aqrc_lvl != bsec_out->iaq.accuracy)
+        {
+            /* store the new Accuracy index value */
+            inst_read_service.aqrc_lvl = bsec_out->iaq.accuracy;
+            /* Publish the value to broker */
+			update_voc_sens_to_broker(bsec_out);
+        }
+    }
+    else
+    {
+        LOG(I,"[Bme68x_output_ready_error]");
     }
 }
 
@@ -412,7 +431,7 @@ const BME6X_BSEC_LIB_INTERFACE g_bsec_lib_intf =
 static void state_save_func(const uint8_t *state_buffer, uint32_t length)
 {
     if ( state_buffer != NULL )
-    {       
+    {
         hal_nvs_write(BSEC_FLASH_KEY, HAL_NVS_DATA_TYPE_BLOB, (const void *)state_buffer, length);
     }
 }
@@ -430,17 +449,7 @@ static uint32_t state_load_func(uint8_t *state_buffer, uint32_t n_buffer)
     
     if ( state_buffer != NULL )
     {
-        hal_nvs_read(BSEC_FLASH_KEY, HAL_NVS_DATA_TYPE_BLOB, (void*)state_buffer, n_buffer);
-       
-#if APP_VOC_DEBUG_LOG
-
-        LOG(I, "BSEC State read size = %d", n_buffer);
-        for ( index = 0; index < n_buffer; index++ )
-        {
-            LOG(I, "Stored Data [%d] = %d", index, state_buffer[index]);
-        }
-#endif
-
+        hal_nvs_read(BSEC_FLASH_KEY, HAL_NVS_DATA_TYPE_BLOB, (void*)state_buffer, n_buffer);      
         size = n_buffer;
     }
     

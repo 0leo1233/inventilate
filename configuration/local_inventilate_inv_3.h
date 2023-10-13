@@ -138,6 +138,21 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define APP_POWER_CONTROL_SERVICE
 #define APP_DIFF_PRESSURE_SENSOR
 #define APP_LIGHT_CONTROL
+/*
+Requirement for Ionizer:
+Ionizer is after market feature, by default it is enable in the code
+EN_IONIZER_FLAG - Not Defined
+* As per latest discussion, Ionizer shall be enabled by default when Inventilate is powered ON. 
+* So, comment this macro, to enable this functionality
+
+EN_IONIZER_FLAG - Defined
+* As per previous requirement, this was based on a DDMP which can be set from other devices.
+  ie/.Ionizer feature can be enabled or disabled from other devices, using the DDMP "IV0SETT". 
+  IV0SETT -> Bit1 -> 1:Ionizer Enabled, 0: Ionizer Disabled
+* So, uncomment this macro, to enable this functionality
+*/
+//Uncomment EN_IONIZER_FLAG to configure using IV0sett DDMP
+//#define EN_IONIZER_FLAG
 
 #ifdef CONNECTOR_EOL_SERVICE
 

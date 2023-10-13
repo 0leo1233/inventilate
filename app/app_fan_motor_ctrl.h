@@ -75,21 +75,21 @@
 
 #define IAQ_DEF_GOOD_MIN    ((uint16_t)   0u)
 #define IAQ_DEF_GOOD_MAX    ((uint16_t) 100u)
-#define IAQ_DEF_BAD_MIN     ((uint16_t) 101u)
-#define IAQ_DEF_BAD_MAX     ((uint16_t) 200u)
-#define IAQ_DEF_WORSE_MIN   ((uint16_t) 201u)
-#define IAQ_DEF_WORSE_MAX   ((uint16_t) 500u)
+#define IAQ_DEF_FAIR_MIN    ((uint16_t) 101u)
+#define IAQ_DEF_FAIR_MAX    ((uint16_t) 200u)
+#define IAQ_DEF_BAD_MIN     ((uint16_t) 201u)
+#define IAQ_DEF_BAD_MAX     ((uint16_t) 500u)
 #define IAQ_RANGE_LEVELS    ((uint8_t)    3u)
 
-#define MOTOR_FAN_MAX_RPM  ((uint32_t) 10000u)
-#define MOTOR_FAN_MIN_RPM  ((uint32_t)     0u)
+#define MOTOR_FAN_MAX_RPM   ((uint32_t) 10000u)
+#define MOTOR_FAN_MIN_RPM   ((uint32_t)     0u)
 
-#define IAQ_CONFIG_MIN     ((uint32_t)     0u)
-#define IAQ_CONFIG_MAX     ((uint32_t)   500u)
+#define IAQ_CONFIG_MIN      ((uint32_t)     0u)
+#define IAQ_CONFIG_MAX      ((uint32_t)   500u)
 
-#define IV_IVSETT_MIN      ((uint32_t)     0u)
-#define IV_IVSETT_MAX      ((uint32_t)     0xFFFF)              //Actual value = 0xFFFFFFFF
-#define IV_IVSETT_DEFAULT  ((uint32_t)      0u) 
+#define IV_IVSETT_MIN       ((uint32_t)     0u)
+#define IV_IVSETT_MAX       ((uint32_t)     0xFFFF)              //Actual value = 0xFFFFFFFF
+#define IV_IVSETT_DEFAULT   ((uint32_t)      0u) 
 
 #define IV_FILTER_MIN_MIN   ((uint32_t)      0u)
 #define IV_FILTER_MIN_MAX   ((uint32_t)      0xFFFF)
@@ -250,10 +250,10 @@ typedef enum __data_type
     IV_VOC_SENSOR_ACC      = 20,
     IV_IAQ_GOOD_MIN        = 21,
     IV_IAQ_GOOD_MAX        = 22,
-    IV_IAQ_BAD_MIN         = 23,
-    IV_IAQ_BAD_MAX         = 24,
-    IV_IAQ_WORSE_MIN       = 25,
-    IV_IAQ_WORSE_MAX       = 26,
+    IV_IAQ_FAIR_MIN         = 23,
+    IV_IAQ_FAIR_MAX         = 24,
+    IV_IAQ_BAD_MIN          = 25,
+    IV_IAQ_BAD_MAX          = 26,
     IV_ONE_SHOT_TMR_EXP    = 27,
     DP_SENSOR_STATUS       = 28,
     IV_STORAGE_TMR_EXP     = 29,

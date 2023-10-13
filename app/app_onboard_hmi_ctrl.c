@@ -294,7 +294,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                     seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_ON;
                     seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_ON;
                 }
-                else if ( IV0AQST_AIR_QUALITY_BAD == i32value )
+                else if ( IV0AQST_AIR_QUALITY_FAIR == i32value )
                 {
                     seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
                     seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_ON;
@@ -379,7 +379,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 
         case UPDATE_SEG_BLE:
             {
-                seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+                seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_DEVICE_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
                 LOG(I, "SEG_BLE_STATUS = %d", seg_stat[SEG_BLE_STATUS]);
                 uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
             }
@@ -395,7 +395,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 
         case UPDATE_SEG_IONIZER:
             {
-             
+#ifdef EN_IONIZER_FLAG                
                 if (ivsett_config.EN_DIS_IONIZER == true)
                 {
                 seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
@@ -404,6 +404,9 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 {
                     seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
                 }
+#else
+                seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+#endif              
                
                 LOG(I, "SEG_IONIZER_STATUS = %d", seg_stat[SEG_IONIZER_STATUS]);
                 uc1510c_set_segment(SEG_IONIZER_STATUS, seg_stat[SEG_IONIZER_STATUS]);
@@ -436,13 +439,13 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                     seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_ON;
                     seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_ON;
                 }
-                else if ( IV0AQST_AIR_QUALITY_BAD == i32value )
+                else if ( IV0AQST_AIR_QUALITY_FAIR == i32value )
                 {
                     seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
                     seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_ON;
                     seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
                 }
-                else // Worse Air Quality
+                else //  BAD Air Quality
                 {
                     seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
                     seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_OFF;
@@ -480,7 +483,7 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             break;
 
         case UPDATE_SEG_BLE:
-            seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+            seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_DEVICE_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
             break;
 
         case UPDATE_SEG_DP_SENS_STAT:
@@ -489,6 +492,7 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 
         case UPDATE_SEG_IONIZER:
            
+#ifdef EN_IONIZER_FLAG             
             if (ivsett_config.EN_DIS_IONIZER == true)
             {
                 seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
@@ -498,7 +502,10 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
      
             }
-           
+#else
+            seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+
+#endif            
             break;
 			
         default:

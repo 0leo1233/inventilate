@@ -12,8 +12,8 @@
 #include "app_fan_motor_ctrl.h"
 
 int32_t bme68x_humid_value;
-int32_t bm_humid_prev;
-int32_t bm_humid_curr;
+int32_t bm_humid_prev;                      /*used in storage mode algorithm to store previous humidity value*/
+int32_t bm_humid_curr;                      /*used in storage mode algorithm to store current humidity value*/
 
 static uint32_t calc_percentage(uint32_t value, uint32_t percent);
 static int8_t calc_rate_of_change(float curr_val, float prev_val, float max_val);

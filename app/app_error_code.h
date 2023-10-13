@@ -13,7 +13,7 @@ typedef enum __invent_err_code_bit_pos
     DP_SENSOR_NO_DATA_ERROR          =  3,
     DP_SENSOR_DATA_PLAUSIBLE_ERROR   =  4,
     DP_SENSOR_BOARD_BATTERY_LOW      =  5,
-    DP_SENSOR_BOARD_CONN_RETRY       =  6,
+    DP_SENSOR_BOARD_CONN_RETRY       =  6,          //Reserved
     //ERROR_CODE:   FAN1
     FAN1_RPM_MISMATCH                =  7,
     FAN1_TACHO_READ_DEVICE_INACTIVE  =  8,
@@ -40,6 +40,9 @@ typedef enum __invent_err_code_bit_pos
     LIN_COMMUNICATION_ERROR          = 25,
     MAX_NUM_ERROR_CODES              = 26
 }INVENT_ERR_CODE_BIT_POS;
+
+
+#define RESERVED_6  DP_SENSOR_BOARD_CONN_RETRY
 
 #define DPSENS_PLAUSIBLE_UPRANGE      (uint16_t)25000
 #define DPSENS_PLAUSIBLE_DOWNRANGE    (int16_t)-25000

@@ -45,6 +45,8 @@
 #define HMI_LED_BRIGHT_LOW                    20
 #define HMI_LED_BRIGHT_MEDIUM                 40  
 
+#define BUTTON_PRESS_MASK_3                   3
+
 typedef enum __blink_action
 {
     BLINK_ACTIVATE   = 0,

@@ -69,7 +69,7 @@
 #define RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN    ((uint8_t)   10u)
 #define FAN_MOTOR_VALIDATION_INTERVAL_MIN         ((uint8_t)    5u)
 #define IV_STORAGE_HUMID_CHK_MIN                  ((uint8_t)    1u)
-#define IV_IAQ_WAIT_MIN                           ((uint8_t)   30u)     //Wait  time when accuracy is Zero
+#define IV_IAQ_ACC0_WAIT_MIN                           ((uint8_t)   30u)     //The wait time when the accuracy is 0 and IAQ is not GOOD
 
 
 

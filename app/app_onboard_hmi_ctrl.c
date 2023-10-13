@@ -149,8 +149,6 @@ void reset_hmi_btn_ctrl_variables(void)
 {
     onboard_hmi_btn_evt[0].short_press_evt_cnt  = SHORT_PRESS_ACTION_PWR_BTN_OFF;
     onboard_hmi_btn_evt[1].short_press_evt_cnt  = SHORT_PRESS_ACTION_MODE_AUTO;
-    ////onboard_hmi_btn_evt[2].short_press_evt_cnt  = SHORT_PRESS_ACT_LIGHT_OFF;
-
     onboard_hmi_btn_evt[0].long_press_evt_cnt   = LONG_PRESS_ACT_PWR_BTN_RESET_FILT_TMR;
     onboard_hmi_btn_evt[1].long_press_evt_cnt   = LONG_PRESS_ACTION_STORAGE_MODE;
     onboard_hmi_btn_evt[2].long_press_evt_cnt   = LONG_PRESS_ACT_LIGHT_BTN_BT_SCAN;
@@ -168,7 +166,7 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     uint8_t                 onbrd_hmi_evt = 0xFF;
     ONBOARD_HMI_BUTTON_EVENT*   ptr_event = NULL;
     BTN_PRESSED_EVT           hmi_btn_evt = (BTN_PRESSED_EVT)(event_data & 0xFF);
-    BTN_PRESS_EVENT_TYPE       event_type = (BTN_PRESS_EVENT_TYPE)((event_data >> 8) & 0x03 );
+    BTN_PRESS_EVENT_TYPE       event_type = (BTN_PRESS_EVENT_TYPE)((event_data >> 8) & BUTTON_PRESS_MASK_3 );
     uint8_t                    seg = 0;
 
     if ( IVPMGR0STATE_STANDBY == inv_state )

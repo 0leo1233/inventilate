@@ -12,8 +12,8 @@
 #include "app_fan_motor_ctrl.h"
 
 int32_t bme68x_humid_value;
-int32_t bm_humid_prev;
-int32_t bm_humid_curr;
+int32_t bm_humid_prev;                      /*used in storage mode algorithm to store previous humidity value*/
+int32_t bm_humid_curr;                      /*used in storage mode algorithm to store current humidity value*/
 
 static uint32_t calc_percentage(uint32_t value, uint32_t percent);
 static int8_t calc_rate_of_change(float curr_val, float prev_val, float max_val);
@@ -190,7 +190,7 @@ void update_data_in_nvm(DATA_ID data_id, uint32_t data)
     }
     else
     {
-        LOG(E, "Invalid data_id = %d", data_id);
+        LOG(I, "Invalid data_id = %d", data_id);
     }
 }
 
@@ -212,7 +212,13 @@ void set_fan_motor_rpm(invent_device_id_t dev_id, uint32_t rpm)
     {
         rpm = whole_range_max_rpm;
     }
-
+    if ( rpm < whole_range_min_rpm )
+    {
+        rpm = whole_range_min_rpm;
+    }
+    /* Send the current set RPM to the broker */
+    update_and_send_val_to_broker(MTR0SETSPD|DDM2_PARAMETER_INSTANCE(dev_id), rpm);
+    
     if ( DEV_MOTOR == dev_id )
     {
         iv_ctrl_algo.constant_rpm_motor = rpm;
@@ -407,6 +413,7 @@ IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
     if ( ptr_iv->dp_data_count > DP_ZERO_COUNT )
     {
         /* Find the pressure compensation status */
+        LOG(I,"[press_val %d]",ptr_iv->curr_avg_dp_value);
         if ( ptr_iv->curr_avg_dp_value < ptr_iv->dp_neg_acceptable_lim )
         {
             /* Under pressure */
@@ -418,6 +425,7 @@ IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
         }
         else if ( ptr_iv->curr_avg_dp_value > ptr_iv->dp_pos_acceptable_lim )
         {
+			/* Over pressure */
             ptr_iv->dp_exceed_count ++;
             if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
             {
@@ -455,7 +463,7 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
     ptr_iv->ptr_prev_data  = &ptr_iv->prev_avg_iaq_value;
     ptr_iv->roc_max_val    = INVENT_IAQ_INDEX_MAX;
 
-    if ( ( ptr_iv->iaq_data_count > 0u ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) )
+    if ( ( ( ptr_iv->iaq_data_count > 0u ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) ) || ( ( ptr_iv->iaq_data_count > 0u ) && ( ptr_iv->sens_acc == BME6X_MEDIUM_ACCURACY ) ))
     {
         /* Find the Air Quality status from IAQ */
         for ( index = 0; index < IAQ_RANGE_LEVELS; index++ )
@@ -513,8 +521,6 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
         /* Check the wait timer expired or not */
         if ( true == ptr_iv->wait_tmr_exp )
         {
-            
-            
             /* "pr comp tmr exp" Reset the timer exp flag */
             ptr_iv->wait_tmr_exp = false;
 
@@ -538,7 +544,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
             else
             {
         #if INV_ALGO_DEBUG 
-                LOG(E, "err pr_st=%d", ptr_iv->curr_pr_stat);
+                LOG(I, "err pr_st=%d", ptr_iv->curr_pr_stat);
         #endif
             }
 
@@ -967,7 +973,7 @@ void read_data_from_nvs(void)
         if ( HAL_NVS_OK != nvs_err )
         {
 #if INV_ALGO_DEBUG 
-            LOG(E, "hal_nvs_read nvs_err = %d", nvs_err);	
+            LOG(I, "hal_nvs_read nvs_err = %d index = %d", nvs_err, index);	
 #endif 
             // NVS error found ..Store defaut value
             *((uint32_t*)(nvs_db[index].data_ptr)) = nvs_db[index].default_val;
@@ -986,10 +992,11 @@ void read_data_from_nvs(void)
             LOG(I, "hal_nvs_read data = %d", data);
 #endif 
             // Plausibility check 
-            if ( ( data < nvs_db[index].min_val ) || ( data > nvs_db[index].max_val ) )
+            // NULL value check -> if data stored in NVS  is 0 in fresh board 
+            if ( ( data < nvs_db[index].min_val ) || ( data > nvs_db[index].max_val ) || ( data == INV_NULL_VALUE ) )
             {
 #ifdef INV_ALGO_DEBUG 
-                LOG(E, "Plausible error data read = %d", data);	
+                LOG(I, "Plausible error data read = %d", data);	
 #endif 
                 // Plausibilty failed ..Store default value
                 *((uint32_t*)(nvs_db[index].data_ptr)) = nvs_db[index].default_val;

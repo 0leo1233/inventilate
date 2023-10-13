@@ -69,7 +69,7 @@
 #define RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN    ((uint8_t)   10u)
 #define FAN_MOTOR_VALIDATION_INTERVAL_MIN         ((uint8_t)    5u)
 #define IV_STORAGE_HUMID_CHK_MIN                  ((uint8_t)    1u)
-#define IV_IAQ_WAIT_MIN                           ((uint8_t)    2u)
+#define IV_IAQ_ACC0_WAIT_MIN                           ((uint8_t)   30u)     //The wait time when the accuracy is 0 and IAQ is not GOOD
 
 
 
@@ -250,10 +250,10 @@ typedef enum __data_type
     IV_VOC_SENSOR_ACC      = 20,
     IV_IAQ_GOOD_MIN        = 21,
     IV_IAQ_GOOD_MAX        = 22,
-    IV_IAQ_FAIR_MIN         = 23,
-    IV_IAQ_FAIR_MAX         = 24,
-    IV_IAQ_BAD_MIN          = 25,
-    IV_IAQ_BAD_MAX          = 26,
+    IV_IAQ_FAIR_MIN        = 23,
+    IV_IAQ_FAIR_MAX        = 24,
+    IV_IAQ_BAD_MIN         = 25,
+    IV_IAQ_BAD_MAX         = 26,
     IV_ONE_SHOT_TMR_EXP    = 27,
     DP_SENSOR_STATUS       = 28,
     IV_STORAGE_TMR_EXP     = 29,
@@ -495,11 +495,11 @@ extern void stop_periodic_timer(void);
 
 extern void change_state(INVENT_CONTROL_STATE iv_ctrl_state);
 
-extern void update_iaq_status_to_broker(IV0AQST_ENUM iaq_status);
+extern void update_iaq_status_to_broker(const IV0AQST_ENUM iaq_status);
 
-extern void update_dp_status_to_broker(IV0PRST_ENUM press_status);
+extern void update_dp_status_to_broker(const IV0PRST_ENUM press_status);
 
-extern void update_set_rpm_to_broker(invent_device_id_t dev_id, uint32_t rpm);
+extern void update_set_rpm_to_broker(const invent_device_id_t dev_id, const uint32_t rpm);
 
 extern void push_data_in_queue(int32_t data, DATA_ID data_id);
 

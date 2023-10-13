@@ -18,6 +18,8 @@
 #include "ddm2.h"
 #include <string.h>
 
+//extern int ble_peri_status; // Tobe defined in BLE_peripheral.c 
+int ble_peri_status = 0;
 extern void error_check_ack(void);
 extern void update_blink_info(const uint32_t error_code);
 
@@ -147,7 +149,7 @@ void reset_hmi_btn_ctrl_variables(void)
 {
     onboard_hmi_btn_evt[0].short_press_evt_cnt  = SHORT_PRESS_ACTION_PWR_BTN_OFF;
     onboard_hmi_btn_evt[1].short_press_evt_cnt  = SHORT_PRESS_ACTION_MODE_AUTO;
-    onboard_hmi_btn_evt[2].short_press_evt_cnt  = SHORT_PRESS_ACT_LIGHT_OFF;
+    ////onboard_hmi_btn_evt[2].short_press_evt_cnt  = SHORT_PRESS_ACT_LIGHT_OFF;
 
     onboard_hmi_btn_evt[0].long_press_evt_cnt   = LONG_PRESS_ACT_PWR_BTN_RESET_FILT_TMR;
     onboard_hmi_btn_evt[1].long_press_evt_cnt   = LONG_PRESS_ACTION_STORAGE_MODE;
@@ -166,22 +168,24 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     uint8_t                 onbrd_hmi_evt = 0xFF;
     ONBOARD_HMI_BUTTON_EVENT*   ptr_event = NULL;
     BTN_PRESSED_EVT           hmi_btn_evt = (BTN_PRESSED_EVT)(event_data & 0xFF);
-    BTN_PRESS_EVENT_TYPE       event_type = (BTN_PRESS_EVENT_TYPE)((event_data >> 8) & 0x01 );
-    uint8_t                           seg = 0;
+    BTN_PRESS_EVENT_TYPE       event_type = (BTN_PRESS_EVENT_TYPE)((event_data >> 8) & 0x03 );
+    uint8_t                    seg = 0;
 
     if ( IVPMGR0STATE_STANDBY == inv_state )
     {
-        /* When the inventilate is in STANDBY state, skip the processing of this MODE button events and long press events */
-        if ( ( BTN_MODE == hmi_btn_evt ) || ( BUTTON_EVT_LONG_PRESS == event_type ) )
+        if(hmi_stanby_mode == 1)
         {
-            
-            //("Skip mode/LP btn event");
-            index = ONBOARD_HMI_EVT_TABLE_SIZE; 
+            /* When the inventilate is in STANDBY state, skip the processing of this MODE button events and long press events */
+            if ( ( BTN_MODE == hmi_btn_evt ) || ( BUTTON_EVT_LONG_PRESS == event_type ) || ( BUTTON_EVT_LONG_PRESS_2 == event_type ) )
+            {
+                LOG(W, "Skip mode/LP btn event");
+                index = ONBOARD_HMI_EVT_TABLE_SIZE; 
+            }
         }
     }
     else if ( IVPMGR0STATE_STORAGE == inv_state )
     {
-        if ( ( BTN_MODE == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) )
+        if ( ( ( BTN_MODE == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) ) || ( ( BTN_POWER == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) ) || ( ( BTN_LIGHT == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) ) )
         {
             //("Storage skip mode btn event");
             /* When the inventilate is in STORAGE state, skip the processing of this MODE button events */
@@ -245,9 +249,15 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
                     
                     LOG(W, "lng pr onbrd_hmi_evt = %d", onbrd_hmi_evt);
                     break;
+                
+                case BUTTON_EVT_LONG_PRESS_2:
+                    onbrd_hmi_evt = ptr_event->long_press_evt_cnt;
+                    ptr_event->long_press_evt_cnt = ptr_event->max_evt_lng_press;
+                    LOG(W, "lng pr onbrd_hmi_evt_lp_2 = %d", onbrd_hmi_evt);
+                    break;
 
                 default:
-                    LOG(E, "Error Unhandle button event = %d", event_type);
+                    LOG(I, "Error Unhandle button event = %d", event_type);
                     break;
             }
 
@@ -287,46 +297,82 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             {
 #ifndef LCD_DRIVER_IC_VERSION_OLD 
                 ONBOARDHMI_SEGMENT seg;
-
-                if ( IV0AQST_AIR_QUALITY_GOOD == i32value )
+                if(seg_stat[SEG_STORAGE_MODE] == SEG_ON)
                 {
-                    seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
-                    seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_ON;
-                    seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_ON;
-                }
-                else if ( IV0AQST_AIR_QUALITY_FAIR == i32value )
-                {
-                    seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
-                    seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_ON;
+                    seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_OFF;
+                    seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_OFF;
                     seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
                 }
                 else
                 {
-                    seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
-                    seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_OFF;
-                    seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
+
+                    if(inv_acqrc_level > 1)
+                    {
+                        if ( IV0AQST_AIR_QUALITY_GOOD == i32value )
+                        {
+                            seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
+                            seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_ON;
+                            seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_ON;
+                        }
+                        else if ( IV0AQST_AIR_QUALITY_FAIR == i32value )
+                        {
+                            seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
+                            seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_ON;
+                            seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
+                        }
+                        else
+                        {
+                            seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
+                            seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_OFF;
+                            seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
+                        }
+                    }
+                    else
+                    {
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_OFF;
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_OFF;
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
+                    }
                 }
 
                 for ( seg = SEG_AIR_QUALITY_LEVEL_1_LOW; seg <= SEG_AIR_QUALITY_LEVEL_3_HIGH; seg++ )
                 {
                     uc1510c_set_segment(seg, seg_stat[seg]);
                 }
+                
 #else
                 /* IAQ value greater than threshold means air quality bad --> Turn OFF segement */
-                bool curr_aq_stat = ( i32value != IV0AQST_AIR_QUALITY_GOOD ) ? SEG_OFF : SEG_ON;
+                
+                
+                bool curr_aq_stat = SEG_OFF;
 
-                if ( curr_aq_stat != seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] )
+                if(seg_stat[SEG_STORAGE_MODE] == SEG_ON)
                 {
-                    LOG(I, "SEG_AIR_QUALITY segemnt stat = %d", curr_aq_stat);
-                    /* store current air quality status */
-                    seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = curr_aq_stat;
-                    /* set the air quality segment */
-                    uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_1_LOW, curr_aq_stat); 
+                    seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = SEG_OFF;
+                    uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_1_LOW, SEG_OFF); 
+                }
+                else
+                {
+                    curr_aq_stat = ( i32value != IV0AQST_AIR_QUALITY_GOOD ) ? SEG_OFF : SEG_ON;
+
+                    if ( curr_aq_stat != seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] )
+                    {
+                        LOG(I, "SEG_AIR_QUALITY segemnt stat = %d", curr_aq_stat);
+                        /* store current air quality status */
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = curr_aq_stat;
+                        /* set the air quality segment */
+                        uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_1_LOW, curr_aq_stat); 
+                    }
                 }
 #endif
             }
             break;
-			
+		case UPDATE_SEG_AQ_OFF:
+            LOG(I,"[IAQ_ICON_OFF]");
+            uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_1_LOW, SEG_OFF);
+            uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_2_MID, SEG_OFF);
+            uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_3_HIGH, SEG_OFF);
+            break;	
         case UPDATE_SEG_FILT_STAT:
 			{
 				seg_stat[SEG_FILTER_STATUS] = ( i32value != IV0FILST_FILTER_CHANGE_REQ ) ? SEG_OFF : SEG_ON;
@@ -344,7 +390,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 			
 		case UPDATE_SEG_MODE:
             {
-                LOG(I, "IV0MODE = %d", i32value);
+                LOG(I, "IV0MODE_SEG = %d", i32value);
                 if ( NUM_OPERATING_MODES > i32value )
                 {
                     LOG(I, "IV0MODE = %d", i32value);
@@ -353,11 +399,29 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             }
             break;
 			
-        case UPDATE_SEG_VEHMOD:
+        case UPDATE_SEG_VEHMOD: //For Storage mode active or inactive
 			{
 				seg_stat[SEG_STORAGE_MODE] = ( IV0STORAGE_ACTIVATE == (IV0STORAGE_ENUM) i32value ) ? SEG_ON : SEG_OFF;
                 LOG(I, "UPDATE_SEG_VEHMOD i32value = %d", i32value);
                 uc1510c_set_segment(SEG_STORAGE_MODE, seg_stat[SEG_STORAGE_MODE]);
+                seg_stat[SEG_WIFI_STATUS] = SEG_OFF;
+                uc1510c_set_segment(SEG_WIFI_STATUS, seg_stat[SEG_WIFI_STATUS]);
+                seg_stat[SEG_BLE_STATUS] =SEG_OFF;
+                uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
+                seg_stat[SEG_LIGHT_BUTTON] =( IV0STORAGE_ACTIVATE == (IV0STORAGE_ENUM) i32value ) ? SEG_OFF : SEG_ON;
+                uc1510c_set_segment(SEG_LIGHT_BUTTON, seg_stat[SEG_LIGHT_BUTTON]);
+                seg_stat[SEG_POWER_BUTTON] =( IV0STORAGE_ACTIVATE == (IV0STORAGE_ENUM) i32value ) ? SEG_OFF : SEG_ON;
+                uc1510c_set_segment(SEG_POWER_BUTTON, seg_stat[SEG_POWER_BUTTON]);
+                
+                seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] =( IV0STORAGE_ACTIVATE == (IV0STORAGE_ENUM) i32value ) ? SEG_OFF : SEG_ON;
+                uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_1_LOW, seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]);
+
+                seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID] =( IV0STORAGE_ACTIVATE == (IV0STORAGE_ENUM) i32value ) ? SEG_OFF : SEG_ON;
+                uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_2_MID, seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]);
+
+                seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] =( IV0STORAGE_ACTIVATE == (IV0STORAGE_ENUM) i32value ) ? SEG_OFF : SEG_ON;
+                uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_3_HIGH, seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH]);
+                //Ionizer, Warning, Filter, Solar
 			}
             break;
 			
@@ -371,25 +435,71 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 			
         case UPDATE_SEG_WIFI:
             {
-                seg_stat[SEG_WIFI_STATUS] = ( WIFI0STS_CONNECTED == (WIFI0STS_ENUM)i32value ) ? SEG_ON : SEG_OFF;
-                LOG(I, "SEG_WIFI_STATUS = %d", seg_stat[SEG_WIFI_STATUS]);
-                uc1510c_set_segment(SEG_WIFI_STATUS, seg_stat[SEG_WIFI_STATUS]);
+                if(seg_stat[SEG_STORAGE_MODE] == SEG_ON)
+                {
+                    seg_stat[SEG_WIFI_STATUS] = SEG_OFF;
+                    uc1510c_set_segment(SEG_WIFI_STATUS, seg_stat[SEG_WIFI_STATUS]); 
+                }
+                else
+                {
+                    seg_stat[SEG_WIFI_STATUS] = ( WIFI0STS_CONNECTED == (WIFI0STS_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+                    LOG(I, "SEG_WIFI_STATUS = %d", seg_stat[SEG_WIFI_STATUS]);
+                    uc1510c_set_segment(SEG_WIFI_STATUS, seg_stat[SEG_WIFI_STATUS]);
+                }
             }
             break;
 
         case UPDATE_SEG_BLE:
             {
-                seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_DEVICE_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
-                LOG(I, "SEG_BLE_STATUS = %d", seg_stat[SEG_BLE_STATUS]);
-                uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
+                if(seg_stat[SEG_STORAGE_MODE] == SEG_ON)
+                {
+                    seg_stat[SEG_BLE_STATUS] = SEG_OFF;
+                    uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
+                }
+                else
+                {
+                    LOG(I,"update_seg_ble_value = %d", i32value);
+                    if(i32value != BT0PAIR_OUT_PAIRING_MODE_INACTIVE )
+                    {
+                        seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_PAIRING_MODE_ACTIVE == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+                        LOG(I, "SEG_BLE_STATUS = %d app_conn_sts = %d i32v = %d", seg_stat[SEG_BLE_STATUS], ble_peri_status, i32value);
+                        if( (seg_stat[SEG_BLE_STATUS] == 0) &&(ble_peri_status == 1) )
+                        {
+                                seg_stat[SEG_BLE_STATUS] = 1;
+                                LOG(I,"App connected Show BLE_B");
+                        }
+                        if(ble_dp_con_sts == 1)
+                        {
+                            seg_stat[SEG_BLE_STATUS] = 1;
+                            LOG(I,"DP connected Show BLE_A");  
+                        }
+                        
+                        uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
+                    }
+                }
             }
             break;
 
         case UPDATE_SEG_DP_SENS_STAT:
             {
-                seg_stat[SEG_BLE_STATUS] = ( DP_SENSOR_AVAILABLE == (DP_SENS_STATUS)i32value ) ? SEG_ON : SEG_OFF;
-                LOG(I, "UPDATE_SEG_BLE = %d", seg_stat[SEG_BLE_STATUS]);
-                uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
+                if(seg_stat[SEG_STORAGE_MODE] == SEG_ON)
+                {
+                    seg_stat[SEG_BLE_STATUS] = SEG_OFF;
+                    uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
+                    LOG(I, "STOR_ON_UPDATE_SEG_BLE = %d App_con_sts %d", seg_stat[SEG_BLE_STATUS], ble_peri_status);
+                }
+                else
+                {
+                    seg_stat[SEG_BLE_STATUS] = ( DP_SENSOR_AVAILABLE == (DP_SENS_STATUS)i32value ) ? SEG_ON : SEG_OFF;
+                    if( (seg_stat[SEG_BLE_STATUS] == 0) &&(ble_peri_status == 1) )
+                    {
+                            seg_stat[SEG_BLE_STATUS] = 1;
+                            LOG(I,"App connected Show BLE");
+                    }
+                    LOG(I, "UPDATE_SEG_BLE = %d App_con_sts %d", seg_stat[SEG_BLE_STATUS], ble_peri_status);
+                    //Check for App connection before hiding BLE ICON for DP sensor
+                    uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
+                }
             }
             break;
 
@@ -407,7 +517,6 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 #else
                 seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
 #endif              
-               
                 LOG(I, "SEG_IONIZER_STATUS = %d", seg_stat[SEG_IONIZER_STATUS]);
                 uc1510c_set_segment(SEG_IONIZER_STATUS, seg_stat[SEG_IONIZER_STATUS]);
             }
@@ -445,7 +554,7 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                     seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_ON;
                     seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
                 }
-                else //  BAD Air Quality
+                else // Bad Air Quality
                 {
                     seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;
                     seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID]  = SEG_OFF;
@@ -453,10 +562,17 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 }
 
 #else
-                /* Air quality not good --> Turn OFF segement */
-                bool curr_aq_stat = ( i32value != IV0AQST_AIR_QUALITY_GOOD ) ? SEG_OFF : SEG_ON;
-                /* store current air quality status */
-                seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = curr_aq_stat;
+                if(seg_stat[SEG_STORAGE_MODE] == SEG_ON)
+                {
+                    seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = SEG_OFF;
+                }
+                else
+                {
+                    /* Air quality not good --> Turn OFF segement */
+                    bool curr_aq_stat = ( i32value != IV0AQST_AIR_QUALITY_GOOD ) ? SEG_OFF : SEG_ON;
+                    /* store current air quality status */
+                    seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = curr_aq_stat;
+                }
 #endif
             }
             break;
@@ -483,11 +599,37 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             break;
 
         case UPDATE_SEG_BLE:
-            seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_DEVICE_PAIRED == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+            if(seg_stat[SEG_STORAGE_MODE] == SEG_ON)
+            {
+                seg_stat[SEG_BLE_STATUS] = SEG_OFF;
+            }
+            else
+            {
+                seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_PAIRING_MODE_ACTIVE == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
+                
+                if( (seg_stat[SEG_BLE_STATUS] == 0) &&(ble_peri_status == 1) )
+                {
+                        seg_stat[SEG_BLE_STATUS] = 1;
+                        LOG(I,"App connected Show BLE_B_var");
+                }
+                
+                if ( ble_dp_con_sts == 1)
+                {
+                    seg_stat[SEG_BLE_STATUS] = 1;
+                    LOG(I,"DP connected Show BLE_B_var");
+                    
+                }
+                
+            }
             break;
 
         case UPDATE_SEG_DP_SENS_STAT:
             seg_stat[SEG_BLE_STATUS] = ( DP_SENSOR_AVAILABLE == (DP_SENS_STATUS)i32value ) ? SEG_ON : SEG_OFF;
+            if( (seg_stat[SEG_BLE_STATUS] == 0) &&(ble_peri_status == 1) )
+            {
+                    seg_stat[SEG_BLE_STATUS] = 1;
+                    LOG(I,"App connected Show BLE_var");
+            }
             break;
 
         case UPDATE_SEG_IONIZER:
@@ -506,6 +648,7 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
 
 #endif            
+          
             break;
 			
         default:
@@ -526,6 +669,8 @@ static void onboard_hmi_mode_seg_update(LCDSEG_STATUS* ptr_mode_seg)
     for ( index = 0; index < NUM_OPERATING_MODES - 1;  index++ )
     {
         uc1510c_set_segment(index + SEG_MODE_AUTO, ptr_mode_seg[index]);
+        //update segment ON/OFF seg_stat[]
+        seg_stat[index + SEG_MODE_AUTO] = ptr_mode_seg[index];
     }
 }
 
@@ -570,6 +715,11 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
                         }
                     }
                 }
+
+                seg_stat[SEG_MODE_AUTO]        = SEG_OFF;
+                seg_stat[SEG_MODE_TURBO]       = SEG_OFF;
+                seg_stat[SEG_MODE_SLEEP]       = SEG_OFF;
+
             }
 			break;
 
@@ -581,6 +731,8 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
                 seg_stat[SEG_POWER_BUTTON]     = SEG_ON;
                 seg_stat[SEG_MODE_AUTO]        = SEG_ON;
                 seg_stat[SEG_MODE_MENU_LINE]   = SEG_ON;
+                seg_stat[SEG_STORAGE_MODE]     = SEG_OFF;
+                
                 
 #ifdef LCD_DRIVER_IC_VERSION_NEW                
                 seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_ON;

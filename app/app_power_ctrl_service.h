@@ -53,6 +53,7 @@ typedef struct __pwr_ctrl_sm
     uint32_t               filter_min_counter;
     uint32_t               filter_sec_counter;
     FILTER_RESET_STATUS    filter_cur_status;
+    FILTER_RESET_STATUS    filter_prev_status;
     IV0PWRSRC_ENUM         active_power_src;
 }PWR_CTRL_SM;
 

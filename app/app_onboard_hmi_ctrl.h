@@ -42,6 +42,9 @@
 #define HMI_BACKLIGHT_MIN_DUTY_CYCLE          0
 #define HMI_BACKLIGHT_MAX_DUTY_CYCLE          100
 
+#define HMI_LED_BRIGHT_LOW                    20
+#define HMI_LED_BRIGHT_MEDIUM                 40  
+
 typedef enum __blink_action
 {
     BLINK_ACTIVATE   = 0,
@@ -260,7 +263,8 @@ typedef enum lcdseg_stat
 typedef enum __btn_press_event_type
 {
     BUTTON_EVT_SHORT_PRESS = 0,
-    BUTTON_EVT_LONG_PRESS  = 1
+    BUTTON_EVT_LONG_PRESS  = 1,
+    BUTTON_EVT_LONG_PRESS_2 = 2
 }BTN_PRESS_EVENT_TYPE;
 
 typedef struct _hmi_evt_process_res
@@ -303,6 +307,7 @@ typedef struct __obhmi_ctrl_sm
     uint32_t                    invent_error_status;
     uint32_t                    invent_prev_err_status;
     INV_MODES                   selected_mode;
+    IV0PWRSRC_ENUM              selected_pwr_src;
 }ONBRD_HMI_CTRL_SM;
 
 typedef struct _onboard_hmi_button_event
@@ -320,6 +325,8 @@ typedef struct _onboard_hmi_button_event
 extern uint8_t hmi_stanby_mode;
 
 extern int32_t  inv_acqrc_level;
+extern uint8_t ble_dp_con_sts;
+
 extern LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT];
 
 extern ONBOARD_HMI_BUTTON_EVENT onboard_hmi_btn_evt[];

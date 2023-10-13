@@ -10,6 +10,7 @@
 #ifdef APP_LIGHT_CONTROL
 
 
+//LED strip Brightness configuration
 typedef enum __dim_level_duty_cycle
 {
     DIM_LVL_DUTY_CYCLE_0    =   0,

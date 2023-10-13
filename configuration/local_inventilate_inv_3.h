@@ -138,6 +138,10 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define APP_POWER_CONTROL_SERVICE
 #define APP_DIFF_PRESSURE_SENSOR
 #define APP_LIGHT_CONTROL
+/*Requirement for Ionizer:
+Ionizer is after market feature, by default it is enable in the code
+if user needs they can purchase and connect the Ionizer module.
+*/
 //Uncomment EN_IONIZER_FLAG to configure using IV0sett DDMP
 //#define EN_IONIZER_FLAG
 

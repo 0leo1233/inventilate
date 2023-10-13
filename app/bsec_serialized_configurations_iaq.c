@@ -1,3 +1,6 @@
+/*
+configuration for BM680
+*/
 #include "configuration.h"
 
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )

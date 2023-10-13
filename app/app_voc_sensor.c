@@ -334,7 +334,8 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
 #endif  // CONFIG_DICM_SUPPORT_INVENT_SERIAL_BME68X_BSEC_LOGS
 
 #endif  //APP_VOC_DEBUG_LOG
-        /*send iaq data to broker whenever data changes*/
+
+        /*Send IAQ data to broker whenever data changes*/
         if ( inst_read_service.iaq_index != bsec_out->iaq.data )
         {
             /* store the new IAQ index value */
@@ -343,10 +344,10 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
 			update_voc_sens_to_broker(bsec_out);
         }
 
-         /*send accuracy  to broker when accuracy is updated*/
+         /*Send accuracy  to broker when accuracy is updated*/
         if (inst_read_service.aqrc_lvl != bsec_out->iaq.accuracy)
         {
-            /* store the new Acaquracy index value */
+            /* store the new Accuracy index value */
             inst_read_service.aqrc_lvl = bsec_out->iaq.accuracy;
             /* Publish the value to broker */
 			update_voc_sens_to_broker(bsec_out);

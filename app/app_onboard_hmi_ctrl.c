@@ -306,7 +306,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 else
                 {
 
-                    if(inv_acqrc_level > 1)
+                    if(inv_acqrc_level > BME6X_LOW_ACCURACY)
                     {
                         if ( IV0AQST_AIR_QUALITY_GOOD == i32value )
                         {

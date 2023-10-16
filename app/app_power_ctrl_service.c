@@ -1,5 +1,5 @@
 /*! \file .c
-	\brief This file app_power_ctrl_service contains implementation related to Application Power Control Service and BMS
+	\brief This file app_power_ctrl_service contains implementation related to Application Power Control Service
  */
 
 #include "configuration.h"

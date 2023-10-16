@@ -18,6 +18,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define HW_VERSION_1_0               0   // POC Board
 #define HW_VERSION_2_0               1
 #define HW_VERSION_4_1               2
+#define HW_VERSION_4_3               3
 
 #define HARDWARE_MAJOR               4
 #define HARDWARE_MINOR               1
@@ -58,6 +59,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
 #endif
+
 // Disable switching to external crystal due to hardware bug (missing resistor)
 #define CONFIG_RTC_CLK_SWITCH_TO_EXT_XTAL 0
 
@@ -69,9 +71,12 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CHIP_TYPE_EXTERNAL_BME680  1
 #define CHIP_TYPE_INTERNAL_BME688  2
 #define CHIP_TYPE_EXTERNAL_BME688  3
-#define BME68X_CHIP_TYPE           CHIP_TYPE_EXTERNAL_BME688
+#define BME68X_CHIP_TYPE           CHIP_TYPE_INTERNAL_BME688
+//Enable to test storage mode
+//#define STORAGE_TEST_MODE
+//#define FILTER_TEST
 
-//#define INVENT_BATTERY_TESTING
+#define INVENT_BATTERY_TESTING
 
 #define CONNECTOR_PWM_FAN_MOTOR_CAPTURE_UNIT (0)	// Connected to MCPWM_UNIT_0
 #define HAL_PWM_TIMER_0
@@ -114,7 +119,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CONNECTOR_BLE_PERIPHERAL_GATT
 #define CONNECTOR_BLE_CENTRAL_GATT
 #define CONNECTOR_BLE_CENTRAL_GAP
-#define CONNECTOR_BLE_PERIPHERAL_NO_BOND_REQUIRED
+//#define CONNECTOR_BLE_PERIPHERAL_NO_BOND_REQUIRED
 #define CONNECTOR_VOC_SENSOR
 #define CONNECTOR_ONBOARD_HMI
 #define CONNECTOR_LIGHT
@@ -351,14 +356,15 @@ EN_IONIZER_FLAG - Defined
 #define DEVICE_UC1510C_INT_PIN              GPIO_NUM_2      // LCD Driver IC interrupt pin
 
 /* Battery charger IC */
-#define DEVICE_BQ25792
+//#define DEVICE_BQ25792
 #define DEVICE_BQ25798						//Defined for BQ25798 feature to be checked 
 
 #define ENABLE_BAT_SHIP                     1
 #define DISABLE_BAT_SHIP                    0
 
-#ifdef DEVICE_BQ25792
-#define BAT_SHIP_VALUE                      ENABLE_BAT_SHIP
+#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)			//#ifdef DEVICE_BQ25792
+#define BAT_SHIP_VALUE                      ENABLE_BAT_SHIP		//With Sepic
+//#define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP		//Sepic bypassed
 #else
 #define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP
 #endif
@@ -416,7 +422,7 @@ typedef enum {
 */
 #define	GPIO_PINS \
 GPIO_PIN( 	   IO_EXP_INT,	        HAL_GPIO_DEVICE_ESP32,		    0,	       DEVICE_TCA9554A_INT_PIN,		 HAL_GPIO_PINMODE_READ,	               0,		    HAL_GPIO_INTRMODE_NEGEDGE,   battery_ic_interrupt_cb) \
-GPIO_PIN(     LCD_INT_TSO,          HAL_GPIO_DEVICE_ESP32,		    0,	        DEVICE_UC1510C_INT_PIN,      HAL_GPIO_PINMODE_READ,                0,		    HAL_GPIO_INTRMODE_NEGEDGE,	onboard_hmi_interrupt_cb) \
+GPIO_PIN(     LCD_INT_TSO,          HAL_GPIO_DEVICE_ESP32,		    0,	        DEVICE_UC1510C_INT_PIN,      HAL_GPIO_PINMODE_READ,                0,		    HAL_GPIO_INTRMODE_POSEDGE,	onboard_hmi_interrupt_cb) \
 GPIO_PIN(  LCD_RESET_RSTB,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_0,     HAL_GPIO_PINMODE_WRITE,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN(     EN_BAT_SHIP,	     HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_1,     HAL_GPIO_PINMODE_WRITE,   BAT_SHIP_VALUE,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN( 	   EN_BAT_CHG,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_2,     HAL_GPIO_PINMODE_WRITE,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \

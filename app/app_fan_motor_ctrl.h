@@ -121,7 +121,7 @@
 Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 */
 #warning "Storage in Testing mode"
-#define STORAGE_MODE_SLEEP_TIME_21_HR_TEST             ((TickType_t)  1u) // 1 Minutes
+#define STORAGE_MODE_SLEEP_TIME_21_HR_TEST             ((TickType_t)  10u) // 10 Minutes
 #define STORAGE_MODE_RUN_TIME_03_HR_TEST               ((TickType_t)   6u) //6 Minutes 
 #define STORAGE_MODE_SLEEP_TIME_21_HR             STORAGE_MODE_SLEEP_TIME_21_HR_TEST
 #define STORAGE_MODE_RUN_TIME_03_HR               STORAGE_MODE_RUN_TIME_03_HR_TEST

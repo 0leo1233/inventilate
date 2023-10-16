@@ -73,8 +73,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CHIP_TYPE_EXTERNAL_BME688  3
 #define BME68X_CHIP_TYPE           CHIP_TYPE_INTERNAL_BME688
 //Enable to test storage mode
-//#define STORAGE_TEST_MODE
-//#define FILTER_TEST
+//#define STORAGE_TEST_MODE			/*Storage mode test Idle time 10 min Run time 6 min*/
+//#define FILTER_TEST				/*FILTER_LIFE_TIME_MIN is set to 3 minutes to test the Filter */
 
 #define INVENT_BATTERY_TESTING
 
@@ -356,13 +356,13 @@ EN_IONIZER_FLAG - Defined
 #define DEVICE_UC1510C_INT_PIN              GPIO_NUM_2      // LCD Driver IC interrupt pin
 
 /* Battery charger IC */
-//#define DEVICE_BQ25792
-#define DEVICE_BQ25798						//Defined for BQ25798 feature to be checked 
+//#define DEVICE_BQ25792			//This is to be used when boards with BQ25792 is used
+#define DEVICE_BQ25798				//This is to be used when boards with BQ25798 is used
 
 #define ENABLE_BAT_SHIP                     1
 #define DISABLE_BAT_SHIP                    0
 
-#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)			//#ifdef DEVICE_BQ25792
+#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)	
 #define BAT_SHIP_VALUE                      ENABLE_BAT_SHIP		//With Sepic
 //#define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP		//Sepic bypassed
 #else

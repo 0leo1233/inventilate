@@ -352,6 +352,7 @@ EN_IONIZER_FLAG - Defined
 
 /* Battery charger IC */
 #define DEVICE_BQ25792
+#define DEVICE_BQ25798						//Defined for BQ25798 feature to be checked 
 
 #define ENABLE_BAT_SHIP                     1
 #define DISABLE_BAT_SHIP                    0

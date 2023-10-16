@@ -352,6 +352,22 @@ typedef union
     }__attribute__((packed));
 }IV0_SETTINGS;
 
+typedef union
+{
+    uint8_t byte;
+    struct 
+    {
+        uint8_t VAC_CHANGED      : 1;
+        uint8_t RESERVED_1          : 1;
+        uint8_t RESERVED_2          : 1;
+        uint8_t RESERVED_3          : 1;
+        uint8_t RESERVED_4          : 1;
+        uint8_t RESERVED_5          : 1;
+        uint8_t RESERVED_6          : 1;
+        uint8_t RESERVED_7          : 1;
+    }__attribute__((packed));
+}BMS_STATUS_FLAGS;
+
 typedef enum __storage_timer_config
 {
     STORAGE_TIMER_21H        = 0,

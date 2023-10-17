@@ -10,8 +10,6 @@
 #define NUM_MILL_SEC_PER_SECOND                   ((uint32_t) 1000u)
 #define MIN_TO_MSEC(x)                            (NUM_MILL_SEC_PER_SECOND * NUM_SECONDS_PER_MINUTE * x)
 
-//#define INVENT_EOL_TESTING
-
 extern void onboard_hmi_interrupt_cb(int device, int port, int pin);
 extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
@@ -62,6 +60,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 // Disable switching to external crystal due to hardware bug (missing resistor)
 #define CONFIG_RTC_CLK_SWITCH_TO_EXT_XTAL 0
+#define LINDEV_GENERIC_VERBOSE_LOG	0
 
 #define COMM_BLE                   0
 #define COMM_I2C                   1

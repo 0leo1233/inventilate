@@ -47,13 +47,6 @@ const int ledc_pwm_config_size = sizeof(ledc_pwmconfig)/sizeof(ledc_pwmconfig[0]
 
 #endif
 
-#ifndef DEVICE_BQ25792  // Temporary workaround for build issue..Once the testing is done this code will get removed
-void battery_ic_interrupt_cb(int device, int port, int pin)
-{
-    LOG(E, "Interrupt triggered from Battery IC not handled");
-}
-#endif
-
 #ifndef CONNECTOR_ONBOARD_HMI
 void onboard_hmi_interrupt_cb(int device, int port, int pin)
 {

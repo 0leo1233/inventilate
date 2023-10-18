@@ -62,6 +62,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CONFIG_RTC_CLK_SWITCH_TO_EXT_XTAL 0
 #define LINDEV_GENERIC_VERBOSE_LOG	0
 
+// To select DP sensor communicates with I2C or BLE
 #define COMM_BLE                   0
 #define COMM_I2C                   1
 #define SDP3X_SENS_BOARD_COMM      COMM_BLE
@@ -111,6 +112,9 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define MULTICAST_DNS
 #define MULTICAST_DNS_SERVICE_NAME   "Dometic Inventilate"
 
+#define USE_LIN
+#define USE_LIN_SLAVE
+
 /* Connectors for Inventilate */
 #define CONNECTOR_MQTT
 #define CONNECTOR_WIFI
@@ -129,6 +133,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #ifndef INVENT_EOL_TESTING
 #define CONNECTOR_DP_SENS_SERVICE
 #endif
+#define CONNECTOR_LINDEV_INVENT
+
 
 #ifdef INVENT_EOL_TESTING
 #define CONNECTOR_EOL_SERVICE
@@ -142,6 +148,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define APP_POWER_CONTROL_SERVICE
 #define APP_DIFF_PRESSURE_SENSOR
 #define APP_LIGHT_CONTROL
+#define IV0ERRST_NO_ERROR   0
 /*
 Requirement for Ionizer:
 Ionizer is after market feature, by default it is enable in the code
@@ -345,7 +352,17 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_LINDEV_UART_NUM		CONNECTOR_LIN_UART_NUM
 #define CONNECTOR_LINDEV_UART_DEV		UART2
 #define LIN_SLEEP_N                     1
+#define CONNECTOR_LINDEV_LIN_SLEEP 		GPIO_NUM_6
 #endif
+
+#ifndef USE_LIN_SLAVE
+#ifdef USE_LIN
+#define CONNECTOR_LIN
+#endif
+#else
+#define CONNECTOR_LINDEV
+#endif
+
 
 #define DEVICE_TCA9554A
 #define DEVICE_TCA9554A_ADDRESS		        0x3F
@@ -428,7 +445,7 @@ GPIO_PIN( 	   EN_BAT_CHG,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              
 GPIO_PIN(     INT_BAT_CHG,	     HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_3,      HAL_GPIO_PINMODE_READ,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN(      EN_IONIZER,	     HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_4,     HAL_GPIO_PINMODE_WRITE,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN( 	     EN_EFUSE,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_5,     HAL_GPIO_PINMODE_WRITE,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
-GPIO_PIN( 	       EN_LIN,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_6,     HAL_GPIO_PINMODE_WRITE,      LIN_SLEEP_N,	        HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
+GPIO_PIN( 	    LIN_SLEEP,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_6,     HAL_GPIO_PINMODE_WRITE,      LIN_SLEEP_N,	        HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN( 	     EN_RS485,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_7,     HAL_GPIO_PINMODE_WRITE,           DE_VAL,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 //					 name,			       device,				   port,	              pin,	                pin_mode,	                  level,	           interrupt mode,	                 INT CB function
 #endif 

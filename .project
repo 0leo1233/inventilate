@@ -1464,11 +1464,6 @@
 			<location>C:/repos/esp-idf-v4.4.5/components/heap/port/memory_layout_utils.c</location>
 		</link>
 		<link>
-			<name>build/ide/esp_idf_components/jsmn/src/jsmn.c</name>
-			<type>1</type>
-			<location>C:/repos/esp-idf-v4.4.5/components/jsmn/src/jsmn.c</location>
-		</link>
-		<link>
 			<name>build/ide/esp_idf_components/json/cJSON/cJSON.c</name>
 			<type>1</type>
 			<location>C:/repos/esp-idf-v4.4.5/components/json/cJSON/cJSON.c</location>

@@ -13,6 +13,10 @@
 #include "osal.h"
 #include "app_fan_motor_ctrl.h"
 
+int32_t bme68x_humid_value;
+int32_t bm_humid_prev;                      /*used in storage mode algorithm to store previous humidity value*/
+int32_t bm_humid_curr;                      /*used in storage mode algorithm to store current humidity value*/
+
 static uint32_t calc_percentage(uint32_t value, uint32_t percent);
 static int8_t calc_rate_of_change(float curr_val, float prev_val, float max_val);
 static uint8_t get_step_level(int32_t roc);
@@ -25,8 +29,8 @@ static IAQ_RANGE iaq_range_level[IAQ_RANGE_LEVELS] =
 { 
     //          min                  max                Air Quality Status
     {   {  IAQ_DEF_GOOD_MIN,    IAQ_DEF_GOOD_MAX },   IV0AQST_AIR_QUALITY_GOOD  },
-    {   {   IAQ_DEF_BAD_MIN,     IAQ_DEF_BAD_MAX },   IV0AQST_AIR_QUALITY_FAIR   },
-    {   { IAQ_DEF_WORSE_MIN,   IAQ_DEF_WORSE_MAX },   IV0AQST_AIR_QUALITY_BAD }
+    {   {  IAQ_DEF_FAIR_MIN,    IAQ_DEF_FAIR_MAX },  IV0AQST_AIR_QUALITY_FAIR   },
+    {   {   IAQ_DEF_BAD_MIN,     IAQ_DEF_BAD_MAX },     IV0AQST_AIR_QUALITY_BAD }
 };
 
 EXT_RAM_ATTR IV0_SETTINGS   ivsett_config;
@@ -48,21 +52,21 @@ INVENTILATE_CONTROL_ALGO iv_ctrl_algo;
 static nvs_config_conn_fan_mtr nvs_db[NVS_DB_SIZE] = 
 {
     //   data_id               data_type               data_size             min_val                max_val            default_val           ddmp                           data_ptr                                                          nvs_key
-    {IV_FAN1_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(0),  (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.min_rpm      ,  "mn_rpm_f1"},
-    {IV_FAN2_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.min_rpm     ,  "mn_rpm_f2"},
-    {IV_MTR_RPM_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(2),  (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.min_rpm            ,  "mn_rpm_mt"},
-    {IV_FAN1_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(0),  (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.max_rpm      ,  "mx_rpm_f1"},
-    {IV_FAN2_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.max_rpm     ,  "mx_rpm_f2"},
-    {IV_MTR_RPM_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(2),  (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.max_rpm            ,  "mx_rpm_mt"},
-    {IV_IAQ_GOOD_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,    IAQ_DEF_GOOD_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.min             ,  "mn_gd_aq" },
-    {IV_IAQ_BAD_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_BAD_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.min              ,  "mn_bd_aq" },
-    {IV_IAQ_WORSE_MIN ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,   IAQ_DEF_WORSE_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.min            ,  "mn_wr_aq" },
-    {IV_IAQ_GOOD_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,    IAQ_DEF_GOOD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.max             ,  "mx_gd_aq" },
-    {IV_IAQ_BAD_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_BAD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.max              ,  "mx_bd_aq" },
-    {IV_IAQ_WORSE_MAX ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,   IAQ_DEF_WORSE_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2),  (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.max            ,  "mx_wr_aq" },
-    {IV_IVSETT        ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_IVSETT_MIN,         IV_IVSETT_MAX,   IV_IVSETT_DEFAULT,   IV0SETT|DDM2_PARAMETER_INSTANCE(0),    (void*)&ivsett_config.byte                                                  ,  "iv_ivsett" },
-    {IV_FILTER_TIMER  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX,IV_FILTER_MIN_MIN,   IV0FILST,                             (void*)&filter_data.filter_min                                              ,  "iv_filter_min" },
-    {IV_FILTER_STATUS  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX,IV_FILTER_MIN_MIN,   IV0FILST,                             (void*)&filter_data.filter_status                                          ,  "iv_filter_sts" },
+    {IV_FAN1_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(0),   (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.min_rpm,  "mn_rpm_f1"},
+    {IV_FAN2_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.min_rpm,  "mn_rpm_f2"},
+    {IV_MTR_RPM_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(2),         (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.min_rpm,  "mn_rpm_mt"},
+    {IV_FAN1_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(0),   (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.max_rpm,  "mx_rpm_f1"},
+    {IV_FAN2_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.max_rpm,  "mx_rpm_f2"},
+    {IV_MTR_RPM_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(2),         (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.max_rpm,  "mx_rpm_mt"},
+    {IV_IAQ_GOOD_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,    IAQ_DEF_GOOD_MIN,   IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0),         (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.min,  "mn_gd_aq" },
+    {IV_IAQ_FAIR_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_FAIR_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1),         (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.min,  "mn_bd_aq" },
+    {IV_IAQ_BAD_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,      IAQ_DEF_BAD_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2),          (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.min,  "mn_wr_aq" },
+    {IV_IAQ_GOOD_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_GOOD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0),         (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.max,  "mx_gd_aq" },
+    {IV_IAQ_FAIR_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_FAIR_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1),         (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.max,  "mx_bd_aq" },
+    {IV_IAQ_BAD_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,      IAQ_DEF_BAD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2),          (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.max,  "mx_wr_aq" },
+    {IV_IVSETT        ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_IVSETT_MIN,         IV_IVSETT_MAX,     IV_IVSETT_DEFAULT,    IV0SETT|DDM2_PARAMETER_INSTANCE(0),                                              (void*)&ivsett_config.byte,  "iv_ivsett" },
+    {IV_FILTER_TIMER  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX, IV_FILTER_MIN_MIN,                              IV0FILST,                                          (void*)&filter_data.filter_min,  "iv_filter_min" },
+    {IV_FILTER_STATUS ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX, IV_FILTER_MIN_MIN,                              IV0FILST,                                       (void*)&filter_data.filter_status,  "iv_filter_sts" },
 };
 
 /**
@@ -188,7 +192,7 @@ void update_data_in_nvm(DATA_ID data_id, uint32_t data)
     }
     else
     {
-        LOG(E, "Invalid data_id = %d", data_id);
+        LOG(I, "Invalid data_id = %d", data_id);
     }
 }
 
@@ -210,7 +214,13 @@ void set_fan_motor_rpm(invent_device_id_t dev_id, uint32_t rpm)
     {
         rpm = whole_range_max_rpm;
     }
-
+    if ( rpm < whole_range_min_rpm )
+    {
+        rpm = whole_range_min_rpm;
+    }
+    /* Send the current set RPM to the broker */
+    update_and_send_val_to_broker(MTR0SETSPD|DDM2_PARAMETER_INSTANCE(dev_id), rpm);
+    
     if ( DEV_MOTOR == dev_id )
     {
         iv_ctrl_algo.constant_rpm_motor = rpm;
@@ -361,7 +371,7 @@ void reset_accumulated_data(INVENTILATE_CONTROL_ALGO* ptr_iv)
   */
 void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
 {
-    if ( ptr_iv->iaq_data_count > 0u )
+    if ( ptr_iv->iaq_data_count > 0 )
     {
         /* Calculate the average value of IAQ */
         ptr_iv->curr_avg_iaq_value = ptr_iv->curr_avg_iaq_value / ptr_iv->iaq_data_count;
@@ -372,7 +382,7 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
         ptr_iv->iaq_data_count = 1u;                                                     
     }
 
-    if ( ptr_iv->dp_data_count > 0u )
+    if ( ptr_iv->dp_data_count > 0 )
     {
         /* Calculate the average value of DP */
         ptr_iv->curr_avg_dp_value = ptr_iv->curr_avg_dp_value / ptr_iv->dp_data_count;
@@ -380,16 +390,16 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
         LOG(I, "avg_dp=%d cnt=%d", ptr_iv->curr_avg_dp_value, ptr_iv->dp_data_count);
 #endif
         /* Average value will be consider as 1 sample */
-        ptr_iv->dp_data_count = 1u;                                                     
+        ptr_iv->dp_data_count = 1;
     }
 
-    if ( ptr_iv->humidity_data_count > 0u )
+    if ( ptr_iv->humidity_data_count > 0 )
     {
         /* Calculate the average value of relative humidity */
         ptr_iv->curr_avg_hum_value = ptr_iv->curr_avg_hum_value / ptr_iv->humidity_data_count;
 
          /* Average value will be consider as 1 sample */
-        ptr_iv->humidity_data_count = 1u;
+        ptr_iv->humidity_data_count = 1;
     }
 }
 
@@ -402,22 +412,24 @@ IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
 {
     IV0PRST_ENUM pressure_stat = IV0PRST_PRESS_STATUS_UNKNOWN;
 
-    if ( ptr_iv->dp_data_count > DP_ZERO_COUNT )
+    if ( ptr_iv->dp_data_count > (int32_t)DP_ZERO_COUNT )
     {
         /* Find the pressure compensation status */
+        //LOG(I,"[press_val %d]",ptr_iv->curr_avg_dp_value);
         if ( ptr_iv->curr_avg_dp_value < ptr_iv->dp_neg_acceptable_lim )
         {
             /* Under pressure */
-            ptr_iv->dp_exceed_count ++;
-            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
+            ptr_iv->dp_exceed_count++;
+            if (ptr_iv->dp_exceed_count > DP_EXCEED_LIMIT)
             {
                 pressure_stat = IV0PRST_UNDER_PRESS;
             }
         }
         else if ( ptr_iv->curr_avg_dp_value > ptr_iv->dp_pos_acceptable_lim )
         {
-            ptr_iv->dp_exceed_count ++;
-            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
+			/* Over pressure */
+            ptr_iv->dp_exceed_count++;
+            if (ptr_iv->dp_exceed_count > DP_EXCEED_LIMIT)
             {
                 pressure_stat = IV0PRST_OVER_PRESS;
             }
@@ -453,13 +465,13 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
     ptr_iv->ptr_prev_data  = &ptr_iv->prev_avg_iaq_value;
     ptr_iv->roc_max_val    = INVENT_IAQ_INDEX_MAX;
 
-    if ( ( ptr_iv->iaq_data_count > 0u ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) )
+    if ( ( ( ptr_iv->iaq_data_count > 0 ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) ) || ( ( ptr_iv->iaq_data_count > 0 ) && ( ptr_iv->sens_acc == BME6X_MEDIUM_ACCURACY ) ))
     {
         /* Find the Air Quality status from IAQ */
         for ( index = 0; index < IAQ_RANGE_LEVELS; index++ )
         {
-            if ( ( ptr_iv->curr_avg_iaq_value >= iaq_range_level[index].iaq_range.min ) && 
-                 ( ptr_iv->curr_avg_iaq_value <= iaq_range_level[index].iaq_range.max ) )
+            if ( ( ptr_iv->curr_avg_iaq_value >= (int32_t)iaq_range_level[index].iaq_range.min ) &&
+                 ( ptr_iv->curr_avg_iaq_value <= (int32_t)iaq_range_level[index].iaq_range.max ) )
             {
                 iaq_status = iaq_range_level[index].iaq_status;       /* Get the IAQ status */
                 index      = IAQ_RANGE_LEVELS;                        /* Exit from the loop */
@@ -467,7 +479,7 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
         }
 
         /* Validate the humidity when the air quality is good inside the RV */
-        if ( ( IV0AQST_AIR_QUALITY_GOOD == iaq_status ) && ( ptr_iv->humidity_data_count > 0u ) )
+        if ( ( IV0AQST_AIR_QUALITY_GOOD == iaq_status ) && ( ptr_iv->humidity_data_count > 0 ) )
         {
             /* Even when IAQ is GOOD, but the relative humdity is not within the acceptable range,
                then air quality will be considered as BAD */
@@ -511,8 +523,6 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
         /* Check the wait timer expired or not */
         if ( true == ptr_iv->wait_tmr_exp )
         {
-            
-            
             /* "pr comp tmr exp" Reset the timer exp flag */
             ptr_iv->wait_tmr_exp = false;
 
@@ -536,7 +546,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
             else
             {
         #if INV_ALGO_DEBUG 
-                LOG(E, "err pr_st=%d", ptr_iv->curr_pr_stat);
+                LOG(I, "err pr_st=%d", ptr_iv->curr_pr_stat);
         #endif
             }
 
@@ -965,7 +975,7 @@ void read_data_from_nvs(void)
         if ( HAL_NVS_OK != nvs_err )
         {
 #if INV_ALGO_DEBUG 
-            LOG(E, "hal_nvs_read nvs_err = %d", nvs_err);	
+            LOG(I, "hal_nvs_read nvs_err = %d index = %d", nvs_err, index);	
 #endif 
             // NVS error found ..Store defaut value
             *((uint32_t*)(nvs_db[index].data_ptr)) = nvs_db[index].default_val;
@@ -984,10 +994,11 @@ void read_data_from_nvs(void)
             LOG(I, "hal_nvs_read data = %d", data);
 #endif 
             // Plausibility check 
-            if ( ( data < nvs_db[index].min_val ) || ( data > nvs_db[index].max_val ) )
+            // NULL value check -> if data stored in NVS  is 0 in fresh board 
+            if ( ( data < nvs_db[index].min_val ) || ( data > nvs_db[index].max_val ) || ( data == INV_NULL_VALUE ) )
             {
 #ifdef INV_ALGO_DEBUG 
-                LOG(E, "Plausible error data read = %d", data);	
+                LOG(I, "Plausible error data read = %d", data);	
 #endif 
                 // Plausibilty failed ..Store default value
                 *((uint32_t*)(nvs_db[index].data_ptr)) = nvs_db[index].default_val;

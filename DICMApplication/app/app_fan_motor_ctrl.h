@@ -66,35 +66,40 @@
 #define IV_CONTROL_PROCESSING_INTERVAL_MIN        ((uint8_t)    1u)
 #define RV_IDLE_COND_WAIT_TIME_MIN                ((uint8_t)   30u)   
 #define RV_PRESS_COMP_WAIT_TIME_MIN               ((uint8_t)    2u)
-#define RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN    ((uint8_t)   10u) 
+#define RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN    ((uint8_t)   10u)
+#define FAN_MOTOR_VALIDATION_INTERVAL_MIN         ((uint8_t)    5u)
+#define IV_STORAGE_HUMID_CHK_MIN                  ((uint8_t)    1u)
+#define IV_IAQ_ACC0_WAIT_MIN                           ((uint8_t)   30u)     //The wait time when the accuracy is 0 and IAQ is not GOOD
+
+
 
 #define IAQ_DEF_GOOD_MIN    ((uint16_t)   0u)
 #define IAQ_DEF_GOOD_MAX    ((uint16_t) 100u)
-#define IAQ_DEF_BAD_MIN     ((uint16_t) 101u)
-#define IAQ_DEF_BAD_MAX     ((uint16_t) 200u)
-#define IAQ_DEF_WORSE_MIN   ((uint16_t) 201u)
-#define IAQ_DEF_WORSE_MAX   ((uint16_t) 500u)
+#define IAQ_DEF_FAIR_MIN    ((uint16_t) 101u)
+#define IAQ_DEF_FAIR_MAX    ((uint16_t) 200u)
+#define IAQ_DEF_BAD_MIN     ((uint16_t) 201u)
+#define IAQ_DEF_BAD_MAX     ((uint16_t) 500u)
 #define IAQ_RANGE_LEVELS    ((uint8_t)    3u)
 
-#define MOTOR_FAN_MAX_RPM  ((uint32_t) 10000u)
-#define MOTOR_FAN_MIN_RPM  ((uint32_t)     0u)
+#define MOTOR_FAN_MAX_RPM   ((uint32_t) 10000u)
+#define MOTOR_FAN_MIN_RPM   ((uint32_t)     0u)
 
-#define IAQ_CONFIG_MIN     ((uint32_t)     0u)
-#define IAQ_CONFIG_MAX     ((uint32_t)   500u)
+#define IAQ_CONFIG_MIN      ((uint32_t)     0u)
+#define IAQ_CONFIG_MAX      ((uint32_t)   500u)
 
-#define IV_IVSETT_MIN      ((uint32_t)     0u)
-#define IV_IVSETT_MAX      ((uint32_t)     0xFFFF)              //Actual value = 0xFFFFFFFF
-#define IV_IVSETT_DEFAULT  ((uint32_t)      0u) 
+#define IV_IVSETT_MIN       ((uint32_t)     0u)
+#define IV_IVSETT_MAX       ((uint32_t)     0xFFFF)              //Actual value = 0xFFFFFFFF
+#define IV_IVSETT_DEFAULT   ((uint32_t)      0u) 
 
 #define IV_FILTER_MIN_MIN   ((uint32_t)      0u)
 #define IV_FILTER_MIN_MAX   ((uint32_t)      0xFFFF)
 
 
 #define FAN_MOTOR_MAX_DUTY_CYCLE                 ((uint32_t)   100u)
-#define NVS_DB_SIZE                              ((uint32_t)    12u)
+#define NVS_DB_SIZE                              ((uint32_t)    15u)
 #define PRESS_COMP_EXCEEDS_LIMIT_RPM             ((uint32_t)     0u)
 
-#define RELATIVE_HUMIDITY_ACCEPTABLE_MIN_VALUE   ((int32_t)      20)
+#define RELATIVE_HUMIDITY_ACCEPTABLE_MIN_VALUE   ((int32_t)      0)
 #define RELATIVE_HUMIDITY_ACCEPTABLE_MAX_VALUE   ((int32_t)      60)
 
 #define ROC_STEP_LEVEL_1_MIN_PERCENT 0
@@ -108,17 +113,32 @@
 
 #define ROC_STEP_LEVEL_4_MIN_PERCENT 41
 #define ROC_STEP_LEVEL_4_MAX_PERCENT 60
+#define INV_NULL_VALUE                      ((uint8_t) 0u)
 
-/*
+#ifdef STORAGE_TEST_MODE
 
-// This is actual storage time configuartion as per requiremnt 
-#define STORAGE_MODE_SLEEP_TIME_24_HR             ((TickType_t)  1440u) // 24 hours --> 24 * 60 = 1440 minutes
-#define STORAGE_MODE_RUN_TIME_03_HR               ((TickType_t)   180u) // 3 hours  -->  3 * 60 = 180  minutes
-
+/*Storage Test mode
+Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 */
+#warning "Storage in Testing mode"
+#define STORAGE_MODE_SLEEP_TIME_21_HR_TEST             ((TickType_t)  10u) // 10 Minutes
+#define STORAGE_MODE_RUN_TIME_03_HR_TEST               ((TickType_t)   6u) //6 Minutes 
+#define STORAGE_MODE_SLEEP_TIME_21_HR             STORAGE_MODE_SLEEP_TIME_21_HR_TEST
+#define STORAGE_MODE_RUN_TIME_03_HR               STORAGE_MODE_RUN_TIME_03_HR_TEST
 
-#define STORAGE_MODE_SLEEP_TIME_21_HR             ((TickType_t)  30u) // 2
-#define STORAGE_MODE_RUN_TIME_03_HR               ((TickType_t)   3u) // 1
+#define STORAGE_RUN_START_TIME             (1u)
+#define STORAGE_RUN_END_TIME               (3u)
+
+#else
+
+/*Application code marco change here*/
+#define STORAGE_MODE_SLEEP_TIME_21_HR             ((TickType_t)  1260u) // 21 hours -> 21 * 60 = 1260 Minutes
+#define STORAGE_MODE_RUN_TIME_03_HR               ((TickType_t)   180u) // 03 hours -> 03 * 60 = 180  Minutes 
+#define STORAGE_RUN_START_TIME             (1u)
+#define STORAGE_RUN_END_TIME               (30u)
+
+#endif
+
 
 /*
    DP values shall support max of thress decimal point resolution
@@ -166,6 +186,10 @@
 #define INVENT_CONTROL_PERIODIC_TMR_TICKS         pdMS_TO_TICKS(MIN_TO_MSEC(IV_CONTROL_PROCESSING_INTERVAL_MIN))
 #define RV_IDLE_COND_SETTLE_WAIT_TIME_TICKS       pdMS_TO_TICKS(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN))
 #define RV_PRESS_COMP_WAIT_TIME_TICKS             pdMS_TO_TICKS(MIN_TO_MSEC(RV_PRESS_COMP_WAIT_TIME_MIN))
+#define FAN_MOTOR_VALIDATION_INTERVAL_TMR_TICKS   pdMS_TO_TICKS(MIN_TO_MSEC(FAN_MOTOR_VALIDATION_INTERVAL_MIN))
+
+#define STORAGE_HUM_CHK_TMR_TICKS                 pdMS_TO_TICKS(MIN_TO_MSEC(IV_STORAGE_HUMID_CHK_MIN))
+
 #define DP_ZERO_COUNT                                 0u
 #define DP_EXCEED_LIMIT                               1u
 
@@ -226,10 +250,10 @@ typedef enum __data_type
     IV_VOC_SENSOR_ACC      = 20,
     IV_IAQ_GOOD_MIN        = 21,
     IV_IAQ_GOOD_MAX        = 22,
-    IV_IAQ_BAD_MIN         = 23,
-    IV_IAQ_BAD_MAX         = 24,
-    IV_IAQ_WORSE_MIN       = 25,
-    IV_IAQ_WORSE_MAX       = 26,
+    IV_IAQ_FAIR_MIN        = 23,
+    IV_IAQ_FAIR_MAX        = 24,
+    IV_IAQ_BAD_MIN         = 25,
+    IV_IAQ_BAD_MAX         = 26,
     IV_ONE_SHOT_TMR_EXP    = 27,
     DP_SENSOR_STATUS       = 28,
     IV_STORAGE_TMR_EXP     = 29,
@@ -265,7 +289,8 @@ typedef enum __invent_control_state
     INVENTILATE_STATE_WAIT_FOR_IDLE_SETTLE   = 5,
 	INVENTILATE_STATE_IDLE                   = 6,
     INVENTILATE_STATE_PROCESS_STANDBY        = 7,
-    INVENTILATE_STATE_STORAGE                = 8
+    INVENTILATE_STATE_STORAGE                = 8,
+    INVENTILATE_STATE_VALIDATE_DEV_STATUS    = 9
 } INVENT_CONTROL_STATE;
 
 typedef struct _rpm_range
@@ -326,6 +351,22 @@ typedef union
         uint8_t RESERVED_7          : 1;
     }__attribute__((packed));
 }IV0_SETTINGS;
+
+typedef union
+{
+    uint8_t byte;
+    struct 
+    {
+        uint8_t VAC_CHANGED      : 1;
+        uint8_t RESERVED_1          : 1;
+        uint8_t RESERVED_2          : 1;
+        uint8_t RESERVED_3          : 1;
+        uint8_t RESERVED_4          : 1;
+        uint8_t RESERVED_5          : 1;
+        uint8_t RESERVED_6          : 1;
+        uint8_t RESERVED_7          : 1;
+    }__attribute__((packed));
+}BMS_STATUS_FLAGS;
 
 typedef enum __storage_timer_config
 {
@@ -414,6 +455,11 @@ typedef struct __nvs_config_conn_fan_mtr
 extern INVENTILATE_CONTROL_ALGO  iv_ctrl_algo;
 extern INVENTILATE_CONTROL_ALGO* ptr_ctrl_algo;
 extern EXT_RAM_ATTR IV0_SETTINGS   ivsett_config;
+extern EXT_RAM_ATTR FILTER_INFO filter_data;
+extern int32_t bme68x_humid_value;
+extern int32_t bm_humid_prev;
+extern int32_t bm_humid_curr;
+extern int32_t press_sim_value;
 
 void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* iv_algo);
 
@@ -465,11 +511,11 @@ extern void stop_periodic_timer(void);
 
 extern void change_state(INVENT_CONTROL_STATE iv_ctrl_state);
 
-extern void update_iaq_status_to_broker(IV0AQST_ENUM iaq_status);
+extern void update_iaq_status_to_broker(const IV0AQST_ENUM iaq_status);
 
-extern void update_dp_status_to_broker(IV0PRST_ENUM press_status);
+extern void update_dp_status_to_broker(const IV0PRST_ENUM press_status);
 
-extern void update_set_rpm_to_broker(invent_device_id_t dev_id, uint32_t rpm);
+extern void update_set_rpm_to_broker(const invent_device_id_t dev_id, const uint32_t rpm);
 
 extern void push_data_in_queue(int32_t data, DATA_ID data_id);
 

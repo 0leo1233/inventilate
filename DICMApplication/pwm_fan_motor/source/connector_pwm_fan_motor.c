@@ -15,6 +15,7 @@
 #include "osal.h"
 #include "hal_pwm.h"
 #include "sorted_list.h"
+#include "app_error_code.h"
 
 // Defining local parameter space
 #define MTR0_NEW_TACHO_DATA_EVENT	    (DDM2_PARAMETER_CLASS(MTR0AVL) | DDM2_PARAMETER_PROPERTY_FIELD(0xf0))
@@ -39,6 +40,12 @@ typedef struct _mtr_tacho_data_event_t
     uint8_t capture_signal;
 } mtr_tacho_data_event_t;
 
+static uint32_t min_limit_rpm = 0;
+static uint32_t max_limit_rpm = 0;
+static int32_t  rated_speed = 0;
+
+static DDMP2_FRAME frame_event_to_send;
+volatile mtr_tacho_data_event_t tacho_event;
 
 /* Static Function declarations */
 static int initialize_connector_fan_motor(void);
@@ -58,18 +65,21 @@ static void change_storage_timer_period(uint32_t time_period_msec);
 static void start_storage_timer(void);
 static void stop_storage_timer(void);
 static void storage_cb_func( TimerHandle_t xTimer );
+static void storage_humid_chk_cb_func(TimerHandle_t xTimer);
 static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value);
 
 //! Quene handle definition
-//static osal_queue_handle_t capture_tacho_sig_que_handle;
 osal_queue_handle_t iv_ctrl_que_handle;
 
 static TimerHandle_t peridic_tmr_hdle;
 static TimerHandle_t one_shot_tmr_hdle;
 static TimerHandle_t xStorageTimer;
+static TimerHandle_t xStorageHumid_chk_Timer;
 INVENTILATE_CONTROL_ALGO* ptr_ctrl_algo = &iv_ctrl_algo;
+static uint8_t storage_humid_timer = 0;
 
 static uint32_t tmr_period = 0;
+static uint8_t  iaq_run_state = 0;
 
 static volatile TickType_t time_now[MAX_NUM_DEVICE];
 static volatile TickType_t last_tick[MAX_NUM_DEVICE] = {0, 0, 0};
@@ -80,6 +90,7 @@ static volatile uint8_t pulse_count_per_revol[MAX_NUM_DEVICE];
 static volatile uint32_t current_cap_value[MAX_NUM_DEVICE];
 static volatile uint32_t previous_cap_value[MAX_NUM_DEVICE];
 static volatile capture_info_t dev_capt[MAX_NUM_DEVICE];
+uint32_t dev_rpm[MAX_NUM_DEVICE];
 
 extern EXT_RAM_ATTR fan_motor_control_info_db_t fan_motor_control_db[DEV_RPM_DB_TABLE_SIZE];
 
@@ -146,6 +157,7 @@ static conn_fan_motor_parameter_t conn_fan_motor_param_db[] =
     {IV0IONST                             , DDM2_TYPE_INT32_T, 	1, 	0, 	         IV0IONST_ON,        handle_invsub_data},
     {IV0ERRST                             , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
     {IV0SETT                              , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
+    {IV0STGT                       , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        NULL},
     {IV0PWRSRC                            , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
 };
 
@@ -206,7 +218,8 @@ static int initialize_connector_fan_motor(void)
 
     /* Create the one shot timer software timer for inventilate control logic, storage mode. */
     xStorageTimer = xTimerCreate("xStorageTimer", ptr_ctrl_algo->storage_tmr_val_ticks[ptr_ctrl_algo->storage_timer_config], pdFALSE, 0, storage_cb_func);
-
+    
+    xStorageHumid_chk_Timer =  xTimerCreate("xStorage_HumChkTmr", STORAGE_HUM_CHK_TMR_TICKS, pdTRUE, 0, storage_humid_chk_cb_func);
     /* Task for handling the DDMP request */
 	TRUE_CHECK(osal_task_create(conn_fan_motor_process_task, CONNECTOR_FAN_MOTOR_PROCESS_TASK_NAME, CONNECTOR_FAN_MOTOR_PROCESS_STACK_DEPTH, NULL, CONNECTOR_FAN_MOTOR_PROCESS_TASK_PRIORITY, NULL));
 
@@ -297,7 +310,7 @@ static void start_publish(void)
   * @param  iaq_status Refer enum IV0AQST_ENUM.
   * @retval none.
   */
-void update_iaq_status_to_broker(IV0AQST_ENUM iaq_status)
+void update_iaq_status_to_broker(const IV0AQST_ENUM iaq_status)
 {
     int32_t i32Value = iaq_status;
 
@@ -310,7 +323,7 @@ void update_iaq_status_to_broker(IV0AQST_ENUM iaq_status)
   * @param  press_status Refer enum IV0DPST_ENUM.
   * @retval none.
   */
-void update_dp_status_to_broker(IV0PRST_ENUM press_status)
+void update_dp_status_to_broker(const IV0PRST_ENUM press_status)
 {
     int32_t i32Value = press_status;
 
@@ -324,7 +337,7 @@ void update_dp_status_to_broker(IV0PRST_ENUM press_status)
   * @param  rpm    RPM set to the corresponding device ID.
   * @retval none.
   */
-void update_set_rpm_to_broker(invent_device_id_t dev_id, uint32_t rpm)
+void update_set_rpm_to_broker(const invent_device_id_t dev_id, const uint32_t rpm)
 {
     int32_t i32Value = rpm;
 
@@ -422,6 +435,9 @@ static void conn_fan_motor_process_task(void *pvParameter)
   */
 static void conn_fan_mtr_ctrl_task(void *pvParameter)
 {
+    uint32_t tacho_read = 0;
+    int32_t iaq_value = 0;
+
     while (1)
     {
         /* Queue will be in blocked state untill data recevied */
@@ -444,7 +460,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                 /* Average the accumulated data of IAQ and DP */
                 calc_avg_for_iaq_dp(ptr_ctrl_algo);
-
+                
                 /* Find the IAQ status and Pressure status from the accumulated data */
                 ptr_ctrl_algo->curr_pr_stat  = find_press_comp_state(ptr_ctrl_algo);                        
                 ptr_ctrl_algo->curr_iaq_stat = find_air_quality_status(ptr_ctrl_algo);
@@ -461,10 +477,173 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                     ptr_ctrl_algo->prev_pr_stat = ptr_ctrl_algo->curr_pr_stat;
                 }
 
-#if INV_ALGO_DEBUG 
-                LOG(I, "iaq_st=%d pr_st=%d", ptr_ctrl_algo->curr_iaq_stat, ptr_ctrl_algo->curr_pr_stat);
-#endif
+                ptr_ctrl_algo->min_counter += IV_CONTROL_PROCESSING_INTERVAL_MIN;
+
+                if ( ptr_ctrl_algo->min_counter >= 1 )//FAN_MOTOR_VALIDATION_INTERVAL_MIN )
+                {
+                    ptr_ctrl_algo->min_counter = 0;
+
+                    ptr_ctrl_algo->fan_mtr_dev_curr_stat = ptr_ctrl_algo->invent_error_status;
+
+                    for ( invent_device_id_t dev_id = 0; dev_id < MAX_NUM_DEVICE; dev_id++ )
+                    {
+                        if ( ptr_ctrl_algo->set_rpm[dev_id] != 0 )
+                        {
+                            LOG(I,"[Change speed]");
+                            rated_speed   = (int32_t)((float)ptr_ctrl_algo->set_rpm[dev_id] * ( (float)ptr_ctrl_algo->rated_speed_percent[dev_id] / (float)100.0f ));
+                            max_limit_rpm = ptr_ctrl_algo->set_rpm[dev_id] + rated_speed;
+                            min_limit_rpm = ptr_ctrl_algo->set_rpm[dev_id] - rated_speed;
+
+                            if ( ptr_ctrl_algo->dev_tacho[dev_id] == 0 )
+                            {
+                                // Error : No tacho is received when the device is active
+                                tacho_read = ptr_ctrl_algo->dev_tacho[dev_id];
+                                update_and_send_val_to_broker(MTR0TACHO|DDM2_PARAMETER_INSTANCE(dev_id), tacho_read);
+                                switch(dev_id)
+                                {
+                                    case 0:
+                                        /*FAN1 No Tacho*/
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 << ( FAN1_NO_TACHO_DEVICE_ACTIVE );
+                                        break;
+                                    case 1:
+                                        /*FAN2 No Tacho*/
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 << (  FAN2_NO_TACHO_DEVICE_ACTIVE );                                   
+                                        break;
+                                    case 2:
+                                        /*Motor No Tacho*/
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 << ( MOTOR_NO_TACHO_DEVICE_ACTIVE );
+                                        break;
+                                    case MAX_NUM_DEVICE:
+                                        break;    
+                                    default:
+                                        /* invalid device*/
+                                        break;    
+
+                                }
+                            }
+                            else if ( ( ptr_ctrl_algo->dev_tacho[dev_id] < min_limit_rpm ) || ( ptr_ctrl_algo->dev_tacho[dev_id] > max_limit_rpm ) )
+                            {
+                                // Error : Tacho reading is not matched with the expected RPM..
+                                switch(dev_id)
+                                {
+                                    case 0:
+                                        /*FAN2 RPM Mismatch*/
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 << ( FAN1_RPM_MISMATCH );
+                                        break;
+                                    case 1:
+                                        /*FAN2 RPM Mismatch*/
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 << (  FAN2_RPM_MISMATCH );
+                                        break;
+                                    case 2:
+                                        /*Motor Mismatch*/
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 << ( MOTOR_RPM_MISMATCH );
+                                        break;
+                                    case MAX_NUM_DEVICE:
+                                        break;    
+
+                                }
+                            }
+                            else
+                            {
+                                // Error resolved : No tacho is received when the device is active
+                                ////ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << ( dev_id + FAN1_NO_TACHO_DEVICE_ACTIVE ) );
+                                // Error resolved : Tacho reading is not matched with the expected RPM..
+                                ////ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << ( dev_id + FAN1_RPM_MISMATCH ) );
+                                switch(dev_id)
+                                {
+                                    case 0:
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << ( FAN1_RPM_MISMATCH ) );
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << (FAN1_NO_TACHO_DEVICE_ACTIVE ) );
+                                        break;
+                                    case 1:
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << ( FAN2_RPM_MISMATCH ) );
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << (FAN2_NO_TACHO_DEVICE_ACTIVE ) );
+                                        break;
+                                    case 2:
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << ( MOTOR_RPM_MISMATCH ) );
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << (MOTOR_NO_TACHO_DEVICE_ACTIVE ) );
+                                        break;
+                                    case MAX_NUM_DEVICE:
+                                        break;    
+
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if ( ptr_ctrl_algo->dev_tacho[dev_id] != 0 )
+                            {
+                                // Error : Tacho data received when the device is inactive / OFF
+                                ////ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 << ( dev_id + FAN1_TACHO_READ_DEVICE_INACTIVE );
+                                switch(dev_id)
+                                {
+                                    case 0:
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 <<  FAN1_TACHO_READ_DEVICE_INACTIVE ;
+                                        LOG(W,"[FAN1_INACT %d]",ptr_ctrl_algo->dev_tacho[dev_id]);
+                                        break;
+                                    case 1:
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 <<  FAN2_TACHO_READ_DEVICE_INACTIVE ;
+                                        LOG(W,"[FAN2_INACT %d]",ptr_ctrl_algo->dev_tacho[dev_id]);
+                                        break;
+                                    case 2:
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 << MOTOR_TACHO_READ_DEVICE_INACTIVE ;
+                                        LOG(W,"[MOTOR_INACT %d]",ptr_ctrl_algo->dev_tacho[dev_id]);
+                                        break;
+                                    case MAX_NUM_DEVICE:
+                                        break;    
+
+                                }
+                            }
+                            else
+                            {
+                                // Error resolved : Tacho data received when the device is inactive / OFF
+                                //ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~ ( 1 << ( dev_id + FAN1_TACHO_READ_DEVICE_INACTIVE ) );
+                                switch(dev_id)
+                                {
+                                    case 0:
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~ ( 1 << FAN1_TACHO_READ_DEVICE_INACTIVE  );
+                                        break;
+                                    case 1:
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~ ( 1 <<  FAN2_TACHO_READ_DEVICE_INACTIVE  );
+                                        break;
+                                    case 2:
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~ ( 1 <<  MOTOR_TACHO_READ_DEVICE_INACTIVE );
+                                        break;
+                                    case MAX_NUM_DEVICE:
+                                        break;    
+
+                                }
+                            }
+                        }
+
+                        LOG(W, "dev%d set_rpm = %d tacho = %d min_exp_rpm = %d", \
+                            dev_id, ptr_ctrl_algo->set_rpm[dev_id], ptr_ctrl_algo->dev_tacho[dev_id], min_limit_rpm);
+
+                        // Temp fix to find the no tacho event
+                        ptr_ctrl_algo->dev_tacho[dev_id] = 0;
+                    
+                    }
+
+                    if ( ptr_ctrl_algo->fan_mtr_dev_curr_stat != ptr_ctrl_algo->fan_mtr_dev_prev_stat )
+                    {
+                        LOG(E, "Fan/Motor fault status = 0x%x", ptr_ctrl_algo->fan_mtr_dev_curr_stat);
+
+                        ptr_ctrl_algo->fan_mtr_dev_prev_stat = ptr_ctrl_algo->fan_mtr_dev_curr_stat;
+                        
+                        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &ptr_ctrl_algo->fan_mtr_dev_curr_stat, sizeof(int32_t), \
+                                   connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+                    }
+
+                }
+            iaq_value = ptr_ctrl_algo->curr_avg_iaq_value;
+            #if INV_ALGO_DEBUG 
+                LOG(I, "iaq_st=%d pr_st=%d cur_avg_iaq_val = %d", ptr_ctrl_algo->curr_iaq_stat, ptr_ctrl_algo->curr_pr_stat,ptr_ctrl_algo->curr_avg_iaq_value);
+            #endif
             }
+
+            #if INV_ALGO_DEBUG 
+                LOG(I, "cur_st=%d iaq_val = %d ", ptr_ctrl_algo->curr_state, iaq_value) ;
+            #endif
 
             /* State machine to control the inventilate */                       
             switch ( ptr_ctrl_algo->curr_state )
@@ -482,6 +661,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 #if ( INVENT_HARWARE_VERSION >= HW_VERSION_4_1 )
                             // Power ON Ionizer when the inventilate is powered ON by user 
 #ifdef EN_IONIZER_FLAG
+
                             if(ivsett_config.EN_DIS_IONIZER == true)
                             {
                                 EN_IONIZER(1);
@@ -493,10 +673,12 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                                 ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_OFF;
                             }
 #else
-                            EN_IONIZER(1);
-                            ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_ON;
+                                EN_IONIZER(1);
+                                ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_ON;
+
 #endif
-#endif
+#endif                          
+
                             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0IONST, &ptr_ctrl_algo->ionizer_status, sizeof(int32_t), \
                                         connector_pwm_fan_motor.connector_id, portMAX_DELAY));
                             /* Reset the accuracy status */
@@ -525,9 +707,10 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                             /* Set the state to be trasfer */
                             ptr_ctrl_algo->curr_state = INVENTILATE_STATE_PRESS_CTRL;
                         }
-                        else if ( ( IV0AQST_AIR_QUALITY_GOOD    != ptr_ctrl_algo->curr_iaq_stat  ) &&
+                        else if ( ( ( IV0AQST_AIR_QUALITY_GOOD    != ptr_ctrl_algo->curr_iaq_stat  ) &&
                                   ( IV0AQST_CALIBRATION_ONGOING != ptr_ctrl_algo->curr_iaq_stat  ) &&
-                                  ( IV0AQST_AIR_QUALITY_UNKNOWN != ptr_ctrl_algo->curr_iaq_stat  ) )
+                                  ( IV0AQST_AIR_QUALITY_UNKNOWN != ptr_ctrl_algo->curr_iaq_stat  )  ) ||  (iaq_value > IAQ_DEF_GOOD_MAX)  ) 
+
                         {
                             /* Set the state to be trasfer */
                             ptr_ctrl_algo->curr_state = INVENTILATE_STATE_AQ_CTRL;
@@ -562,25 +745,59 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                         ptr_ctrl_algo->curr_state = press_control_routine(ptr_ctrl_algo);
                         /* Store the current value of DP */
                         ptr_ctrl_algo->prev_avg_dp_value = ptr_ctrl_algo->curr_avg_dp_value;
+                        iaq_run_state = 0;
                     }
                     break;
 
                 case INVENTILATE_STATE_AQ_CTRL:
                     /* 1. Air quality will be control only when the pressure inside the RV is valid or unknown
                        2. BME68X Sensor accuracy should be high ( 3 ) */
-                    if ( ( IV0PRST_VALID_PRESS_LEVEL    == ptr_ctrl_algo->curr_pr_stat  ) ||
-                         ( IV0PRST_PRESS_STATUS_UNKNOWN == ptr_ctrl_algo->curr_pr_stat  ) || 
-                         ( IV0AQST_CALIBRATION_ONGOING  != ptr_ctrl_algo->curr_iaq_stat )  )
+                    
+                    if (  ( ( IV0PRST_VALID_PRESS_LEVEL    == ptr_ctrl_algo->curr_pr_stat  ) || 
+                         ( IV0PRST_PRESS_STATUS_UNKNOWN == ptr_ctrl_algo->curr_pr_stat  ) ) )
                     {
-                        if ( ( true           == ptr_ctrl_algo->data_received ) && 
-                             ( IV0MODE_AUTO   == ptr_ctrl_algo->cur_sel_mode  ) )
+                        LOG(I,"[IAQ_control_state]");
+                        
+                        //if ( ( IV0AQST_CALIBRATION_ONGOING  != ptr_ctrl_algo->curr_iaq_stat )  && (ptr_ctrl_algo->curr_avg_iaq_value > IAQ_DEF_GOOD_MAX ) )       // for Accuracy level >1
+                        if ( ( IV0AQST_CALIBRATION_ONGOING  != ptr_ctrl_algo->curr_iaq_stat )  || (iaq_value > IAQ_DEF_GOOD_MAX ) )         // for accuracy level 0 to 3
+                        { 
+                            if(iaq_run_state == 0)
+                            {
+                                LOG(I,"[IAQ_control_start_timer");
+                                ptr_ctrl_algo->wait_tmr_exp = false;
+                                start_wait_tmr(MIN_TO_MSEC(IV_IAQ_ACC0_WAIT_MIN));
+                                iaq_run_state = 1;
+                            }
+                            
+                            if( ( true == ptr_ctrl_algo->wait_tmr_exp ) && (iaq_run_state == 1) )
+                            {
+                                iaq_run_state = 2;
+                                stop_wait_tmr();
+                                LOG(I,"[IAQ_control_stop_timer_rs:2]");
+                            }
+                            
+                            
+                        }
+                        else
                         {
-                            /* Reset data received flag */
-                            ptr_ctrl_algo->data_received = false;
-                            /* Execute AQ control routine */
-                            ptr_ctrl_algo->curr_state = aq_control_routine(ptr_ctrl_algo);
-                            /* Store the current value */
-                            *ptr_ctrl_algo->ptr_prev_data = *ptr_ctrl_algo->ptr_curr_data;
+                            iaq_run_state = 2;
+                            stop_wait_tmr();
+                             LOG(I,"[IAQ_control_stop_timer_rs:2E]");
+                        }
+
+                        if(iaq_run_state == 2)
+                        {
+                            if ( ( true           == ptr_ctrl_algo->data_received ) && 
+                                ( IV0MODE_AUTO   == ptr_ctrl_algo->cur_sel_mode  ) )
+                            {
+                                 LOG(I,"[IAQ_control_st:aqcr]");
+                                /* Reset data received flag */
+                                ptr_ctrl_algo->data_received = false;
+                                /* Execute AQ control routine */
+                                ptr_ctrl_algo->curr_state = aq_control_routine(ptr_ctrl_algo);
+                                /* Store the current value */
+                                *ptr_ctrl_algo->ptr_prev_data = *ptr_ctrl_algo->ptr_curr_data;
+                            }
                         }
                     }
                     else
@@ -599,19 +816,17 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                         /* Reset the timer flag */
                         ptr_ctrl_algo->wait_tmr_exp = false;
                         /* Reset the dev compensation configuration */
-                        //reset_dev_config();
+                        reset_dev_config(); 
                         /* Set the state to be transfer */
                         ptr_ctrl_algo->curr_state = INVENTILATE_STATE_PROCESS_PARAM;
                     }
                     else if ( ptr_ctrl_algo->cur_sel_mode != ptr_ctrl_algo->prev_sel_mode  )
                     {
-                        LOG(W, "Mode changed");
+#if CONN_PWM_DEBUG_LOG
+                            LOG(I, "Mode changed");
+#endif
                         reset_dev_config();
                         ptr_ctrl_algo->curr_state = INVENTILATE_STATE_PROCESS_PARAM;
-                    }
-                    else
-                    {
-
                     }
                     break;
 
@@ -622,24 +837,23 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                     {
 #if ( INVENT_HARWARE_VERSION >= HW_VERSION_4_1 )
                         // Power ON Ionizer
-
 #ifdef EN_IONIZER_FLAG
-                        if(ivsett_config.EN_DIS_IONIZER == true)
-                        {
-                            EN_IONIZER(1);
-                            ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_ON;
-                        }
-                        else
-                        {
-                            EN_IONIZER(0);
-                            ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_OFF;
-                        }
+
+                            if(ivsett_config.EN_DIS_IONIZER == true)
+                            {
+                                EN_IONIZER(1);
+                                ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_ON;
+                            }
+                            else
+                            {
+                                EN_IONIZER(0);
+                                ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_OFF;
+                            }
 #else
-                            EN_IONIZER(1);
-                            ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_ON;
+                                EN_IONIZER(1);
+                                ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_ON;
 
-#endif 
-
+#endif
 #endif
                         
 
@@ -676,10 +890,6 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                         ptr_ctrl_algo->dev_comp_config[DEV_FAN2_AIR_OUT]  = IDLE_COMP_DEV;
                         /* Set the state to be transfer */
                         ptr_ctrl_algo->curr_state = INVENTILATE_STATE_IDLE;
-                    }
-                    else
-                    {
-
                     }
                     break;
 
@@ -794,6 +1004,9 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                     }
                     break;
+
+                case INVENTILATE_STATE_VALIDATE_DEV_STATUS:
+                    break;
                     
                 default:
                     LOG(E, "err uhst=%d", ptr_ctrl_algo->curr_state);
@@ -843,7 +1056,7 @@ void parse_received_data(void)
                 ptr_ctrl_algo->curr_state          = INVENTILATE_STATE_PROCESS_STANDBY;
                 ptr_ctrl_algo->prev_state          = INVENTILATE_STATE_PROCESS_STANDBY;
 
-#if ( INVENT_HARWARE_VERSION == HW_VERSION_4_1 )
+#if ( INVENT_HARWARE_VERSION >= HW_VERSION_4_1 )
                 // Power OFF Ionizer when the inventilate is powered OFF by user 
                 EN_IONIZER(0);
 #endif
@@ -871,7 +1084,20 @@ void parse_received_data(void)
         case IV_VOC_SENSOR_ACC:
             ptr_ctrl_algo->sens_acc = ptr_ctrl_algo->iv_data.data;                   /* Update the VOC sensor accuracy status */
             break;
+        
+        case IV_DP_BATTERY_LEVEL:
+                LOG(I,"[DP_Battery_level_data_received %d]",ptr_ctrl_algo->iv_data.data); 
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &ptr_ctrl_algo->fan_mtr_dev_curr_stat, sizeof(int32_t), \
+                                   connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+            
+            if (ptr_ctrl_algo->iv_data.data < (int32_t)DP_BAT_LIMIT)
+            {
+                //Send Error Code for DP sensor board.
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &ptr_ctrl_algo->fan_mtr_dev_curr_stat, sizeof(int32_t), \
+                                   connector_pwm_fan_motor.connector_id, portMAX_DELAY));
 
+            }
+            break;
         case DP_DATA:                                               
             ptr_ctrl_algo->iv_data.data = ( ptr_ctrl_algo->iv_data.data != 0 ) ? ( ptr_ctrl_algo->iv_data.data / ptr_ctrl_algo->dp_resol_factor ) : 0;
             ptr_ctrl_algo->curr_avg_dp_value += ptr_ctrl_algo->iv_data.data;        /* Add the new value with previous value */
@@ -887,19 +1113,28 @@ void parse_received_data(void)
             break;
 
         case IV_RPM_STEP_LVL1:                                                      //Set RPM in steps                   
-        case IV_RPM_STEP_LVL2:                                                      
+         //fall through
+       case IV_RPM_STEP_LVL2:                                                      
+        //fall through
         case IV_RPM_STEP_LVL3:                                                      
+        //fall through
         case IV_RPM_STEP_LVL4:                                                      
+        //fall through
         case IV_RPM_STEP_LVL5:
             /* Set the rpm step */
             set_iv_rpm_step_level((ptr_ctrl_algo->iv_data.data_id - IV_RPM_STEP_LVL1), ptr_ctrl_algo->iv_data.data);
             break;
 
         case IV_FAN1_RPM_MIN:                                                       //Update minimum level RPM for Fan1 in NVS 
+        //fall through
         case IV_FAN2_RPM_MIN:                                                       //Update minimum level RPM for Fan2 in NVS
+        //fall through
         case IV_MTR_RPM_MIN:                                                        //Update minimum level RPM for Motor in NVS
+        //fall through
         case IV_FAN1_RPM_MAX:                                                       //Update maximum level RPM for Fan1 in NVS
+        //fall through
         case IV_FAN2_RPM_MAX:                                                       //Update maximum level RPM for Fan2 in NVS
+        //fall through
         case IV_MTR_RPM_MAX:                                                        //Update maximum level RPM for Motor in NVS
             /* Update the min RPM range database table */
             update_data_in_nvm(ptr_ctrl_algo->iv_data.data_id, ptr_ctrl_algo->iv_data.data);
@@ -907,18 +1142,36 @@ void parse_received_data(void)
             calc_mode_min_max_rpm();
             break;
 
+        case IV_FAN1_TACHO:
+        //fall through
+        case IV_FAN2_TACHO:
+        //fall through
+        case IV_MTR_TACHO:
+#if CONN_PWM_DEBUG_LOG        
+            LOG(I, "Tacho read dev%d = %d", ptr_ctrl_algo->iv_data.data_id - IV_FAN1_TACHO, ptr_ctrl_algo->iv_data.data);
+#endif            
+            ptr_ctrl_algo->dev_tacho[ptr_ctrl_algo->iv_data.data_id - IV_FAN1_TACHO] = ptr_ctrl_algo->iv_data.data;
+            break;
+
         case IV_IAQ_GOOD_MIN:                                                       //Update IAQ Good mimimum level in NVS
+        //fall through
+        case IV_IAQ_FAIR_MIN:                                                       //Update IAQ Fair minimum level in NVS
+        //fall through
         case IV_IAQ_BAD_MIN:                                                        //Update IAQ Bad minimum level in NVS
-        case IV_IAQ_WORSE_MIN:                                                      //Update IAQ worst minimum level in NVS    
+        //fall through
         case IV_IAQ_GOOD_MAX:                                                       //Update IAQ Good maximum level in NVS
+        //fall through
+        case IV_IAQ_FAIR_MAX:                                                       //Update IAQ Fair maximum level in NVS
+        //fall through
         case IV_IAQ_BAD_MAX:                                                        //Update IAQ Bad maximum level in NVS
-        case IV_IAQ_WORSE_MAX:                                                      //Update IAQ Worst maximum level in NVS
             /* Update the received IAQ range in the NVM and variables */
             update_data_in_nvm(ptr_ctrl_algo->iv_data.data_id, ptr_ctrl_algo->iv_data.data);
             break;
 
         case IV_FAN1_SET_RPM:                                                       //Set FAN1 RPM
+        //fall through
         case IV_FAN2_SET_RPM:                                                       //Set FAN2 RPM    
+        //fall through
         case IV_MTR_SET_RPM:                                                        //Set MOTOR RPM
             /* set the requested RPM to the corresponding device */
             set_fan_motor_rpm((invent_device_id_t)(ptr_ctrl_algo->iv_data.data_id - IV_FAN1_SET_RPM), ptr_ctrl_algo->iv_data.data);
@@ -930,6 +1183,19 @@ void parse_received_data(void)
 
         case IV_STORAGE_TMR_EXP:
             ptr_ctrl_algo->storage_tmr_exp = true;
+            break;
+
+        case IV_ERROR_STATUS:
+            ptr_ctrl_algo->invent_error_status = ptr_ctrl_algo->iv_data.data;
+            break;
+
+        case IV_IVSETT:
+            /*IV set config Enable/Disable Solar*/
+            break;
+        case IV_POWER_SOURCE:
+            /*Active power source*/
+            LOG(I,"[Act_pwr_src %d ]",ptr_ctrl_algo->iv_data.data) 
+            ptr_ctrl_algo->selected_power_source = ptr_ctrl_algo->iv_data.data;
             break;
 
         case INVALID_DATA_RECEIVED:
@@ -960,6 +1226,11 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
     LOG(I, "Received ddm_param = 0x%x i32value = %d", ddm_param, i32value);
 #endif
 
+    if ( SDP0DP == ddm_param )
+    {
+        LOG(I, "ddmp 0x%x Received DP data i32value = %d", ddm_param ,i32value);
+    }
+
 	/* Validate the DDM parameter received */
 	db_idx = get_ddm_index_from_db(ddm_param);
  
@@ -967,16 +1238,13 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 	{
         if ( DDMP2_CONTROL_SET == req_type )
         {
-            /* Frame and send the publish request */
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &pub_value, sizeof(int32_t), \
-                        connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+                /* Frame and send the publish request */
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &pub_value, sizeof(int32_t), \
+                            connector_pwm_fan_motor.connector_id, portMAX_DELAY));
         }
 
 		param_db = &conn_fan_motor_param_db[db_idx];
 
-#if CONN_PWM_DEBUG_LOG		
-		LOG(I, "Valid DDMP parameter");
-#endif
         i32Index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_param));
 
         if ( -1 != i32Index )
@@ -1037,9 +1305,6 @@ static void process_subscribe_request(uint32_t ddm_param)
 
             index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_param));
 
-#if CONN_PWM_DEBUG_LOG
-            LOG(I, "ddm2_parameter_list_lookup index = %d", index);
-#endif
             if ( -1 != index )
 			{
                 factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
@@ -1054,19 +1319,11 @@ static void process_subscribe_request(uint32_t ddm_param)
                 /* Frame and send the publish request */
                 TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &value, sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
             }
-            else
-            {
-                LOG(E, "DDMP 0x%x not found in ddm2_parameter_list_lookup", ddm_param);
-            }
 		}
-        else
-        {
-            LOG(E, "Invalid DDMP Request ddm_param 0x%x", ddm_param);
-        }
 	}
 	else
 	{
-		LOG(E, "sorted_list_key_search ddm_param 0x%x not found", ddm_param);
+		LOG(I, "sorted_list_key_search ddm_param 0x%x not found", ddm_param);
 	}
 }
 
@@ -1083,6 +1340,7 @@ void update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t value)
 	int index;
     int32_t factor_value = 0;
     int factor;
+    uint32_t ddmp = 0;
 
 #if CONN_PWM_DEBUG_LOG
     LOG(I, "ddm_parameter = 0x%x value = %d", ddm_parameter, value);
@@ -1097,10 +1355,6 @@ void update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t value)
         
         index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_parameter));
 
-#if CONN_PWM_DEBUG_LOG
-        LOG(I, "ddm2_parameter_list_lookup index = %d", index);
-#endif
-
         if ( -1 != index )
 		{
             factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
@@ -1112,13 +1366,16 @@ void update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t value)
                 
             /* Multiply with the factor */
             factor_value = param_db->i32Value * factor;
+            ddmp = DDM2_PARAMETER_BASE_INSTANCE(ddm_parameter);
+
+            if ( ( MTR0TACHO == ddmp ) && ( NULL != param_db->cb_func ) )
+            {
+                /* Execute the callback function */
+                param_db->cb_func(ddm_parameter, param_db->i32Value);
+            }
             /* Frame and send the publish request */
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_parameter, &factor_value, \
                        sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
-        }
-        else
-        {
-            LOG(E, "DDMP 0x%x not found in ddm2_parameter_list_lookup", ddm_parameter);
         }
    	}
        
@@ -1161,6 +1418,7 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 static void handle_invsub_data(uint32_t ddm_param, int32_t data)
 {
     IV_DATA iv_data;
+    uint32_t dp_plausible_errst = 0;
 
     /* set the data */
     iv_data.data = data;
@@ -1173,6 +1431,7 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
 
         case SBMEB0HUM:
             iv_data.data_id = IV_HUMIDITY_DATA;
+            bme68x_humid_value =iv_data.data;
             break;
 
         case SDP0AVL:
@@ -1182,12 +1441,19 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
                 LOG(W, "Subscribe request for DDMP SDP0DP");
                 // Whenever the availability of sensor node received then the subscribtion should be done again
                 TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0DP, NULL, 0, connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+
+                // Whenever the availability of sensor node received then the subscribtion should be done again
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, connector_pwm_fan_motor.connector_id, portMAX_DELAY));
             }
             else if ( DP_SENSOR_NOT_AVAILABLE == iv_data.data )
             {
                 LOG(W, "Subscribe request for DDMP SDP0AVL");
                 // Whenever the availability of sensor node received then the subscribtion should be done again
                 TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0, connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+
+                LOG(W, "Subscribe request for DDMP SNODE0AVL");
+                // Whenever the availability of sensor node received then the subscribtion should be done again
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0AVL, NULL, 0, connector_pwm_fan_motor.connector_id, portMAX_DELAY));
             }
             else
             {
@@ -1203,8 +1469,37 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
         case SDP0DP:
 #endif
             iv_data.data_id = DP_DATA;
+            if ((iv_data.data > DPSENS_PLAUSIBLE_UPRANGE) && (iv_data.data > 0))
+            {
+                dp_plausible_errst |= 1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR;
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &dp_plausible_errst, sizeof(int32_t), \
+                connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+#ifdef DP_ERR_DEBUG
+                LOG(I, "DP PLAUSIBLE ERRSET OVER= %d", iv_data.data);
+#endif
+            }
+            else if ((iv_data.data < DPSENS_PLAUSIBLE_DOWNRANGE) && (iv_data.data < 0))
+            {
+                dp_plausible_errst |= 1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR;
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &dp_plausible_errst, sizeof(int32_t), \
+                connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+#ifdef DP_ERR_DEBUG
+                LOG(I, "DP PLAUSIBLE ERRSET UNDER= %d", iv_data.data);
+#endif
+            }
+            else if (((iv_data.data > 0) && (iv_data.data < DPSENS_PLAUSIBLE_UPRANGE)) || ((iv_data.data < 0) && (iv_data.data > DPSENS_PLAUSIBLE_DOWNRANGE)))
+            {
+                dp_plausible_errst &= ~ ( 1 <<  DP_SENSOR_DATA_PLAUSIBLE_ERROR );
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &dp_plausible_errst, sizeof(int32_t), \
+                connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+#ifdef DP_ERR_DEBUG
+                LOG(I, "DP PLAUSIBLE VALID = %d", iv_data.data);
+#endif
+            }
+#ifdef DP_ERR_DEBUG
+            LOG(I, "DP DATA = %d", iv_data.data);
+#endif
             break;
-
         case SBMEB0AQR:
             iv_data.data_id = IV_VOC_SENSOR_ACC;
             break;
@@ -1253,16 +1548,28 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
             iv_data.data_id = IV_MTR_RPM_MAX;
             break;
 
+        case MTR0TACHO|DDM2_PARAMETER_INSTANCE(0):
+            iv_data.data_id = IV_FAN1_TACHO;
+            break;
+
+        case MTR0TACHO|DDM2_PARAMETER_INSTANCE(1):
+            iv_data.data_id = IV_FAN2_TACHO;
+            break;
+
+        case MTR0TACHO|DDM2_PARAMETER_INSTANCE(2):
+            iv_data.data_id = IV_MTR_TACHO;
+            break;
+
         case IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0):
             iv_data.data_id = IV_IAQ_GOOD_MIN;
             break;
 
         case IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1):
-            iv_data.data_id = IV_IAQ_BAD_MIN;
+            iv_data.data_id = IV_IAQ_FAIR_MIN;
             break;
 
         case IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2):
-            iv_data.data_id = IV_IAQ_WORSE_MIN;
+            iv_data.data_id = IV_IAQ_BAD_MIN;
             break;
 
         case IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0):
@@ -1270,13 +1577,23 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
             break;
 
         case IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1):
-            iv_data.data_id = IV_IAQ_BAD_MAX;
+            iv_data.data_id = IV_IAQ_FAIR_MAX;
             break;
 
         case IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2):
-            iv_data.data_id = IV_IAQ_WORSE_MAX;
+            iv_data.data_id = IV_IAQ_BAD_MAX;
             break;
 
+        case IV0ERRST:
+            iv_data.data_id = IV_ERROR_STATUS;
+            break;
+
+        case IV0SETT:
+            iv_data.data_id = IV_IVSETT;
+            break;
+        case IV0PWRSRC:
+            iv_data.data_id = IV_POWER_SOURCE;
+            break;            
         default:
             iv_data.data_id = INVALID_DATA_RECEIVED;
             break;
@@ -1458,11 +1775,27 @@ void stop_wait_tmr(void)
   */
 static void change_storage_timer_period(TickType_t time_period_ticks)
 {
-    osal_ubase_type_t  xStorageTimerChange = xTimerChangePeriod( xStorageTimer, time_period_ticks, portMAX_DELAY);
+    osal_ubase_type_t xStorageTimerChange;  
+    int32_t i32_ddmp_value = 0;
+
+    xStorageTimerChange = xTimerChangePeriod( xStorageTimer, time_period_ticks, portMAX_DELAY);
 
     if ( xStorageTimerChange != pdPASS )
     {
 		LOG(E, "Storage Timer period change failed");
+    }
+    if(time_period_ticks == pdMS_TO_TICKS(MIN_TO_MSEC(STORAGE_MODE_RUN_TIME_03_HR)))
+    {
+        i32_ddmp_value =IV0STGT_RUN_3HRS;// IV0STORAGE_ACTIVE_3HOURS;
+        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0STGT, &i32_ddmp_value, \
+                            sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+        storage_humid_timer = 0;
+        xStorageTimerChange = xTimerStart( xStorageHumid_chk_Timer, portMAX_DELAY );
+        
+        if ( xStorageTimerChange != pdPASS )
+        {
+            LOG(E, "Storage humid chk Timer start failed");
+        }
     }
 }
 
@@ -1473,7 +1806,9 @@ static void change_storage_timer_period(TickType_t time_period_ticks)
   */
 static void start_storage_timer(void)
 {
-    osal_ubase_type_t  xStorageTimerStarted = xTimerStart( xStorageTimer, portMAX_DELAY );
+    osal_ubase_type_t  xStorageTimerStarted;
+
+    xStorageTimerStarted = xTimerStart( xStorageTimer, portMAX_DELAY );
 	
     if ( xStorageTimerStarted != pdPASS )
     {
@@ -1488,12 +1823,27 @@ static void start_storage_timer(void)
   */
 static void stop_storage_timer(void)
 {
-    osal_ubase_type_t  xStorageTimerStopped = xTimerStop( xStorageTimer, portMAX_DELAY );
+    osal_ubase_type_t   xStorageTimerStopped;
+    int32_t i32_ddmp_value = 0;
+
+    xStorageTimerStopped = xTimerStop( xStorageTimer, portMAX_DELAY );
 	
     if ( xStorageTimerStopped != pdPASS )
     {
 		LOG(E, "Storage Timer stop failed");
     }
+
+    xStorageTimerStopped = xTimerStop( xStorageHumid_chk_Timer, portMAX_DELAY );
+	
+    if ( xStorageTimerStopped != pdPASS )
+    {
+		LOG(E, "Storage humid check Timer stop failed");
+    }
+
+    i32_ddmp_value = IV0STGT_IDLE_21HRS;
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0STGT, &i32_ddmp_value, \
+                        sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+
 }
 
 /**
@@ -1517,7 +1867,54 @@ static void storage_cb_func( TimerHandle_t xTimer )
         LOG(E, "Queue error ret = %d", ret);
     }
 }
-static DDMP2_FRAME frame_event_to_send;
+
+/*
+This function is called every 1 minute from timer interrupt 
+Timer handler:xStorageHumid_chk_Timer
+*/
+static void storage_humid_chk_cb_func(TimerHandle_t xTimer)
+{
+    IV_DATA iv_data;
+    iv_data.data    = 0;
+    iv_data.data_id = IV_STORAGE_HUMID_CHK_TMR_EXP;
+    storage_humid_timer++;
+#if CONN_PWM_DEBUG_LOG    
+    LOG(C,"[Storage_tmr_count %d present humid %d initial_humid %d curr %d]",storage_humid_timer,bme68x_humid_value, bm_humid_prev,bm_humid_curr);
+#endif
+    if(storage_humid_timer == STORAGE_RUN_START_TIME)
+    {
+        bm_humid_prev = bme68x_humid_value;
+        bm_humid_curr = bme68x_humid_value;
+#if CONN_PWM_DEBUG_LOG        
+        LOG(C,"[humid_init_value = %d]",bm_humid_prev);
+#endif
+    }
+    else if(storage_humid_timer >= STORAGE_RUN_END_TIME)
+    {
+        bm_humid_curr = bme68x_humid_value;
+#if CONN_PWM_DEBUG_LOG
+        LOG(I,"[humid_prev %d  hum_curr %d]",bm_humid_prev,bm_humid_curr);
+#endif        
+        if((bm_humid_curr - bm_humid_prev ) >= 10)
+        {
+            //Stop fan
+#if CONN_PWM_DEBUG_LOG
+            LOG(C,"[humid value increase. stop FAN1 and FAN2]");
+#endif            
+            iv_data.data = 0;
+            iv_data.data_id = IV_FAN1_SET_RPM;
+            push_data_in_queue(iv_data.data, iv_data.data_id);
+            iv_data.data = 0;
+            iv_data.data_id = IV_FAN2_SET_RPM;
+            push_data_in_queue(iv_data.data, iv_data.data_id);
+        }
+        storage_humid_timer = 0;
+
+    }
+#if CONN_PWM_DEBUG_LOG    
+    LOG(I,"[Storage_chk_ tmr %d humid present %d initial_humid %d, curr %d]",storage_humid_timer,bme68x_humid_value, bm_humid_prev,bm_humid_curr);
+#endif
+}
 
 static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
 {
@@ -1531,7 +1928,8 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
     time_now[capture_signal]     = xTaskGetTickCountFromISR();
     time_diff[capture_signal]    = time_now[capture_signal] - last_tick[capture_signal];
     time_diff_ms = pdTICKS_TO_MS(time_diff[capture_signal]);
-    if (time_diff_ms >= TACHO_SEND_MIN_INTERNAL_MS)
+
+    if ( time_diff_ms >= TACHO_SEND_MIN_INTERNAL_MS )
     {
         if (capture_counter[capture_signal] != previous_cap_value[capture_signal])
         {
@@ -1553,10 +1951,10 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
             {
                 // Find rpm from the pulse per second
                 dev_capt[capture_signal].dev_rpm  = (current_cap_value[capture_signal]  * NUM_SECONDS_PER_MINUTE) / pulse_count_per_revol[capture_signal];
+                dev_rpm[capture_signal] = dev_capt[capture_signal].dev_rpm;
             }
         }
         // Send tacho event MTR0_NEW_TACHO_DATA_EVENT
-        mtr_tacho_data_event_t tacho_event;
         tacho_event.capture_signal = capture_signal;
         tacho_event.capture_info.dev_rpm = dev_capt[capture_signal].dev_rpm;
         ddmp2_create_set(&frame_event_to_send, MTR0_NEW_TACHO_DATA_EVENT, (const void*)&tacho_event, sizeof(tacho_event), connector_pwm_fan_motor.connector_id);
@@ -1584,7 +1982,7 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
             // Skip current interrupt
             continue;
         }
-        time_diff[i]    = time_now[capture_signal] - last_tick[i];
+        time_diff[i] = time_now[capture_signal] - last_tick[i];
         time_diff_ms = pdTICKS_TO_MS(time_diff[i]);
         if (time_diff_ms >= TACHO_ERROR_MIN_INTERNAL_MS)
         {

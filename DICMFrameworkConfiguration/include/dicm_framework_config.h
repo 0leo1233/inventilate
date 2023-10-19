@@ -18,6 +18,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define HW_VERSION_1_0               0   // POC Board
 #define HW_VERSION_2_0               1
 #define HW_VERSION_4_1               2
+#define HW_VERSION_4_3               3
 
 #define HARDWARE_MAJOR               4
 #define HARDWARE_MINOR               1
@@ -60,6 +61,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 // Disable switching to external crystal due to hardware bug (missing resistor)
 #define CONFIG_RTC_CLK_SWITCH_TO_EXT_XTAL 0
+#define LINDEV_GENERIC_VERBOSE_LOG	0
 
 #define COMM_BLE                   0
 #define COMM_I2C                   1
@@ -69,7 +71,10 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CHIP_TYPE_EXTERNAL_BME680  1
 #define CHIP_TYPE_INTERNAL_BME688  2
 #define CHIP_TYPE_EXTERNAL_BME688  3
-#define BME68X_CHIP_TYPE           CHIP_TYPE_EXTERNAL_BME688
+#define BME68X_CHIP_TYPE           CHIP_TYPE_INTERNAL_BME688
+//Enable to test storage mode
+//#define STORAGE_TEST_MODE			/*Storage mode test Idle time 10 min Run time 6 min*/
+//#define FILTER_TEST				/*FILTER_LIFE_TIME_MIN is set to 3 minutes to test the Filter */
 
 //#define INVENT_BATTERY_TESTING
 
@@ -97,9 +102,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define DEV_MOTOR_MIN_RPM              ((uint32_t)     0u)
 #define DEV_MOTOR_MAX_RPM              ((uint32_t)  2200u)
 #define DEV_MOTOR_PWM_MODE            NON_INVERTED_PWM
-
-/*Uncomment below macro to use Inoizer hardware */
-//#define EN_IONIZER_FLAG
 
 /* Connectors for Inventilate */
 #if defined(CONNECTOR_WIFI)
@@ -143,7 +145,22 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define APP_POWER_CONTROL_SERVICE
 #define APP_DIFF_PRESSURE_SENSOR
 #define APP_LIGHT_CONTROL
+#define IV0ERRST_NO_ERROR   0
+/*
+Requirement for Ionizer:
+Ionizer is after market feature, by default it is enable in the code
+EN_IONIZER_FLAG - Not Defined
+* As per latest discussion, Ionizer shall be enabled by default when Inventilate is powered ON. 
+* So, comment this macro, to enable this functionality
 
+EN_IONIZER_FLAG - Defined
+* As per previous requirement, this was based on a DDMP which can be set from other devices.
+  ie/.Ionizer feature can be enabled or disabled from other devices, using the DDMP "IV0SETT". 
+  IV0SETT -> Bit1 -> 1:Ionizer Enabled, 0: Ionizer Disabled
+* So, uncomment this macro, to enable this functionality
+*/
+//Uncomment EN_IONIZER_FLAG to configure using IV0sett DDMP
+//#define EN_IONIZER_FLAG
 #define DICM_APPLICATION_CONNECTOR_EXTERN()\
         extern CONNECTOR connector_diffpress_sensor;\
         extern CONNECTOR connector_voc_sensor;\
@@ -347,15 +364,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #define HAL_PWM_CAP_COUNTER_U32_MAX     (UINT32_MAX)
 
-#define ENABLE_BAT_SHIP                     1
-#define DISABLE_BAT_SHIP                    0
-
-#ifdef DEVICE_BQ25792
-#define BAT_SHIP_VALUE                      ENABLE_BAT_SHIP
-#else
-#define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP
-#endif // DEVICE_BQ25792
-
 #ifdef HAL_I2C_MASTER
 #define I2C_MASTER0
 #define I2C_MASTER0_PORT         	0 //I2C_NUM_0
@@ -404,8 +412,9 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define ENABLE_BAT_SHIP                     1
 #define DISABLE_BAT_SHIP                    0
 
-#ifdef DEVICE_BQ25792
-#define BAT_SHIP_VALUE                      ENABLE_BAT_SHIP
+#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)	
+#define BAT_SHIP_VALUE                      ENABLE_BAT_SHIP		//With Sepic
+//#define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP		//Sepic bypassed
 #else
 #define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP
 #endif
@@ -439,7 +448,7 @@ typedef enum {
 */
 #define	GPIO_PINS \
 GPIO_PIN( 	   IO_EXP_INT,	        HAL_GPIO_DEVICE_ESP32,		    0,	       DEVICE_TCA9554A_INT_PIN,		 HAL_GPIO_PINMODE_READ,	               0,		    HAL_GPIO_INTRMODE_NEGEDGE,   battery_ic_interrupt_cb) \
-GPIO_PIN(     LCD_INT_TSO,          HAL_GPIO_DEVICE_ESP32,		    0,	        DEVICE_UC1510C_INT_PIN,      HAL_GPIO_PINMODE_READ,                0,		    HAL_GPIO_INTRMODE_NEGEDGE,	onboard_hmi_interrupt_cb) \
+GPIO_PIN(     LCD_INT_TSO,          HAL_GPIO_DEVICE_ESP32,		    0,	        DEVICE_UC1510C_INT_PIN,      HAL_GPIO_PINMODE_READ,                0,		    HAL_GPIO_INTRMODE_POSEDGE,	onboard_hmi_interrupt_cb) \
 GPIO_PIN(  LCD_RESET_RSTB,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_0,     HAL_GPIO_PINMODE_WRITE,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN(     EN_BAT_SHIP,	     HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_1,     HAL_GPIO_PINMODE_WRITE,   BAT_SHIP_VALUE,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \
 GPIO_PIN( 	   EN_BAT_CHG,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              IO_EX_GPIO_NUM_2,     HAL_GPIO_PINMODE_WRITE,                0,		    HAL_GPIO_INTRMODE_DISABLE,	                    NULL) \

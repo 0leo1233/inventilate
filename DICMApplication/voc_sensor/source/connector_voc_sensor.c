@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include "osal.h"
 #include "connector_voc_sensor.h"
+#include "app_error_code.h"
 
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
 #include "bsec_integration.h"
@@ -47,8 +48,11 @@ static void start_subscribe(void);
 static void start_publish(void);
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param);
 static void pwr_state_callback(uint8_t table_index, int32_t i32Value);
+static void storage_mode_cb(uint8_t table_index, int32_t i32Value);
+static void inv_err_stat_callback(uint8_t table_index, int32_t i32Value);
 
 static osal_queue_handle_t voc_sens_queue;
+static uint32_t invent_error_stat = 0;
 
 /* Structure for Connector VOC Sensor */
 CONNECTOR connector_voc_sensor =
@@ -61,19 +65,21 @@ CONNECTOR connector_voc_sensor =
 static conn_voc_sensor_param_t conn_voc_sensor_param_db[] =
 {
    //   ddm_parameter        type           pub  sub                         i32Value               cb_func
-   {     SBMEB0IAQ, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {    SBMEB0TEMP, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {     SBMEB0PRS, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {     SBMEB0HUM, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {     SBMEB0GAS, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {     SBMEB0CO2, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {     SBMEB0VOC, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {     SBMEB0SST, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {     SBMEB0RIS, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {     SBMEB0AQR, 	DDM2_TYPE_INT32_T,   1,   0,								0,     			 NULL},
-   {       IV0AQST, 	DDM2_TYPE_INT32_T,   1,   0,      IV0AQST_AIR_QUALITY_UNKNOWN,     			 NULL},
-   {  IVPMGR0STATE, 	DDM2_TYPE_INT32_T,   0,   1,							    0, pwr_state_callback},
-   {    IV0STORAGE,     DDM2_TYPE_INT32_T, 	 0,   1, 	                            0,               NULL},
+   {     SBMEB0IAQ, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {    SBMEB0TEMP, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {     SBMEB0PRS, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {     SBMEB0HUM, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {     SBMEB0GAS, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {     SBMEB0CO2, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {     SBMEB0VOC, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {     SBMEB0SST, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {     SBMEB0RIS, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {     SBMEB0AQR, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
+   {       IV0AQST, 	DDM2_TYPE_INT32_T,   1,   0,      IV0AQST_AIR_QUALITY_UNKNOWN,         			 NULL},
+   {  IVPMGR0STATE, 	DDM2_TYPE_INT32_T,   0,   1,							    0,     pwr_state_callback},
+   {    IV0STORAGE,     DDM2_TYPE_INT32_T, 	 0,   1, 	                            0,                   NULL},
+   {       IV0STGT,     DDM2_TYPE_INT32_T, 	 0,   1, 	                            0,        storage_mode_cb},
+   {      IV0ERRST,     DDM2_TYPE_INT32_T, 	 0,   1, 	                            0,  inv_err_stat_callback},
 };
 
 DECLARE_SORTED_LIST_EXTRAM(conn_voc_sens_table, CONN_VOC_SENS_SUB_DEPTH);       //!< \~ Subscription table storage
@@ -487,6 +493,92 @@ static void pwr_state_callback(uint8_t table_index, int32_t i32Value)
     if ( osal_success != ret )
     {
         LOG(E, "Queue error ret = %d", ret);
+    }
+}
+
+static void storage_mode_cb(uint8_t table_index, int32_t i32Value)
+{
+    uint32_t voc_op_mode_sel;
+
+
+    LOG(I,"[Storage_mode %d]", i32Value);
+
+    if (IV0STGT_RUN_3HRS == i32Value )
+    {
+#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
+        voc_op_mode_sel = BME680_FORCED_MODE;
+#else
+        voc_op_mode_sel = BME68X_FORCED_MODE;
+#endif
+    }
+    else if (IV0STGT_IDLE_21HRS == i32Value )
+    {
+
+#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
+        voc_op_mode_sel = BME680_SLEEP_MODE;
+#else
+        voc_op_mode_sel = BME68X_SLEEP_MODE;
+#endif
+    }
+
+    // push the data in the Queue
+    osal_base_type_t ret = osal_queue_send(voc_sens_queue, &voc_op_mode_sel, 0);
+
+    if ( osal_success != ret )
+    {
+        LOG(E, "Queue error ret = %d", ret);
+    }
+
+}
+
+/**
+  * @brief  Callback function to handle subscribed data
+  * @param  table_index
+  * @param  i32Value.
+  * @retval none.
+  */
+static void inv_err_stat_callback(uint8_t table_index, int32_t i32Value)
+{
+    /* Update error status value */
+    invent_error_stat = i32Value;
+}
+
+/**
+  * @brief  Callback function to handle subscribed data
+  * @param  table_index
+  * @param  i32Value.
+  * @retval none.
+  */
+void bme68x_error_code(const BME68X_ERROR error)
+{
+    uint32_t err_frame = invent_error_stat;
+
+    switch (error)
+    {
+        case BME68X_COMM_ERROR:
+            err_frame |=  1 << VOC_SENSOR_COMMUNICATION_ERROR;
+            LOG(I,"voc Err 0");
+            break;
+
+        case BME68X_DATA_PLAUSIBLE_ERROR:
+            err_frame |=  1 << VOC_SENSOR_DATA_PLAUSIBLE_ERROR;
+            LOG(I,"voc Err 1");
+            break;
+
+        case BME68X_NO_ERROR:
+            err_frame &= ~( 1 << VOC_SENSOR_COMMUNICATION_ERROR);
+            err_frame &= ~( 1 << VOC_SENSOR_DATA_PLAUSIBLE_ERROR);
+            LOG(I,"voc Err 3");
+            break;
+
+        default:
+            LOG(E, "Unhandled error code = %d", error);
+            break;
+    }
+
+    if ( err_frame != invent_error_stat )
+    {
+        connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(err_frame), connector_voc_sensor.connector_id, (TickType_t)portMAX_DELAY);
     }
 }
 

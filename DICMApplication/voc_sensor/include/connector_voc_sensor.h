@@ -17,12 +17,12 @@ typedef void (*conn_voc_param_changed_t )(uint8_t table_index, int32_t i32Value)
 
 typedef struct
 {
-    uint32_t ddm_parameter;
-    DDM2_TYPE_ENUM type;
-    uint8_t pub;
-    uint8_t sub;
+    const uint32_t ddm_parameter;
+    const DDM2_TYPE_ENUM type;
+    const uint8_t pub;
+    const uint8_t sub;
     int32_t i32Value;
-    conn_voc_param_changed_t cb_func;
+    const conn_voc_param_changed_t cb_func;
 } conn_voc_sensor_param_t;
 
 extern CONNECTOR connector_voc_sensor;

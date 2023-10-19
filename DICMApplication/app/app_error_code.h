@@ -10,10 +10,10 @@ typedef enum __invent_err_code_bit_pos
     VOC_SENSOR_COMMUNICATION_ERROR   =  0,
     VOC_SENSOR_DATA_PLAUSIBLE_ERROR  =  1,
     DP_SENSOR_BOARD_DISCONNECTED     =  2,
-    DP_SENSOR_NO_DATA_ERROR          =  3,
+    UNUSED_3                         =  3,
     DP_SENSOR_DATA_PLAUSIBLE_ERROR   =  4,
     DP_SENSOR_BOARD_BATTERY_LOW      =  5,
-    DP_SENSOR_BOARD_CONN_RETRY       =  6,
+    UNUSED_6                         =  6,
     //ERROR_CODE:   FAN1
     FAN1_RPM_MISMATCH                =  7,
     FAN1_TACHO_READ_DEVICE_INACTIVE  =  8,
@@ -28,8 +28,8 @@ typedef enum __invent_err_code_bit_pos
     MOTOR_NO_TACHO_DEVICE_ACTIVE     = 15,
     //Error_code:   BMS
     BACKUP_BATTERY_LOW               = 16,
-    CAR_BATTERY_INPUT_NOT_FOUND      = 17,
-    SOLAR_INPUT_NOT_FOUND            = 18,
+    UNUSED_17                        = 17,     
+    UNUSED_18                        = 18,
     COMM_ERROR_WITH_BATTERY_IC       = 19,
     BATTERY_OVER_HEATING             = 20,
     BATTERY_EXPIRED                  = 21,

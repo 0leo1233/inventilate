@@ -185,8 +185,8 @@ static conn_diff_press_sensor_param_t conn_diffpress_sensor_param_db[] =
     {IVSDP0TPSCFAC   , DDM2_TYPE_INT32_T,     1,        0,  					 0,  			    NULL},
 #elif ( SDP3X_SENS_BOARD_COMM == COMM_BLE )	  
     {BT0SCAN         , DDM2_TYPE_OTHER,       0,        1,                       0,                 NULL},       
-    {SNODE0BATTLVL   , DDM2_TYPE_INT32_T,     0,        1,                       0,   snode_avl_callback},       
-    {SDP0AVL         , DDM2_TYPE_INT32_T,     0,        1,                       0, dp_sens_avl_callback},          
+    {SDP0AVL         , DDM2_TYPE_INT32_T,     0,        1,                       0, dp_sens_avl_callback}, 
+    {SNODE0BATTLVL   , DDM2_TYPE_INT32_T,     0,        1,                       0, snode_avl_callback},       
     {IV0BLREQ        , DDM2_TYPE_INT32_T,     0,        1,  					 0,      bl_req_callback},
 #endif
     {IVPMGR0STATE    , DDM2_TYPE_INT32_T,     0,        1,						 0,   pwr_state_callback},
@@ -378,6 +378,15 @@ static void conn_diffpress_read_task(void *pvParameter)
 
 #elif ( SDP3X_SENS_BOARD_COMM == COMM_BLE )
 
+        //send battery voltage
+        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, \
+                connector_diffpress_sensor.connector_id, portMAX_DELAY));
+
+        //command to send DP sensor data            
+        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0, \
+                connector_diffpress_sensor.connector_id, portMAX_DELAY));
+
+
         if ( pdPASS == xQueueReceive(dp_sens_queue, (void *)&qdata, portMAX_DELAY) )
         {
     #if CONN_DP_SENS_SERV_LOGS
@@ -428,7 +437,7 @@ static void conn_diffpress_read_task(void *pvParameter)
                 }
                 else if ( ( IV0BLREQ_SCAN == ptr_inst->bl_req ) || ( IV0BLREQ_PAIR == ptr_inst->bl_req ) )
                 {
-                    LOG(W, "DP Sensor BLE scan (BT0SCAN) req sent");
+                    LOG(I, "DP Sensor BLE scan (BT0SCAN) req sent");
                     /* Reset the BL Request flag */
                     ptr_inst->bl_req = IV0BLREQ_IDLE;
                     /* Send the request */
@@ -437,7 +446,6 @@ static void conn_diffpress_read_task(void *pvParameter)
                     /* Start the wait timer */
                     start_ble_scan_timer();
                     /* Change the state */
-                    sm_next_state = STATE_DP_SENS_BLE_PAIRING;
                 }
                 else
                 {
@@ -514,6 +522,8 @@ static void conn_diffpress_read_task(void *pvParameter)
                 }
                 else if ( DP_SENSOR_NOT_AVAILABLE == ptr_inst->dp_sensor_availablity )
                 {
+                    //DP_Sensor not vaialable or disconnected.
+                    LOG(I,"[DP_Sensor_not_available]");
                     /* Reset the BL Request flag */
                     ptr_inst->bl_req = IV0BLREQ_IDLE;
                     /* Change the state */
@@ -756,6 +766,7 @@ static void parse_queue_data(diff_press_read_sm *ptr_inst , QUE_DATA* qdata)
             break;
 
         case BLE_SCAN_TIME_EXP:
+            /*BLE Scan_timer expired*/                     
             ptr_inst->ble_scan_timer_exp = true;
             break;
 
@@ -807,11 +818,10 @@ static void dp_sens_avl_callback(int32_t i32Value)
 {
     if ( 0 == i32Value )
     {
-        LOG(W, "Subscribe DDMP SDP0AVL");
+        LOG(I, "Subscribe DDMP SDP0AVL");
         // Whenever the availability of sensor node received then the subscribtion should be done again
         TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0, \
                     connector_diffpress_sensor.connector_id, portMAX_DELAY));
-    
     }
     /* Push the data into the queue */
     push_data_to_que(DP_SENSOR_STATUS, i32Value);
@@ -829,7 +839,6 @@ static void snode_avl_callback(int32_t i32Value)
         //Send Battery low Error code
         diffpress_error_code(DPSENS_BOARD_BATTERY_LOW); 
     }
-
     //Subscribe to get DP sensor battery voltage            
     TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, \
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));            
@@ -897,7 +906,7 @@ static void process_ble_scan_data(const uint8_t * const value)
 
     if ( ( ble_enum->manufacturer == DOMETIC_BLE_ID             ) && 
          ( ble_enum->node_type    == NODE_TYPE_DOMETIC          ) && 
-         ( ble_enum->node_id      == NODE_DIFFERENTIAL_PRESSURE ) 
+         ( ble_enum->node_id      == NODE_EXTENDED_SENSOR ) 
        )
     {
         LOG(I, "Found valid DP sensor");
@@ -923,12 +932,17 @@ static void process_ble_scan_data(const uint8_t * const value)
   */
 static void install_parameters(void)
 {
+    int32_t available = 1;
 #if ( SDP3X_SENS_BOARD_COMM == COMM_I2C )
-	int32_t available = 1;
 
     TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, IVSDP0AVL, &available, sizeof(int32_t), \
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
 #endif
+
+    LOG(W, "Subscribe request for DDMP SNODE0AVL from conn_dp_sens");
+    // Whenever the availability of sensor node received then the subscribtion should be done again
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0AVL, &available,sizeof(int32_t), \
+            connector_diffpress_sensor.connector_id, portMAX_DELAY));
 }
 
 /**
@@ -971,9 +985,10 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
         if ( DDMP2_CONTROL_SET == req_type )
         {
-            /* Frame and send the publish request */
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &i32value, sizeof(int32_t), \
-                        connector_diffpress_sensor.connector_id, portMAX_DELAY));
+            
+                /* Frame and send the publish request */
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &i32value, sizeof(int32_t), \
+                            connector_diffpress_sensor.connector_id, portMAX_DELAY));
         }
 
 		param_db = &conn_diffpress_sensor_param_db[db_idx];
@@ -982,9 +997,6 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
         if ( -1 != i32Index )
         {
-#if CONN_DP_SENS_SERV_LOGS
-            LOG(I, "i32Index = %d", i32Index);
-#endif
             i32Factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[i32Index].in_unit];
       
             /* Differential pressure value should be handle with the decimal point resolution 
@@ -1203,6 +1215,13 @@ static void configure_sdp_sensor(int32_t send_dp, int32_t sample_int)
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
     TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, SDP0SAMPP, (const void*)&sample_int, sizeof(int32_t), \
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
+    
+    //command to send DP sensor data            
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0, \
+                connector_diffpress_sensor.connector_id, portMAX_DELAY));
+      
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, \
+                connector_diffpress_sensor.connector_id, portMAX_DELAY));            
 }
 
 
@@ -1221,14 +1240,6 @@ static void diffpress_error_code(const DPSENS_ERROR error)
         case DPSENS_BOARD_DISCONNECTED:
             err_frame |=  1 << DP_SENSOR_BOARD_DISCONNECTED;
             break;
-#ifndef RESERVED_6
-        case DPSENS_BOARD_CONN_RETRY:
-            err_frame |=  1 << DP_SENSOR_BOARD_CONN_RETRY;
-            break;
-#endif
-        case DPSENS_NO_DATA_ERROR:
-            err_frame |=  1 << DP_SENSOR_NO_DATA_ERROR;
-            break;
 
         case DPSENS_DATA_PLAUSIBLE_ERROR:
             err_frame |=  1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR;
@@ -1240,8 +1251,6 @@ static void diffpress_error_code(const DPSENS_ERROR error)
 
         case DPSENS_NO_ERROR:
             err_frame &= ~( 1 << DP_SENSOR_BOARD_DISCONNECTED);
-            err_frame &= ~( 1 << DP_SENSOR_BOARD_CONN_RETRY);
-            err_frame &= ~( 1 << DP_SENSOR_NO_DATA_ERROR);
             err_frame &= ~( 1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR);
             err_frame &= ~( 1 << DP_SENSOR_BOARD_BATTERY_LOW);
             break;

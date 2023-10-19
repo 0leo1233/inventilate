@@ -34,7 +34,7 @@
 #define LONG_PRESS_REL_TIMER_MSEC             1000u
 #define LONG_PRESS_REL_TIMER_TICKS            pdMS_TO_TICKS(LONG_PRESS_REL_TIMER_MSEC)
   
-#define SHORT_PRESS_TIMER_MSEC                100u //250u
+#define SHORT_PRESS_TIMER_MSEC                100u
 #define SHORT_PRESS_TIMER_TICKS               pdMS_TO_TICKS(SHORT_PRESS_TIMER_MSEC)
 
 #define BLINK_TIMER_MSEC                      500u
@@ -42,6 +42,11 @@
 
 #define HMI_BACKLIGHT_MIN_DUTY_CYCLE          0
 #define HMI_BACKLIGHT_MAX_DUTY_CYCLE          100
+
+#define HMI_LED_BRIGHT_LOW                    20
+#define HMI_LED_BRIGHT_MEDIUM                 40  
+
+#define BUTTON_PRESS_MASK_3                   3
 
 typedef enum __blink_action
 {
@@ -55,16 +60,6 @@ typedef enum __segment_state
     SEGMENT_STATE_ON        = 1,
     SEGMENT_STATE_NO_CHANGE = 2
 }SEGMENT_STATE;
-
-typedef struct __blink_seg_info
-{
-    BLINK_ACTION  blink_action;
-    SEGMENT_STATE blink_end_state;
-    uint16_t      blink_run_time_ms;
-    uint16_t      timer_counter;
-    uint16_t      run_time_counter;
-    uint8_t       segment_flag;
-}BLINK_SEG_INFO;
 
 typedef enum __obhmi_ctrl_data_id
 {
@@ -186,18 +181,25 @@ typedef enum _mode_btn_event
     LONG_PRESS_ACTION_ACTIVE_MODE      = 5
 }MODE_BTN_EVENT;
 
+typedef enum inv_mode
+{
+    INV_OFF = 0,
+    INV_AUTO = 1,
+    INV_TURBO = 2,
+    INV_SLEEP = 3,
+    INV_STORAGE = 4
+}INV_MODES;
+
 typedef enum _light_btn_event
 {
     SHORT_PRESS_ACT_LIGHT_OFF            =  0, //!< 0%  Duty cycle - light OFF
-    SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_1    =  1, //!< 20% Duty cycle
-    SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_2    =  2, //!< 40% Duty cycle
-    SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_3    =  3, //!< 50% Duty cycle
-    SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_4    =  4, //!< 60% Duty cycle
-    SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_5    =  5, //!< 80% Duty cycle
-    SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_MAX  =  6, //!< 100% Duty cycle - Max light intensity
-    LONG_PRESS_ACT_LIGHT_BTN_BT_SCAN     =  7,
-    LONG_PRESS_ACT_LIGHT_BTN_BT_PAIR     =  8
+    SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_1    =  1, //!< 5% Duty cycle
+    SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_3    =  2, //!< 40% Duty cycle
+    SHORT_PRESS_ACT_LIGHT_DIM_LEVEL_MAX  =  3, //!< 100% Duty cycle - Max light intensity
+    LONG_PRESS_ACT_LIGHT_BTN_BT_SCAN     =  4,
+    LONG_PRESS_ACT_LIGHT_BTN_BT_PAIR     =  5
 }LIGHT_BTN_EVENT;
+
 
 #ifdef LCD_DRIVER_IC_VERSION_OLD
 
@@ -264,7 +266,8 @@ typedef enum lcdseg_stat
 typedef enum __btn_press_event_type
 {
     BUTTON_EVT_SHORT_PRESS = 0,
-    BUTTON_EVT_LONG_PRESS  = 1
+    BUTTON_EVT_LONG_PRESS  = 1,
+    BUTTON_EVT_LONG_PRESS_2 = 2
 }BTN_PRESS_EVENT_TYPE;
 
 typedef struct _hmi_evt_process_res
@@ -306,6 +309,8 @@ typedef struct __obhmi_ctrl_sm
     ONBRDHMI_BLINK_CTRL_STATE   blink_ctrl_state;
     uint32_t                    invent_error_status;
     uint32_t                    invent_prev_err_status;
+    INV_MODES                   selected_mode;
+    IV0PWRSRC_ENUM              selected_pwr_src;
 }ONBRD_HMI_CTRL_SM;
 
 typedef struct _onboard_hmi_button_event
@@ -320,9 +325,12 @@ typedef struct _onboard_hmi_button_event
    data_conversion_t                                        data_conversion;     // Contains the output data
 }ONBOARD_HMI_BUTTON_EVENT;
 
-extern LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT];
+extern uint8_t hmi_stanby_mode;
 
-extern LCDSEG_STATUS prev_seg_stat[ONBOARD_HMI_MAX_SEGEMENT];
+extern int32_t  inv_acqrc_level;
+extern uint8_t ble_dp_con_sts;
+
+extern LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT];
 
 extern ONBOARD_HMI_BUTTON_EVENT onboard_hmi_btn_evt[];
 
@@ -335,8 +343,6 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd);
 void onboard_hmi_ctrl_sm(ONBRD_HMI_CTRL_SM* obhmi_ctrl_sm);
 
 void parse_obhmi_ctrl_frame(ONBRD_HMI_CTRL_SM* obhmi_ctrl_sm, OBHMI_CTRL_DATA_FRAME* obhmi_ctrl_data_frame);
-
-void reset_hmi_btn_ctrl_variables(void);
 
 extern void start_hmi_wait_timer(uint32_t period_ms);
 
@@ -352,9 +358,8 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
 
 extern void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value);
 
-extern void update_blink_info(const uint32_t error_code);
+void reset_hmi_btn_ctrl_variables(void);
 
-extern void error_check_ack(void);
 extern void set_err_ackstate(uint8_t errack_l);
 
 #endif /* APP_ONBOARD_HMI_CONTROL */

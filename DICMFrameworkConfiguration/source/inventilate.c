@@ -3,7 +3,7 @@
 */
 
 #include "dicm_framework_config.h"
-
+#include "iGeneralDefinitions.h"
 #include "driver/adc.h"
 #include "hal_i2c_master.h"
 #include "hal_ledc.h"
@@ -44,12 +44,10 @@ const int ledc_pwm_config_size = sizeof(ledc_pwmconfig)/sizeof(ledc_pwmconfig[0]
 
 #endif // HAL_LEDC_PWM
 
-#ifndef DEVICE_BQ25792  // Temporary workaround for build issue..Once the testing is done this code will get removed
-void battery_ic_interrupt_cb(int device, int port, int pin)
+__attribute__((weak)) void battery_ic_interrupt_cb(int device, int port, int pin)
 {
     LOG(E, "Interrupt triggered from Battery IC not handled");
 }
-#endif
 
 
 __attribute__((weak)) void onboard_hmi_interrupt_cb(int device, int port, int pin)

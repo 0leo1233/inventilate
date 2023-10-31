@@ -63,7 +63,8 @@
 #define CERAMIC_DISC_MOTOR_DEFAULT_RPM            ((uint32_t) 864)
 #define NUM_OPERATING_MODES                       ((uint8_t)   4u + 1u)
 
-#define IV_CONTROL_PROCESSING_INTERVAL_MIN        ((uint8_t)    1u)
+#define IV_CONTROL_PROCESSING_INTERVAL_MIN        ((uint8_t)    1u)         //Ticks in minutes
+#define IV_CONTROL_PROCESSING_INTERVAL_SECONDS    ((uint16_t)    5000u)     //Tick in seconds    
 #define RV_IDLE_COND_WAIT_TIME_MIN                ((uint8_t)   30u)   
 #define RV_PRESS_COMP_WAIT_TIME_MIN               ((uint8_t)    2u)
 #define RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN    ((uint8_t)   10u)
@@ -183,8 +184,8 @@ Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 #define DP_NEG_PRESS_COMP_VALIDATION_THRESHOLD    ((float)  -0.5f)
 #define DIFF_PRESS_ROC_MAX                        ((float)  50.0f)
 
-//#define INVENT_CONTROL_PERIODIC_TMR_TICKS         pdMS_TO_TICKS(MIN_TO_MSEC(IV_CONTROL_PROCESSING_INTERVAL_MIN))
-#define INVENT_CONTROL_PERIODIC_TMR_TICKS         pdMS_TO_TICKS(5000)
+#define INVENT_CONTROL_PERIODIC_TMR_TICKS         pdMS_TO_TICKS(MIN_TO_MSEC(IV_CONTROL_PROCESSING_INTERVAL_MIN))
+#define IV_IAQ_PROCESSING_TICKS                   pdMS_TO_TICKS(IV_CONTROL_PROCESSING_INTERVAL_SECONDS)
 
 #define RV_IDLE_COND_SETTLE_WAIT_TIME_TICKS       pdMS_TO_TICKS(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN))
 #define RV_PRESS_COMP_WAIT_TIME_TICKS             pdMS_TO_TICKS(MIN_TO_MSEC(RV_PRESS_COMP_WAIT_TIME_MIN))

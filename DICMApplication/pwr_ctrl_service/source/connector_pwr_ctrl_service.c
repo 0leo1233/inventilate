@@ -291,7 +291,6 @@ static void install_parameters(void)
   */
 static void start_subscribe(void)
 {
-	DDMP2_FRAME frame;
 	conn_pwr_ctrl_parameter_t *ptr_param_db;
 	uint8_t db_idx;
 
@@ -301,12 +300,14 @@ static void start_subscribe(void)
         /* Check the DDM parameter need subscribtion */
 		if ( ptr_param_db->sub )
 		{
-			/* Create the DDMP frame to subscribe for the ddmp paremeter IAQ index to broker */
-			ddmp2_create_subscribe(&frame, ptr_param_db->ddm_parameter, connector_pwr_ctrl_service.connector_id);
-			/* Set the connector id in the frame */
-			frame.source_connector = connector_pwr_ctrl_service.connector_id;
-			/* Send the data to broker */
-			TRUE_CHECK(xRingbufferSend(connector_pwr_ctrl_service.to_broker, (void *)&frame, sizeof(DDMP2_FRAME), (TickType_t)portMAX_DELAY));
+			/* Create and send the DDMP frame to subscribe for the ddmp paremeter IAQ index to broker */
+            TRUE_CHECK(connector_send_frame_to_connector(
+                DDMP2_CONTROL_SUBSCRIBE,
+                ptr_param_db->ddm_parameter,
+                NULL,
+                0,
+                connector_pwr_ctrl_service.connector_id,
+                (TickType_t)portMAX_DELAY))
 		}
 	}
 }

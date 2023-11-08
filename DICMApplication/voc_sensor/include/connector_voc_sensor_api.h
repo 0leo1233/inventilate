@@ -1,6 +1,5 @@
-/*! \file connector_voc_sensor.h
-	\brief Header file for connector VOC sensor
-	\Author Sundaramoorthy-LTTS
+/*! \file connector_voc_sensor_api.h
+	\brief Header file for connector VOC sensor API
  */
 
 #ifndef CONNECTOR_VOC_SENSOR_API_H_

@@ -211,7 +211,7 @@ static int initialize_connector_fan_motor(void)
     init_iv_control_algo(&iv_ctrl_algo);
 
     /* Create the periodic timer for inventilate control logic */
-    peridic_tmr_hdle = xTimerCreate("iv_prd_tmr", INVENT_CONTROL_PERIODIC_TMR_TICKS, pdTRUE, 0, iv_periodic_tmr_cb);
+    peridic_tmr_hdle = xTimerCreate("iv_prd_tmr", IV_IAQ_PROCESSING_TICKS, pdTRUE, 0, iv_periodic_tmr_cb);
 
     /* Create the one shot timer software timer */
     one_shot_tmr_hdle = xTimerCreate("one_sh_tmr", RV_IDLE_COND_SETTLE_WAIT_TIME_TICKS, pdFALSE, 0, iv_one_shot_tmr_cb);
@@ -451,7 +451,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
             /* Parse the received data */
             parse_received_data();
 
-            /* Check the one minute periodic timer expired or not */
+            /* Check if the timer for IAQ process control has expired or not - IV_IAQ_PROCESSING_TICKS (5sec) */
             if ( true == ptr_ctrl_algo->per_tmr_exp )
             {
                 /* Reset the timer flag */
@@ -713,6 +713,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                         {
                             /* Set the state to be trasfer */
+                            iaq_run_state = 0;
                             ptr_ctrl_algo->curr_state = INVENTILATE_STATE_AQ_CTRL;
                         }
                         else if ( ptr_ctrl_algo->cur_sel_mode != ptr_ctrl_algo->prev_sel_mode  )

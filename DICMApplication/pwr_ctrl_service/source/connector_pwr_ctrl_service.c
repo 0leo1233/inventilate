@@ -40,7 +40,7 @@
 /*filter for application*/
 #define FILTER_LIFE_TIME_MIN              ((uint32_t)   30000) // 500 hours = 500 * 60 = 30000 minutes
 
-#endif
+#endif // FILTER_TEST
 
 #define SECONDS_PER_MINUTE                ((uint32_t)    60)
 #define MSEC_PER_MINUTE                   ((uint32_t) 60000)
@@ -70,8 +70,10 @@ typedef enum _bat_sts_
 
 }INV_BAT_STS;
 
+#ifdef INVENT_BATTERY_TESTING
 static uint8_t poor_source_flag = 0;
 static uint8_t poor_source_count = 0;
+#endif // INVENT_BATTERY_TESTING
 
 static int initialize_connector_pwrctrl_service(void);
 static error_type initialize_pwr_control_module(void);
@@ -93,8 +95,8 @@ static void conn_pwr_ctrl_bms_task_bq25792(void *pvParameter);
 static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter);
 #endif 
 
-float bq_read_vbat();
-#endif
+float bq_read_vbat(void);
+#endif // INVENT_BATTERY_TESTING
 static void init_pwr_ctrl_sm(PWR_CTRL_SM* pwr_ctrl_sm);
 static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data);
 static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame);
@@ -107,16 +109,19 @@ static void start_filter_timer(void);
 static void stop_filter_timer(PWR_CTRL_SM* ptr_pwr_ctrl_sm);
 static void change_ivpmgr_state(IVPMGR0STATE_ENUM  inv_pwr_ctrl_state);
 static FILTER_RESET_STATUS validate_filter_time(PWR_CTRL_SM* ptr_pwr_ctrl_sm);
+#if defined (INVENT_BATTERY_TESTING) || defined (EMC_TEST_CASE_SOLAR)
 static void update_active_power_source(void);
-
-#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798) 
 static void push_pwrsrc_status_in_queue(IV0PWRSRC_ENUM curr_active_source);
-static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error);
+#endif
+#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798) 
 
+#ifdef INVENT_BATTERY_TESTING
+static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error);
+//! Error code handle variable
+static uint32_t invent_pwr_ctrl_error_stat = 0;
+#endif
 static uint8_t batt_ch_intr_stat = BATT_CH_STATE_IC_INIT;
 
-//! Error code handle variable
-static uint32_t invent_pwr_ctrl_error_stat = 0; 
 
 static REG26_FAULT_FLAG_0_REG     fault_flag0_reg     = {0};
 static REG27_FAULT_FLAG_1_REG     fault_flag1_reg     = {0};
@@ -126,29 +131,27 @@ static REG1B_CHARGER_STATUS_0_REG chr_status0_reg     = {0};
 static REG1D_CHARGER_STATUS_2_REG chr_status2_reg     = {0};
 static REG22_CHARGER_FLAG_0_REG   chr_flag0_reg       = {0};
 static REG23_CHARGER_FLAG_1_REG   chr_flag1_reg       = {0};
+#if defined (INVENT_BATTERY_TESTING) || defined (EMC_TEST_CASE_SOLAR)
 static REG13_CHARGER_CTRL_4       chg_ctrl_reg4;
-static REG29_CHARGER_1_MASK       chg_1_mask_reg29; 
-
-static IV0_SETTINGS                 inv_setting;
-static BMS_STATUS_FLAGS             bms_interrupt_flag;
-
+static REG29_CHARGER_1_MASK       chg_1_mask_reg29;
 static float vac1 = 0.0f;
 static float vac2 = 0.0f;
+#endif // defined (INVENT_BATTERY_TESTING) || defined (EMC_TEST_CASE_SOLAR)
+
 static uint8_t update_active_source_flag = 0;
 static uint8_t update_active_source_timer = 0;
 static uint8_t display_bms_info_timer  = 0;
 static uint8_t reg22_byte_prev = 0;
-static uint8_t reg22_byte_curr = 0;
 
 extern int32_t press_sim_value;
 REG1C_CHARGER_STATUS_1_REG ch_stat_1;
 
 IV0PWRSRC_ENUM curr_active_src = IV0PWRSRC_BACKUP_BATTERY + 1;
 IV0PWRSRC_ENUM prev_active_src = IV0PWRSRC_BACKUP_BATTERY + 1;
-#endif
-
+#endif // defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)
+#ifdef INVENT_BATTERY_TESTING
 static inv_bat_status_flags BATTERY_STATUS;
-
+#endif
 /* Structure for Connector fan motor */
 CONNECTOR connector_pwr_ctrl_service =
 {
@@ -179,8 +182,10 @@ static PWR_CTRL_SM pwr_ctrl_sm;
 static TimerHandle_t xFilterTimer;
 static TimerHandle_t xPowerControl_Timer;
 
+#ifdef INVENT_BATTERY_TESTING
 //! Battery status for  idle mode
 static uint8_t inv_bkup_bat_sts = INV_BATTERY_GOOD;
+#endif
 /*
 battery condition   status
 good                0
@@ -485,7 +490,7 @@ char* debug_arr_ch_stat[] = {
 "Top-off timer active charging",
 "Charge termination done"
 };
-#endif
+#endif //defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)
 
 
 #ifdef DEVICE_BQ25792
@@ -859,7 +864,7 @@ static void conn_pwr_ctrl_bms_task_bq25792(void *pvParameter)
         vTaskDelayUntil(&last_wake_time, task_frequency);
     } //While loop
 }
-#endif      //bq25792
+#endif // DEVICE_BQ25792
 
 
 /*BMS control task for BQ25798*/
@@ -1242,11 +1247,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
         vTaskDelayUntil(&last_wake_time, task_frequency);
     } //While loop
 }
-#endif //BQ25798
-
-#endif  //INVENT_BATTERY_TESTING
-
-
+#endif // DEVICE_BQ25798
 
 float bq_read_vbat(void)
 {
@@ -1266,6 +1267,7 @@ float bq_read_vbat(void)
     vbat_volt = (float)data_2 / 1000.0f;
     return vbat_volt;
 }
+#endif  //INVENT_BATTERY_TESTING
 
 /**
   * @brief  Function to process the set and publish parameter from broker
@@ -1707,7 +1709,6 @@ static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data)
  */
 static void pwr_ctrl_timer_cb_func ( TimerHandle_t xTimer )
 {
-    LOG(C,"[Pwr ctrl: act src tmr  %d]", update_active_source_timer);
     if(update_active_source_timer > 0)
     {
         update_active_source_timer++;
@@ -1715,7 +1716,6 @@ static void pwr_ctrl_timer_cb_func ( TimerHandle_t xTimer )
         {
             update_active_source_timer = 0;
             update_active_source_flag = 1;
-            LOG(C, "[pwr ctrl Timer: update active power source]");
         }
     }
     display_bms_info_timer++;
@@ -1886,8 +1886,7 @@ static FILTER_RESET_STATUS validate_filter_time(PWR_CTRL_SM* ptr_pwr_ctrl_sm)
     return filt_stat;
 }
 
-#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)	
-
+#if defined(DEVICE_BQ25792) || defined(DEVICE_BQ25798)
 
 #ifdef EMC_TEST_CASE_SOLAR
 /**
@@ -1987,21 +1986,18 @@ static void update_active_power_source(void)
                 LOG(E, "Battery backup is not available..Source switching to VAC1 is not possible");
             }
         }
-        else if ( ( IS_VAC2_AVAIL(chr_status0_reg.byte)                )  &&  // VAC2 car battery is avilable
-                  ( IS_VAC1_AVAIL(chr_status0_reg.byte) == 0                )  &&  // VAC2 car battery is not avilable
-                  ( curr_active_src != IV0PWRSRC_12V_CAR_BATTERY_INPUT ) )    // Current active source in not a CAR battery
+        /*CAR battery detected and Solar not detected*/
+        else if ( ( IS_VAC2_AVAIL(chr_status0_reg.byte)                )   &&        // VAC2 car battery is avilable
+                  ( IS_VAC1_AVAIL(chr_status0_reg.byte) == 0           )   &&   // VAC1 Solar is not avilable
+                  ( curr_active_src != IV0PWRSRC_12V_CAR_BATTERY_INPUT ) )          // Current active source in not a CAR battery
         {
-            
-            
             /* VAC2 Car battery is available */
             LOG(W, "VAC2 Car battery is available ");
             if ( ( IS_VALID_BAT_PWR_AVAIL(chr_status2_reg.byte) ) )
             {
                 /* Source switching should be done only when the battery power is avilable,
                 Otherwise the system reset could occur */
-
                 LOG(W, "Valid battery source is available");
-
                 chg_ctrl_reg4.B6_EN_ACDRV1 = 0; // Disable VAC1 Solar
                 chg_ctrl_reg4.B7_EN_ACDRV2 = 1; // Select VAC2 12V
 
@@ -2048,13 +2044,14 @@ static void update_active_power_source(void)
     }
 }
 
-#else
+#else // EMC_TEST_CASE_SOLAR
 
 /**
   * @brief  Function to update the active power source selection
   * @param  void
   * @retval void.
   */
+#ifdef INVENT_BATTERY_TESTING
 static void update_active_power_source(void)
 {
     error_type result;
@@ -2208,13 +2205,10 @@ static void update_active_power_source(void)
         push_pwrsrc_status_in_queue(curr_active_src);
     }
 }
-#endif
+#endif // INVENT_BATTERY_TESTING
+#endif // EMC_TEST_CASE_SOLAR
 
-
-
-
-
-#ifdef DEVICE_BQ25792 
+#ifdef DEVICE_BQ25792
 /**
   * @brief  Callback function to handle the interrupt data forward from the GPIO task
   * @param  device
@@ -2397,9 +2391,7 @@ void battery_ic_interrupt_cb(int device, int port, int pin)
             break;
     }
 }
-#endif
-
-
+#endif // DEVICE_BQ25792
 
 /*BQ25798 interrupt handling*/
 #ifdef DEVICE_BQ25798
@@ -2413,7 +2405,6 @@ void battery_ic_interrupt_cb(int device, int port, int pin)
 void battery_ic_interrupt_cb(int device, int port, int pin)
 {
     error_type result;
-    uint8_t data_sts;
 
     switch (batt_ch_intr_stat)
     {
@@ -2594,9 +2585,10 @@ void battery_ic_interrupt_cb(int device, int port, int pin)
             break;
     }
 }
-#endif  //BQ25798
+#endif  // DEVICE_BQ25798
 
 
+#if defined (INVENT_BATTERY_TESTING) || defined (EMC_TEST_CASE_SOLAR)
 /**
   * @brief  Functionto push the active power source in the queue
   * @param  curr_active_source Current active power soure refer enum IV0PWRSRC_ENUM
@@ -2617,7 +2609,10 @@ static void push_pwrsrc_status_in_queue(IV0PWRSRC_ENUM curr_active_source)
         LOG(E, "Error Queuw %d", ret);
     }
 }
+#endif // defined (INVENT_BATTERY_TESTING) || defined (EMC_TEST_CASE_SOLAR)
 
+#ifdef INVENT_BATTERY_TESTING
+#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)
 /**
  * @brief  Callback function to handle subscribed data
  * @param  table_index
@@ -2675,9 +2670,9 @@ static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error)
         connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(err_frame), connector_pwr_ctrl_service.connector_id, (TickType_t)portMAX_DELAY);
     }
 }
+#endif // defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)
+#endif // INVENT_BATTERY_TESTING
 
-
-
-#endif
+#endif // defined(DEVICE_BQ25792) || defined(DEVICE_BQ25798)
 
 #endif /*CONNECTOR_POWER_CONTROL_SERVICE*/ 

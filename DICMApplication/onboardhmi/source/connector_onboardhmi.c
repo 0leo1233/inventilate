@@ -184,10 +184,9 @@ static uint8_t int_touch                    = 0 ;
 static INV_PWR_STATE inv_pwr_state = PWR_STATE_OFF;
 static uint32_t blink_timer_counter         = 0;
 static uint8_t  blink_flag                  = 0;
-static uint32_t g_blink_segment_status = 0;
-static uint32_t g_error_ack            = 0;
-static uint32_t g_error_code           = 0;
-
+static uint32_t g_blink_segment_status      = 0;
+static uint32_t g_error_ack                 = 0;
+static uint32_t g_error_code                = 0;
 static ONBRD_HMI_CTRL_SM* ptr_hmi_ctrl_sm = &onbrd_hmi_ctrl_sm;
 uint8_t hmi_stanby_mode = 0;
 
@@ -214,7 +213,7 @@ static conn_onboardhmi_param_t conn_onboardhmi_param_db[] =
     {WIFI0STS    ,       DDM2_TYPE_INT32_T,    0,        1,                  WIFI0STS_UNKNOWN,   handle_hmi_ctrl_sub_data},     //Seg S9
 	{IV0PWRON    ,       DDM2_TYPE_INT32_T,    1,        0,                      IV0PWRON_OFF,   handle_hmi_ctrl_sub_data},     //Seg S12
     {IV0IONST    ,       DDM2_TYPE_INT32_T,    1,        0,                      IV0IONST_OFF,   handle_hmi_ctrl_sub_data},
-    {IV0ERRST    ,       DDM2_TYPE_INT32_T,    0,        1,                 0/*IV0ERRST_NO_ERROR*/,   handle_hmi_ctrl_sub_data},
+    {IV0ERRST    ,       DDM2_TYPE_INT32_T,    0,        1,                 IV0ERRST_NO_ERROR,   handle_hmi_ctrl_sub_data},
     {IV0BLREQ    ,       DDM2_TYPE_INT32_T,    1,        0,                     IV0BLREQ_IDLE,   handle_hmi_ctrl_sub_data},
     {IV0HMITST   ,       DDM2_TYPE_INT32_T,    1,        0,                                 0,   handle_hmi_ctrl_sub_data},
     {IVPMGR0STATE,       DDM2_TYPE_INT32_T,    0,        1,              IVPMGR0STATE_STANDBY,   handle_hmi_ctrl_sub_data},   
@@ -294,6 +293,7 @@ static int initialize_connector_onboardhmi(void)
     hal_init_timer(&timer_config_parameter);
 
     timer_queue = xQueueCreate(10, sizeof(hal_timer_event_t));
+  
     /* Create Task for connector OnboardHMI to handle/process all the ddmp related activities */
     TRUE_CHECK(osal_task_create(conn_onboardhmi_process_task, CONNECTOR_ONBOARDHMI_PROCESS_TASK_NAME, CONNECTOR_ONBOARD_HMI_PROCESS_STACK_DEPTH, NULL, CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY, NULL));
 	TRUE_CHECK(osal_task_create(conn_onboardhmi_ctrl_task,    CONNECTOR_ONBOARDHMI_PWR_CTRL_TASK_NAME, CONNECTOR_ONBOARD_HMI_CTRL_TASK_STACK_DEPTH, obhmi_pwr_ctrl_que_hdl, CONNECTOR_ONBOARD_HMI_CTRL_TASK_PRIORITY, NULL));
@@ -1023,7 +1023,7 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                             {
                                 ptr_hmi_ctrl_sm->selected_pwr_src =ptr_hmi_ctrl_sm->data_frame.data_id; 
                             }
-                            LOG(W, "DP Sensor connectivity changed..Update BLE Status");
+                            LOG(W, "Update SEG Status id %d data %d",ptr_hmi_ctrl_sm->data_frame.data_id,ptr_hmi_ctrl_sm->data_frame.data );
                             update_seg = 1;
                             break;
 

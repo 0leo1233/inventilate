@@ -58,6 +58,9 @@ bin/
 sdkconfig
 esp_idf_components/
 docs/
+managed_components/
+dependencies.lock
 
 **/__pycache__/
 
+/sdkconfig*

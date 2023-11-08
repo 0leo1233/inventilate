@@ -17,4 +17,7 @@ target_include_directories(${PROJECT_NAME}
 								$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 								$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/source/app>
 							)
-target_link_libraries(${PROJECT_NAME} PRIVATE idf::esp32 idf::nvs_flash DICMOsal DICMHal DICMCommonLibs DICMGeneralDefinitions DICMConnectors)
+target_link_libraries(${PROJECT_NAME} PRIVATE idf::nvs_flash DICMOsal DICMHal DICMCommonLibs DICMGeneralDefinitions DICMConnectors)
+if (NOT IDF_VER_5)
+target_link_libraries(${PROJECT_NAME} PUBLIC idf::${IDF_TARGET})
+endif()

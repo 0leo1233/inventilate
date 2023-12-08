@@ -15,7 +15,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/DICMFramework/tools/cmake)
 include(framework_setup)
 
 # Setup and check depending environment and cmake variables, Replace with esp32s3 for other target
-setup_target("esp32")
+setup_target()
 
 #inventilate
 project(INV C CXX ASM)

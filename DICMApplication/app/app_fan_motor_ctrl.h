@@ -361,15 +361,47 @@ typedef union
     struct 
     {
         uint8_t VAC_CHANGED      : 1;
-        uint8_t RESERVED_1          : 1;
-        uint8_t RESERVED_2          : 1;
-        uint8_t RESERVED_3          : 1;
-        uint8_t RESERVED_4          : 1;
+        uint8_t IINDPM_STAT         : 1;
+        uint32_t VINDPM_STAT        : 1;
+        uint8_t TREG_STAT           : 1;
+        uint8_t ICO_FLAG            : 1;
         uint8_t RESERVED_5          : 1;
         uint8_t RESERVED_6          : 1;
         uint8_t RESERVED_7          : 1;
     }__attribute__((packed));
 }BMS_STATUS_FLAGS;
+
+typedef union
+{
+    uint8_t byte;
+    struct 
+    {
+        uint8_t VAC1_OVP_STAT         : 1;
+        uint8_t VAC2_OVP_STAT         : 1;
+        uint32_t CONV_OCP_STAT        : 1;
+        uint8_t IBAT_OCP_STAT         : 1;
+        uint8_t IBUS_OCP_STAT         : 1;
+        uint8_t VBAT_OVP_STAT         : 1;
+        uint8_t VBUS_OVP_STAT         : 1;
+        uint8_t IBAT_REG_STAT         : 1;
+    }__attribute__((packed));
+}BMS_STATUS_FAULT0;
+
+typedef union
+{
+    uint8_t byte;
+    struct 
+    {
+        uint8_t RESERVED_0          : 1;
+        uint8_t RESERVED_1          : 1;
+        uint32_t TSHUT_STAT         : 1;
+        uint8_t RESERVED_3          : 1;
+        uint8_t OTG_UVP_STAT        : 1;
+        uint8_t OTG_OVP_STAT        : 1;
+        uint8_t VSYS_OVP_STAT       : 1;
+        uint8_t VSYS_SHORT_STAT     : 1;
+    }__attribute__((packed));
+}BMS_STATUS_FAULT1;
 
 typedef enum __storage_timer_config
 {

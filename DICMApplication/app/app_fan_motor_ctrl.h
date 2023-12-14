@@ -361,10 +361,10 @@ typedef union
     struct 
     {
         uint8_t VAC_CHANGED      : 1;
-        uint8_t RESERVED_1          : 1;
-        uint8_t RESERVED_2          : 1;
-        uint8_t RESERVED_3          : 1;
-        uint8_t RESERVED_4          : 1;
+        uint8_t IINDPM_STAT         : 1;
+        uint32_t VINDPM_STAT        : 1;
+        uint8_t TREG_STAT           : 1;
+        uint8_t ICO_FLAG            : 1;
         uint8_t RESERVED_5          : 1;
         uint8_t RESERVED_6          : 1;
         uint8_t RESERVED_7          : 1;

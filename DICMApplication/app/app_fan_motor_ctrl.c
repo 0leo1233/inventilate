@@ -175,9 +175,6 @@ void update_data_in_nvm(DATA_ID data_id, uint32_t data)
 
     if ( ( NVS_DB_SIZE != db_idx ) )
     {
-#if INV_ALGO_DEBUG         
-        LOG(I, "NVS Write data_id = %d data = %d db_idx = %d", data_id, data, db_idx);
-#endif        
         /* Update the data in the pointer */
         *((uint32_t*)(nvs_db[db_idx].data_ptr)) = data;
         /* write the data in the NVS */

@@ -42,6 +42,7 @@
 
 #endif // FILTER_TEST
 
+#define FILTER_NVS_WRITE_INTERVAL         ((uint8_t)     60)  
 #define SECONDS_PER_MINUTE                ((uint32_t)    60)
 #define MSEC_PER_MINUTE                   ((uint32_t) 60000)
 #define FILTER_TIMER_PERIOD_MIN           ((uint32_t)     1)
@@ -1599,8 +1600,12 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
         case INV_FIL_TMR_EXP:
             /* Increment the minute counter */
             pwr_ctrl_sm.filter_min_counter++;
-            update_data_in_nvm(IV_FILTER_TIMER,pwr_ctrl_sm.filter_min_counter);
-            LOG(W, "filter_min_counter = %d", pwr_ctrl_sm.filter_min_counter);
+            /*update filter minutes to NVS every 60 minutes*/
+            if((pwr_ctrl_sm.filter_min_counter % FILTER_NVS_WRITE_INTERVAL) == 0)
+            {
+                LOG(W, "[filter_min_counter = %d]", pwr_ctrl_sm.filter_min_counter);
+                update_data_in_nvm(IV_FILTER_TIMER,pwr_ctrl_sm.filter_min_counter);
+            }
             validate_filter_time(&pwr_ctrl_sm);
             break;
 

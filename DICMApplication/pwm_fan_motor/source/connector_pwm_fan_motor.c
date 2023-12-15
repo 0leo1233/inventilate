@@ -1464,11 +1464,8 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
             iv_data.data_id = DP_SENSOR_STATUS;
             break;
 
-#if ( SDP3X_SENS_BOARD_COMM == COMM_I2C )
-        case IVSDP0DP:
-#elif ( SDP3X_SENS_BOARD_COMM == COMM_BLE )	
         case SDP0DP:
-#endif
+
             iv_data.data_id = DP_DATA;
             if ((iv_data.data > DPSENS_PLAUSIBLE_UPRANGE) && (iv_data.data > 0))
             {

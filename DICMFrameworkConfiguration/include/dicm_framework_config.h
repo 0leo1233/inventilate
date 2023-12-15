@@ -65,8 +65,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #define COMM_BLE                   0
 #define COMM_I2C                   1
-#define SDP3X_SENS_BOARD_COMM      COMM_BLE
-
 
 #define CHIP_TYPE_INTERNAL_BME688  0
 #define BME68X_CHIP_TYPE           CHIP_TYPE_INTERNAL_BME688

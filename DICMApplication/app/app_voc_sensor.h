@@ -11,10 +11,6 @@
 
 #include "osal.h"
 
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
-#include "bsec_integration.h"
-#endif
-
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
 #include "bsec_integration_2_x.h"
 #endif

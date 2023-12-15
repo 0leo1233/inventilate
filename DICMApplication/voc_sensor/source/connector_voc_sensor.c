@@ -13,17 +13,11 @@
 #include "connector_voc_sensor.h"
 #include "app_error_code.h"
 
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
-#include "bsec_integration.h"
-#endif
-
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
 #include "bsec_integration_2_x.h"
 extern const BME6X_BSEC_LIB_INTERFACE g_bsec_lib_intf;
 #endif
 
-//#include "bme680_defs.h"
-//#include "seq/bme680_seq.h"
 #include "hal_i2c_master.h"
 #include "sorted_list.h"
 
@@ -170,11 +164,6 @@ static void conn_voc_read_task(void *pvParameter)
     while (1)
 	{      
         /* State macine to read VOC sensor */
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
-        /* Continous loop function to read and process the sensor data and calc IAQ */
-        bsec_processing_loop(voc_sens_queue);
-#endif
-
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
         /* Continous loop function to read and process the sensor data and calc IAQ */
         bsec_processing_loop(voc_sens_queue);
@@ -472,17 +461,13 @@ static void pwr_state_callback(uint8_t table_index, int32_t i32Value)
 
     if ( IVPMGR0STATE_ACTIVE == i32Value )
     {
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
-        voc_op_mode = BME680_FORCED_MODE;
-#else
+#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
         voc_op_mode = BME68X_FORCED_MODE;
 #endif
     }
     else
     {
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
-        voc_op_mode = BME680_SLEEP_MODE;
-#else
+#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
         voc_op_mode = BME68X_SLEEP_MODE;
 #endif
     }
@@ -505,18 +490,13 @@ static void storage_mode_cb(uint8_t table_index, int32_t i32Value)
 
     if (IV0STGT_RUN_3HRS == i32Value )
     {
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
-        voc_op_mode_sel = BME680_FORCED_MODE;
-#else
+#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
         voc_op_mode_sel = BME68X_FORCED_MODE;
 #endif
     }
     else if (IV0STGT_IDLE_21HRS == i32Value )
     {
-
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_1_X == 1 )
-        voc_op_mode_sel = BME680_SLEEP_MODE;
-#else
+#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
         voc_op_mode_sel = BME68X_SLEEP_MODE;
 #endif
     }

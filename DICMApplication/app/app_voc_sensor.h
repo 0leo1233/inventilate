@@ -15,15 +15,11 @@
 #include "bsec_integration_2_x.h"
 #endif
 
-#define BME680_MAX_ERR_COUNT  ((uint8_t) 2u)
-
 #define PLAUSIBLE_ERROR                   ((uint8_t) 1u)
 #define PLAUSIBLE_OK                      ((uint8_t) 0u)
 
 #define IAQ_CALC_ERROR                    ((uint8_t) 1u)
 #define IAQ_CALC_SUCCESS                  ((uint8_t) 0u)
-
-#define BME680_SENSOR_READ_DELAY_TIME_MS  ((uint32_t) 10000u)
 
 #define BSEC_NEXT_CALL_TIME_OFFSET        ((uint32_t) 100u)
 

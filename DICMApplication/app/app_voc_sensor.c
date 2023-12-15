@@ -60,7 +60,7 @@ static void update_voc_sens_to_broker(bme68x_bsec_output *bsec_out);
 
 #if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
 
-/*! \brief  This function provides write functionality to the BME680 sensor.
+/*! \brief  This function provides write functionality to the BME688 sensor.
  *
  *
  *  \param reg_addr	Register address to write the value to.
@@ -85,7 +85,7 @@ static BME68X_INTF_RET_TYPE bme68x_write_i2c(uint8_t reg_addr, const uint8_t *da
     return hal_i2c_master_write(I2C_NUM_0, BME68X_I2C_ADDR, txbuf, (size_t)len + 1);
 }
 
-/*! \brief  This function provides read functionality to the BME680 sensor.
+/*! \brief  This function provides read functionality to the BME688 sensor.
  *
  *
  *  \param reg_addr	Register address to read the value from.
@@ -114,8 +114,8 @@ static void bsec_delay_us(uint32_t period, void *intf_ptr)
 
 
 /**
-  * @brief  Callback Function to get the output from BSEC BME680 sensor
-  * @param  Pointer to the struct type bme680_bsec_output.
+  * @brief  Callback Function to get the output from BSEC BME688 sensor
+  * @param  Pointer to the struct type bme688_bsec_output.
   * @retval void.
   */
 static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)

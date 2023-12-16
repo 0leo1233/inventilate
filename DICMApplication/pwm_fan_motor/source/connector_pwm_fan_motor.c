@@ -1100,9 +1100,13 @@ void parse_received_data(void)
             }
             break;
         case DP_DATA:                                               
-            ptr_ctrl_algo->iv_data.data = ( ptr_ctrl_algo->iv_data.data != 0 ) ? ( ptr_ctrl_algo->iv_data.data / ptr_ctrl_algo->dp_resol_factor ) : 0;
-            ptr_ctrl_algo->curr_avg_dp_value += ptr_ctrl_algo->iv_data.data;        /* Add the new value with previous value */
-            ptr_ctrl_algo->dp_data_count++;                                         /* Increment the data counter */
+            if ( ( (ptr_ctrl_algo->iv_data.data < DPSENS_PLAUSIBLE_UPRANGE) && (ptr_ctrl_algo->iv_data.data > 0) ) || \
+                 ( (ptr_ctrl_algo->iv_data.data > DPSENS_PLAUSIBLE_DOWNRANGE) && (ptr_ctrl_algo->iv_data.data < 0) ) )
+            {
+                ptr_ctrl_algo->iv_data.data = ( ptr_ctrl_algo->iv_data.data != 0 ) ? ( ptr_ctrl_algo->iv_data.data / ptr_ctrl_algo->dp_resol_factor ) : 0;
+                ptr_ctrl_algo->curr_avg_dp_value += ptr_ctrl_algo->iv_data.data;        /* Add the new value with previous value */
+                ptr_ctrl_algo->dp_data_count++;                                         /* Increment the data counter */
+            }
             break;
 
         case IV_MODE:

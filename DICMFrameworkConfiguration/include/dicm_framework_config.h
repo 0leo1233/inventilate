@@ -215,13 +215,13 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_FAN_MOTOR_TACHO_READ_STACK_DEPTH      ((unsigned short) 4096)
 #define CONNECTOR_VOC_PROCESS_TASK_STACK_DEPTH          ((unsigned short) 4096)
 #define CONNECTOR_VOC_I2C_RD_SERVICE_TASK_DEPTH         ((unsigned short) 4096)
-#define CONNECTOR_PWR_CTRL_PROCESS_TASK_DEPTH           ((unsigned short) 2048)
+#define CONNECTOR_PWR_CTRL_PROCESS_TASK_DEPTH           ((unsigned short) 3072)
 #define CONNECTOR_PWR_CTRL_MNGR_TASK_DEPTH              ((unsigned short) 4096)
-#define CONNECTOR_DIFFPRESS_PROCESS_STACK_DEPTH         ((unsigned short) 2048)
+#define CONNECTOR_DIFFPRESS_PROCESS_STACK_DEPTH         ((unsigned short) 3072)
 #define CONNECTOR_DIFFPRESS_READ_STACK_DEPTH            ((unsigned short) 4096)
 #define CONNECTOR_EOL_PROCESS_STACK_DEPTH               ((unsigned short) 4096)
 #define CONNECTOR_EOL_CONTROL_STACK_DEPTH               ((unsigned short) 4096)
-#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH			((unsigned short) 2048)
+#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH			      ((unsigned short) 2048)
 
 #else
 
@@ -303,7 +303,7 @@ EN_IONIZER_FLAG - Defined
 
 #define DEVICE_TCA9554A_I2C_PORT	        I2C_MASTER0_PORT
 #define DEVICE_TCA9554A_INT_PIN		        GPIO_NUM_36     // PIN SENSOR_VP
-#define DEVICE_UC1510C_INT_PIN              GPIO_NUM_2      // LCD Driver IC interrupt pin
+#define DEVICE_UC1510C_INT_PIN            GPIO_NUM_2      // LCD Driver IC interrupt pin
 #endif // HAL_GPIO
 
 #ifdef HAL_LEDC_PWM
@@ -362,10 +362,10 @@ EN_IONIZER_FLAG - Defined
 
 #ifdef HAL_I2C_MASTER
 #define I2C_MASTER0
-#define I2C_MASTER0_PORT         	0 //I2C_NUM_0
-#define I2C_MASTER0_SDA				GPIO_NUM_4
-#define I2C_MASTER0_SCL			    GPIO_NUM_0
-#define I2C_MASTER0_FREQ			100000
+#define I2C_MASTER0_PORT        0      //I2C_NUM_0
+#define I2C_MASTER0_SDA				  GPIO_NUM_0      //GPIO_NUM_4 changed to 0
+#define I2C_MASTER0_SCL			    GPIO_NUM_4      //GPIO_NUM_0 changed to 4
+#define I2C_MASTER0_FREQ			  100000
 #endif // HAL_I2C_MASTER
 
 #if defined(CONNECTOR_LINDEV)

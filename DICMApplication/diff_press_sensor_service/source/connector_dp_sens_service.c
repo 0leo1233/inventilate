@@ -899,11 +899,7 @@ static void parse_queue_data(diff_press_read_sm *ptr_inst , QUE_DATA* qdata)
             break;
 
         case DP_SENS_DATA:
-            //ptr_inst->dp_sensor_data = qdata->dataptr_inst->dp_sensor_data;
-            
-            //ptr_inst->dp_sensor_data = ( ptr_inst->dp_sensor_data != 0 ) ? ( ptr_inst->dp_sensor_data / ptr_ctrl_algo->dp_resol_factor ) : 0;
-            //ptr_ctrl_algo->curr_avg_dp_value += ptr_ctrl_algo->iv_data.data;        /* Add the new value with previous value */
-            //ptr_ctrl_algo->dp_data_count++;                                         /* Increment the data counter */
+            ptr_inst->dp_sensor_data = qdata->data;
             break;
 
         case DP_SENS_BATTERYLVL:

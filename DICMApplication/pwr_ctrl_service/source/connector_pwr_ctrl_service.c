@@ -14,9 +14,7 @@
 #include "ddm2_parameter_list.h"
 #include "osal.h"
 #include "sorted_list.h"
-#if defined DEVICE_BQ25798 
 #include "drv_bq25798.h"
-#endif
 
 /* Macro Definitions */
 #define CONN_PWR_DEBUG_LOG      1
@@ -82,9 +80,7 @@ static void l_update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t valu
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param);
 static void conn_pwr_ctrl_manager_task(void *pvParameter);
 
-#ifdef DEVICE_BQ25798
 static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter);
-#endif 
 
 float bq_read_vbat();
 
@@ -102,7 +98,6 @@ static void change_ivpmgr_state(IVPMGR0STATE_ENUM  inv_pwr_ctrl_state);
 static FILTER_RESET_STATUS validate_filter_time(PWR_CTRL_SM* ptr_pwr_ctrl_sm);
 static void update_active_power_source(void);
 
-#ifdef DEVICE_BQ25798 
 static void push_pwrsrc_status_in_queue(IV0PWRSRC_ENUM curr_active_source);
 static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error);
 
@@ -139,7 +134,6 @@ REG1C_CHARGER_STATUS_1_REG ch_stat_1;
 
 IV0PWRSRC_ENUM curr_active_src = IV0PWRSRC_BACKUP_BATTERY + 1;
 IV0PWRSRC_ENUM prev_active_src = IV0PWRSRC_BACKUP_BATTERY + 1;
-#endif
 
 static inv_bat_status_flags BATTERY_STATUS;
 
@@ -214,10 +208,8 @@ static int initialize_connector_pwrctrl_service(void)
 	TRUE_CHECK(osal_task_create(conn_pwr_ctrl_process_task, CONNECTOR_PWR_CTRL_SERV_PROCESS_TASK_NAME, CONNECTOR_PWR_CTRL_PROCESS_TASK_DEPTH, NULL, CONNECTOR_PWR_CTRL_SERV_TASK_PRIORITY, NULL));
     TRUE_CHECK(osal_task_create(conn_pwr_ctrl_manager_task, CONNECTOR_PWR_CTRL_MANAGER_TASK_NAME, CONNECTOR_PWR_CTRL_MNGR_TASK_DEPTH, inv_pwr_ctrl_que_hdle, CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY, NULL));
     if ( RES_PASS == res )
-    {
-#ifdef DEVICE_BQ25798       
+    {      
         TRUE_CHECK(osal_task_create(conn_pwr_ctrl_bms_task_bq25798, CONNECTOR_PWR_CTRL_BMS_TASK_NAME, CONNECTOR_PWR_CTRL_BMS_TASK_STACK_DEPTH, NULL, CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY, NULL));
-#endif
     }
 
     pwr_ctrl_sm.filter_min_counter  = filter_data.filter_min;
@@ -458,7 +450,7 @@ static void conn_pwr_ctrl_manager_task(void *pvParameter)
     }
 }
 
-#ifdef DEVICE_BQ25798 
+
 char* debug_arr_ch_stat[] = {
 "Not Charging",
 "Trickle Charge",
@@ -469,11 +461,10 @@ char* debug_arr_ch_stat[] = {
 "Top-off timer active charging",
 "Charge termination done"
 };
-#endif
+
 
 
 /*BMS control task for BQ25798*/
-#ifdef DEVICE_BQ25798
 /**
   * @brief  Task for battery management service
   * @param  pvParameter.
@@ -848,7 +839,6 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
         vTaskDelayUntil(&last_wake_time, task_frequency);
     } //While loop
 }
-#endif // DEVICE_BQ25798
 
 float bq_read_vbat(void)
 {
@@ -1086,7 +1076,6 @@ static error_type initialize_pwr_control_module(void)
 {
     error_type res = RES_FAIL;
 
-#ifdef DEVICE_BQ25798
     drv_bus_conf bq25798_bus_conf;
 
     bq25798_bus_conf.type = SEQ_BUS_CONF_TYPE_I2C;
@@ -1102,8 +1091,6 @@ static error_type initialize_pwr_control_module(void)
     {
         LOG(E, "bq25798_init failed = %d", res);
     }
-
-#endif
 
     return res;
 }
@@ -1185,16 +1172,8 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
             break;
 
         case INVENT_SET_CHARGING_CURRENT:
-            LOG(I,"Charge ichg  set to %d mA",pwr_ctrl_data_frame->data);
-#ifdef BQ25792          
-            result = bq25792_set_charging_current_limit( pwr_ctrl_data_frame->data/10 ); 
-#endif
-#ifdef BQ25798            
-            result = bq25798_set_charging_current_limit( pwr_ctrl_data_frame->data/10 ); 
-#endif
-
-
-            
+            LOG(I,"Charge ichg  set to %d mA",pwr_ctrl_data_frame->data);           
+            result = bq25798_set_charging_current_limit( pwr_ctrl_data_frame->data/10 );         
             break;
 
         case INVENT_EN_DIS_SOLAR:
@@ -1466,8 +1445,6 @@ static FILTER_RESET_STATUS validate_filter_time(PWR_CTRL_SM* ptr_pwr_ctrl_sm)
     return filt_stat;
 }
 
-#ifdef DEVICE_BQ25798
-
 /**
   * @brief  Function to update the active power source selection
   * @param  void
@@ -1481,20 +1458,17 @@ static void update_active_power_source(void)
     LOG(W, "Charger flag status changed = 0x%x", chr_flag0_reg.byte);
     LOG(I, "UAPS_VAC1 = %f Volt  VAC2 = %f",vac1, vac2);
 
-    /* Read the STATUS REG1B to get the status of VAC1 and VAC2 */
-#ifdef DEVICE_BQ25798  
+    /* Read the STATUS REG1B to get the status of VAC1 and VAC2 */ 
     result  = bq25798_read_reg(CHARGE_STATUS_0_REG1BH, &chr_status0_reg.byte, 1u);
     /* Read the STATUS REG1D to get the status of VBAT */
     result |= bq25798_read_reg(CHARGE_STATUS_2_REG1DH, &chr_status2_reg.byte, 1u);
-#endif
 
 
     if ( result != RES_FAIL )
     {
         LOG(W, "CHARGE_STATUS_0_REG1BH 0x%x", chr_status0_reg.byte);
         LOG(W, "CHARGE_STATUS_2_REG1DH 0x%x", chr_status2_reg.byte);
-        
-#ifdef DEVICE_BQ25798          
+                
         result = bq25798_read_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, 1u);
         //if ( data_ccreg & 0x04 )
         {
@@ -1502,7 +1476,6 @@ static void update_active_power_source(void)
             LOG(I,"R:CCREG0F 0x%x",data_ccreg);
             result = bq25798_write_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, ONE_BYTE);
         }
-#endif
 
 
 
@@ -1522,11 +1495,9 @@ static void update_active_power_source(void)
 
                 chg_ctrl_reg4.B6_EN_ACDRV1 = 0; // Disable VAC1 Solar
                 chg_ctrl_reg4.B7_EN_ACDRV2 = 1; // Select VAC2 12V
-
-#ifdef DEVICE_BQ25798          
+         
                 result = bq25798_disable_mppt();
                 result = bq25798_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
-#endif
 
                 if ( result != RES_FAIL )
                 {
@@ -1559,11 +1530,9 @@ static void update_active_power_source(void)
 
                 chg_ctrl_reg4.B6_EN_ACDRV1 = 1; // Select VAC1  Solar
                 chg_ctrl_reg4.B7_EN_ACDRV2 = 0; // Disable  VAC2 12V CAR Battery
-
-#ifdef DEVICE_BQ25798          
+         
                 result = bq25798_enable_mppt();
                 result = bq25798_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
-#endif
 
 
                 if ( result != RES_FAIL )
@@ -1606,7 +1575,6 @@ static void update_active_power_source(void)
 }
 
 /*BQ25798 interrupt handling*/
-#ifdef DEVICE_BQ25798
 /**
   * @brief  Callback function to handle the interrupt data forward from the GPIO task
   * @param  device
@@ -1677,7 +1645,6 @@ void battery_ic_interrupt_cb(int device, int port, int pin)
             break;
     }
 }
-#endif  // DEVICE_BQ25798
 
 /**
   * @brief  Functionto push the active power source in the queue
@@ -1700,7 +1667,6 @@ static void push_pwrsrc_status_in_queue(IV0PWRSRC_ENUM curr_active_source)
     }
 }
 
-#ifdef DEVICE_BQ25798
 /**
  * @brief  Callback function to handle subscribed data
  * @param  table_index
@@ -1758,8 +1724,5 @@ static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error)
         connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(err_frame), connector_pwr_ctrl_service.connector_id, (TickType_t)portMAX_DELAY);
     }
 }
-#endif //def DEVICE_BQ25798
-
-#endif // defined(DEVICE_BQ25798)
 
 #endif /*CONNECTOR_POWER_CONTROL_SERVICE*/ 

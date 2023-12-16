@@ -397,15 +397,10 @@ EN_IONIZER_FLAG - Defined
 
 
 /* Battery charger IC */
-#define ENABLE_BAT_SHIP                     1
-#define DISABLE_BAT_SHIP                    0
+#define ENABLE_BAT_SHIP                     1               //with sepic
+#define DISABLE_BAT_SHIP                    0               //without sepic
 
-#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)	
 #define BAT_SHIP_VALUE                      ENABLE_BAT_SHIP		//With Sepic
-//#define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP		//Sepic bypassed
-#else
-#define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP
-#endif
 
 typedef enum {
     IO_EX_GPIO_NUM_NC  = -1,     /*!< Use to signal not connected to S/W */

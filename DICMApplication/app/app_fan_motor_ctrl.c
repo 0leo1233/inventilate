@@ -180,12 +180,11 @@ void update_data_in_nvm(DATA_ID data_id, uint32_t data)
         /* write the data in the NVS */
         nvs_err = hal_nvs_write(nvs_db[db_idx].nvs_key, nvs_db[db_idx].data_type, nvs_db[db_idx].data_ptr, nvs_db[db_idx].data_size);
         /* Validate the error code */
-#if INV_ALGO_DEBUG         
+         
         if ( HAL_NVS_OK != nvs_err )
         {
-            LOG(E, "NVS Write failed = %d", nvs_err);
+            LOG(W, "NVS Write failed = %d", nvs_err);
         }
-#endif        
     }
     else
     {
@@ -368,10 +367,11 @@ void reset_accumulated_data(INVENTILATE_CONTROL_ALGO* ptr_iv)
   */
 void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
 {
-    if ( ptr_iv->iaq_data_count > 0 )
+    if ( ptr_iv->iaq_data_count > 0u )
     {
         /* Calculate the average value of IAQ */
-        ptr_iv->curr_avg_iaq_value = ptr_iv->curr_avg_iaq_value / ptr_iv->iaq_data_count;
+        ptr_iv->curr_avg_iaq_value = ptr_iv->accum_iaq_value / ptr_iv->iaq_data_count;
+        ptr_iv->accum_iaq_value = ptr_iv->curr_avg_iaq_value;
 #if INV_ALGO_DEBUG 
         LOG(I, "avg_iaq=%d cnt=%d", ptr_iv->curr_avg_iaq_value, ptr_iv->iaq_data_count);
 #endif
@@ -379,7 +379,7 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
         ptr_iv->iaq_data_count = 1u;                                                     
     }
 
-    if ( ptr_iv->dp_data_count > 0 )
+    if ( ptr_iv->dp_data_count > 0u )
     {
         /* Calculate the average value of DP */
         ptr_iv->curr_avg_dp_value = ptr_iv->curr_avg_dp_value / ptr_iv->dp_data_count;
@@ -387,16 +387,18 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
         LOG(I, "avg_dp=%d cnt=%d", ptr_iv->curr_avg_dp_value, ptr_iv->dp_data_count);
 #endif
         /* Average value will be consider as 1 sample */
-        ptr_iv->dp_data_count = 1;
+        ptr_iv->dp_data_count = 1u;                                                     
     }
 
-    if ( ptr_iv->humidity_data_count > 0 )
+    if ( ptr_iv->humidity_data_count > 0u )
     {
         /* Calculate the average value of relative humidity */
         ptr_iv->curr_avg_hum_value = ptr_iv->curr_avg_hum_value / ptr_iv->humidity_data_count;
-
+#if INV_ALGO_DEBUG 
+        LOG(I, "avg_hum=%d cnt=%d", ptr_iv->curr_avg_hum_value, ptr_iv->humidity_data_count);
+#endif
          /* Average value will be consider as 1 sample */
-        ptr_iv->humidity_data_count = 1;
+        ptr_iv->humidity_data_count = 1u;
     }
 }
 
@@ -409,15 +411,14 @@ IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
 {
     IV0PRST_ENUM pressure_stat = IV0PRST_PRESS_STATUS_UNKNOWN;
 
-    if ( ptr_iv->dp_data_count > (int32_t)DP_ZERO_COUNT )
+    if ( ptr_iv->dp_data_count > DP_ZERO_COUNT )
     {
         /* Find the pressure compensation status */
-        //LOG(I,"[press_val %d]",ptr_iv->curr_avg_dp_value);
         if ( ptr_iv->curr_avg_dp_value < ptr_iv->dp_neg_acceptable_lim )
         {
             /* Under pressure */
-            ptr_iv->dp_exceed_count++;
-            if (ptr_iv->dp_exceed_count > DP_EXCEED_LIMIT)
+            ptr_iv->dp_exceed_count ++;
+            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
             {
                 pressure_stat = IV0PRST_UNDER_PRESS;
             }
@@ -425,8 +426,8 @@ IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
         else if ( ptr_iv->curr_avg_dp_value > ptr_iv->dp_pos_acceptable_lim )
         {
 			/* Over pressure */
-            ptr_iv->dp_exceed_count++;
-            if (ptr_iv->dp_exceed_count > DP_EXCEED_LIMIT)
+            ptr_iv->dp_exceed_count ++;
+            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
             {
                 pressure_stat = IV0PRST_OVER_PRESS;
             }
@@ -462,13 +463,13 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
     ptr_iv->ptr_prev_data  = &ptr_iv->prev_avg_iaq_value;
     ptr_iv->roc_max_val    = INVENT_IAQ_INDEX_MAX;
 
-    if ( ( ( ptr_iv->iaq_data_count > 0 ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) ) || ( ( ptr_iv->iaq_data_count > 0 ) && ( ptr_iv->sens_acc == BME6X_MEDIUM_ACCURACY ) ))
+    if ( ( ( ptr_iv->iaq_data_count > 0u ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) ) || ( ( ptr_iv->iaq_data_count > 0u ) && ( ptr_iv->sens_acc == BME6X_MEDIUM_ACCURACY ) ))
     {
         /* Find the Air Quality status from IAQ */
         for ( index = 0; index < IAQ_RANGE_LEVELS; index++ )
         {
-            if ( ( ptr_iv->curr_avg_iaq_value >= (int32_t)iaq_range_level[index].iaq_range.min ) &&
-                 ( ptr_iv->curr_avg_iaq_value <= (int32_t)iaq_range_level[index].iaq_range.max ) )
+            if ( ( ptr_iv->curr_avg_iaq_value >= iaq_range_level[index].iaq_range.min ) && 
+                 ( ptr_iv->curr_avg_iaq_value <= iaq_range_level[index].iaq_range.max ) )
             {
                 iaq_status = iaq_range_level[index].iaq_status;       /* Get the IAQ status */
                 index      = IAQ_RANGE_LEVELS;                        /* Exit from the loop */
@@ -476,7 +477,7 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
         }
 
         /* Validate the humidity when the air quality is good inside the RV */
-        if ( ( IV0AQST_AIR_QUALITY_GOOD == iaq_status ) && ( ptr_iv->humidity_data_count > 0 ) )
+        if ( ( IV0AQST_AIR_QUALITY_GOOD == iaq_status ) && ( ptr_iv->humidity_data_count > 0u ) )
         {
             /* Even when IAQ is GOOD, but the relative humdity is not within the acceptable range,
                then air quality will be considered as BAD */
@@ -542,9 +543,9 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
             }
             else
             {
-        #if INV_ALGO_DEBUG 
+#if INV_ALGO_DEBUG 
                 LOG(I, "err pr_st=%d", ptr_iv->curr_pr_stat);
-        #endif
+#endif
             }
 
             if ( false == press_comp_working )
@@ -552,7 +553,6 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 /* Check the primary device already changed */
                 if ( false == ptr_iv->change_dev )
                 {
-                    LOG(I, "pr_comp not working with pr dev=%d", ptr_iv->prim_dev_id);
                     /* Compensation not worked with primary fan..Try with the secondary fan */
                     ptr_iv->change_dev = true;
                     /* Update the DP threshold value as per the current DP value */
@@ -560,7 +560,6 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 }
                 else
                 {
-                    LOG(I, "pr_comp ex limit");
                     // Pressure is not able to control by both primary and secondary fan due to unknown environmental condition
                     // Turn OFF both the FANS for 10 minutes and then start the pressure compensation action
                     
@@ -584,9 +583,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
             }
             else
             {
-        #if INV_ALGO_DEBUG 
-                LOG(I, "pr_comp working");
-        #endif
+                /*Do Nothing*/
             }
 
             if ( INVENTILATE_STATE_PRESS_CTRL_EX_LIMIT != iv_ctrl_state  )
@@ -604,9 +601,9 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
             /* Get the RPM step level from the ROC of DP */
             ptr_iv->step_table_index_dp = get_step_level(abs(curr_roc_dp_percent));
 
-    #if INV_ALGO_DEBUG 
+#if INV_ALGO_DEBUG 
             LOG(I,"roc_dp=%d step=%d", curr_roc_dp_percent, ptr_iv->step_table_index_dp);
-    #endif
+#endif
             /* Find the device to be used for compensating the pressure and direction of rpm of control ( Increase or Decrease ) */
 
             if ( IV0PRST_OVER_PRESS == ptr_iv->curr_pr_stat )
@@ -621,8 +618,6 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 //Over pressure
                 ptr_iv->prim_dev_id = DEV_FAN2_AIR_OUT;
                 ptr_iv->sec_dev_id  = DEV_FAN1_AIR_IN;
-
-
             }
             else
             {
@@ -636,7 +631,6 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 /*Increase FAN in speed to supply air inside the cabin*/
                 ptr_iv->prim_dev_id = DEV_FAN1_AIR_IN;
                 ptr_iv->sec_dev_id  = DEV_FAN2_AIR_OUT;
-            
             }
 
             
@@ -649,9 +643,9 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                 /* set the device compenastion configuration */
                 ptr_iv->dev_comp_config[ptr_iv->prim_dev_id] = PRESS_COMP_DEV;
             }
-            else if ( ptr_iv->set_rpm[ptr_iv->sec_dev_id] > fan_motor_control_db[ptr_iv->sec_dev_id].whole_rpm_range.min_rpm )
+            else if ( ptr_iv->set_rpm[ptr_iv->sec_dev_id] > (fan_motor_control_db[ptr_iv->sec_dev_id].whole_rpm_range.min_rpm ) )
             {
-                if ( ptr_iv->set_rpm[ptr_iv->sec_dev_id] > ptr_iv->rpm_step_table_dp[ptr_iv->step_table_index_dp] )
+                if ( ptr_iv->set_rpm[ptr_iv->sec_dev_id] > (ptr_iv->rpm_step_table_dp[ptr_iv->step_table_index_dp] ) )
                 {
                     /* Decrease the RPM by step level */
                     ptr_iv->set_rpm[ptr_iv->sec_dev_id] -=  ptr_iv->rpm_step_table_dp[ptr_iv->step_table_index_dp];
@@ -661,8 +655,8 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                     /* Set the RPM to zero */
                     ptr_iv->set_rpm[ptr_iv->sec_dev_id] = 0u;
                 }
-
-                /* set the device compenastion configuration */
+ 
+                /* set the device compensation configuration */
                 ptr_iv->dev_comp_config[ptr_iv->sec_dev_id] = PRESS_COMP_DEV;
             }
             else
@@ -676,8 +670,7 @@ INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
                     ptr_iv->set_rpm[dev_id]         = PRESS_COMP_EXCEEDS_LIMIT_RPM;
                     ptr_iv->dev_comp_config[dev_id] = IDLE_COMP_DEV;
                 }
-
-                /* Reset the timer flag before starting teh timer */
+                /* Reset the timer flag before starting the timer */
                 ptr_iv->wait_tmr_exp = false;
                 /* Start timer to wait for 10 min */
                 start_wait_tmr(MIN_TO_MSEC(RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN));
@@ -710,8 +703,8 @@ INVENT_CONTROL_STATE aq_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv)
     invent_device_id_t   dev_id;
     int32_t              roc_iaq_percent = 0;
     
-    if ( IV0AQST_AIR_QUALITY_GOOD != ptr_iv->curr_iaq_stat )
-    {
+    if (ptr_iv->curr_avg_iaq_value > IAQ_DEF_GOOD_MAX)
+    {    
         /* Find the rate of change (ROC) of IAQ */
         roc_iaq_percent = calc_rate_of_change(*ptr_iv->ptr_curr_data, *ptr_iv->ptr_prev_data, ptr_iv->roc_max_val);
 
@@ -840,10 +833,6 @@ void update_dev_rpm(INVENTILATE_CONTROL_ALGO* ptr_iv, IV0MODE_ENUM mode)
 
         if ( ptr_iv->prev_set_rpm[dev_id] != ptr_iv->set_rpm[dev_id] )
         {
-#if INV_ALGO_DEBUG 
-        LOG(I, "mode = %d comp_cfg = %d, min_rpm = %d, max_rpm = %d, calc_rpm = %d", mode, \
-            ptr_iv->dev_comp_config[dev_id], mode_min_rpm, mode_max_rpm, ptr_iv->set_rpm[dev_id]);
-#endif
             /* Calculate duty cycle from rpm */
             duty_cycle = calc_duty_cycle(fan_motor_control_db[dev_id].whole_rpm_range.min_rpm, fan_motor_control_db[dev_id].whole_rpm_range.max_rpm, \
                                          FAN_MOTOR_DUTY_CYCLE_MIN, FAN_MOTOR_DUTY_CYCLE_MAX, ptr_iv->set_rpm[dev_id]);
@@ -910,7 +899,11 @@ static uint8_t get_step_level(int32_t roc_percent)
 {
     uint8_t rpm_step = 0;
 	
-	if ( ( roc_percent > ROC_STEP_LEVEL_1_MIN_PERCENT ) && ( roc_percent <= ROC_STEP_LEVEL_1_MAX_PERCENT ) )
+	if  ( roc_percent == ROC_STEP_LEVEL_1_MIN_PERCENT )
+    {
+        rpm_step = RPM_STEP_LEVEL_1;
+    }
+    else if ( ( roc_percent > ROC_STEP_LEVEL_1_MIN_PERCENT ) && ( roc_percent < ROC_STEP_LEVEL_1_MAX_PERCENT ) )
     {
         rpm_step = RPM_STEP_LEVEL_1;
     }
@@ -971,9 +964,7 @@ void read_data_from_nvs(void)
         
         if ( HAL_NVS_OK != nvs_err )
         {
-#if INV_ALGO_DEBUG 
             LOG(I, "hal_nvs_read nvs_err = %d index = %d", nvs_err, index);	
-#endif 
             // NVS error found ..Store defaut value
             *((uint32_t*)(nvs_db[index].data_ptr)) = nvs_db[index].default_val;
 
@@ -994,7 +985,7 @@ void read_data_from_nvs(void)
             // NULL value check -> if data stored in NVS  is 0 in fresh board 
             if ( ( data < nvs_db[index].min_val ) || ( data > nvs_db[index].max_val ) || ( data == INV_NULL_VALUE ) )
             {
-#ifdef INV_ALGO_DEBUG 
+#if INV_ALGO_DEBUG 
                 LOG(I, "Plausible error data read = %d", data);	
 #endif 
                 // Plausibilty failed ..Store default value

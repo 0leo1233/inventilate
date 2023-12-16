@@ -80,6 +80,7 @@ static uint8_t storage_humid_timer = 0;
 
 static uint32_t tmr_period = 0;
 static uint8_t  iaq_run_state = 0;
+static uint32_t iaqprev_30min= 0;
 
 static volatile TickType_t time_now[MAX_NUM_DEVICE];
 static volatile TickType_t last_tick[MAX_NUM_DEVICE] = {0, 0, 0};
@@ -386,9 +387,6 @@ static void conn_fan_motor_process_task(void *pvParameter)
             if (MTR0_NEW_TACHO_DATA_EVENT == pframe->frame.set.parameter)
             {
                 mtr_tacho_data_event_t     *p_dev_capt = (mtr_tacho_data_event_t *)pframe->frame.set.value.raw;
-#if CONN_PWM_DEBUG_LOG
-                LOG(I, "dev_id %d RPM = %d", dev_id, p_dev_capt[dev_id].dev_rpm);
-#endif
                 /* Send the RPM values to the broker */
                 update_and_send_val_to_broker(MTR0TACHO|DDM2_PARAMETER_INSTANCE(p_dev_capt->capture_signal), p_dev_capt->capture_info.dev_rpm);
             }
@@ -489,7 +487,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                     {
                         if ( ptr_ctrl_algo->set_rpm[dev_id] != 0 )
                         {
-                            LOG(I,"[Change speed]");
+                            LOG(I,"[calculate tolerance value to check RPM mismatch error]");
                             rated_speed   = (int32_t)((float)ptr_ctrl_algo->set_rpm[dev_id] * ( (float)ptr_ctrl_algo->rated_speed_percent[dev_id] / (float)100.0f ));
                             max_limit_rpm = ptr_ctrl_algo->set_rpm[dev_id] + rated_speed;
                             min_limit_rpm = ptr_ctrl_algo->set_rpm[dev_id] - rated_speed;
@@ -546,9 +544,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                             else
                             {
                                 // Error resolved : No tacho is received when the device is active
-                                ////ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << ( dev_id + FAN1_NO_TACHO_DEVICE_ACTIVE ) );
                                 // Error resolved : Tacho reading is not matched with the expected RPM..
-                                ////ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~( 1 << ( dev_id + FAN1_RPM_MISMATCH ) );
                                 switch(dev_id)
                                 {
                                     case 0:
@@ -574,7 +570,6 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                             if ( ptr_ctrl_algo->dev_tacho[dev_id] != 0 )
                             {
                                 // Error : Tacho data received when the device is inactive / OFF
-                                ////ptr_ctrl_algo->fan_mtr_dev_curr_stat |= 1 << ( dev_id + FAN1_TACHO_READ_DEVICE_INACTIVE );
                                 switch(dev_id)
                                 {
                                     case 0:
@@ -597,7 +592,6 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                             else
                             {
                                 // Error resolved : Tacho data received when the device is inactive / OFF
-                                //ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~ ( 1 << ( dev_id + FAN1_TACHO_READ_DEVICE_INACTIVE ) );
                                 switch(dev_id)
                                 {
                                     case 0:
@@ -616,7 +610,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                             }
                         }
 
-                        LOG(W, "dev%d set_rpm = %d tacho = %d min_exp_rpm = %d", \
+                        LOG(I, "dev%d set_rpm = %d tacho = %d min_exp_rpm = %d", \
                             dev_id, ptr_ctrl_algo->set_rpm[dev_id], ptr_ctrl_algo->dev_tacho[dev_id], min_limit_rpm);
 
                         // Temp fix to find the no tacho event
@@ -626,7 +620,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                     if ( ptr_ctrl_algo->fan_mtr_dev_curr_stat != ptr_ctrl_algo->fan_mtr_dev_prev_stat )
                     {
-                        LOG(E, "Fan/Motor fault status = 0x%x", ptr_ctrl_algo->fan_mtr_dev_curr_stat);
+                        LOG(W, "Fan/Motor fault status = 0x%x", ptr_ctrl_algo->fan_mtr_dev_curr_stat);
 
                         ptr_ctrl_algo->fan_mtr_dev_prev_stat = ptr_ctrl_algo->fan_mtr_dev_curr_stat;
                         
@@ -636,14 +630,14 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                 }
             iaq_value = ptr_ctrl_algo->curr_avg_iaq_value;
-            #if INV_ALGO_DEBUG 
+#if INV_ALGO_DEBUG 
                 LOG(I, "iaq_st=%d pr_st=%d cur_avg_iaq_val = %d", ptr_ctrl_algo->curr_iaq_stat, ptr_ctrl_algo->curr_pr_stat,ptr_ctrl_algo->curr_avg_iaq_value);
-            #endif
+#endif
             }
 
-            #if INV_ALGO_DEBUG 
+#if INV_ALGO_DEBUG 
                 LOG(I, "cur_st=%d iaq_val = %d ", ptr_ctrl_algo->curr_state, iaq_value) ;
-            #endif
+#endif
 
             /* State machine to control the inventilate */                       
             switch ( ptr_ctrl_algo->curr_state )
@@ -691,54 +685,65 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                 case INVENTILATE_STATE_PROCESS_PARAM:
                     {
-                        if ( ( IV0PRST_VALID_PRESS_LEVEL    != ptr_ctrl_algo->curr_pr_stat ) && 
-                             ( IV0PRST_PRESS_STATUS_UNKNOWN != ptr_ctrl_algo->curr_pr_stat ) )
-                        {
-                            /* When the program control reached this point which means pressure exceeds the acceptable range 
-                               The timer is start here for a defined period of time to validate the 
-                               pressure compensation control, after this timer expires */
-
-                            /* Reset the timer flag before starting the timer */
-                            ptr_ctrl_algo->wait_tmr_exp = false;
-                            /* Set the DP compensation threshold */
-                            update_dp_comp_threshold_val(ptr_ctrl_algo);
-                            /* Start wait timer */
-                            start_wait_tmr(MIN_TO_MSEC(RV_PRESS_COMP_WAIT_TIME_MIN));
-                            /* Set the state to be trasfer */
-                            ptr_ctrl_algo->curr_state = INVENTILATE_STATE_PRESS_CTRL;
-                        }
-                        else if ( ( ( IV0AQST_AIR_QUALITY_GOOD    != ptr_ctrl_algo->curr_iaq_stat  ) &&
-                                  ( IV0AQST_CALIBRATION_ONGOING != ptr_ctrl_algo->curr_iaq_stat  ) &&
-                                  ( IV0AQST_AIR_QUALITY_UNKNOWN != ptr_ctrl_algo->curr_iaq_stat  )  ) ||  (iaq_value > IAQ_DEF_GOOD_MAX)  ) 
-
-                        {
-                            /* Set the state to be trasfer */
-                            iaq_run_state = 0;
-                            ptr_ctrl_algo->curr_state = INVENTILATE_STATE_AQ_CTRL;
-                        }
-                        else if ( ptr_ctrl_algo->cur_sel_mode != ptr_ctrl_algo->prev_sel_mode  )
+                        if ( IV0MODE_AUTO      !=  ptr_ctrl_algo->cur_sel_mode  )
                         {
                             reset_dev_config();
+                            LOG(I,"rst_dev curr_mode %d prev_mode %d ",ptr_ctrl_algo->cur_sel_mode, ptr_ctrl_algo->prev_sel_mode );
+
                         }
                         else
                         {
-                            if ( ( IV0AQST_AIR_QUALITY_GOOD   == ptr_ctrl_algo->curr_iaq_stat ) && 
-                                 ( IV0PRST_VALID_PRESS_LEVEL  == ptr_ctrl_algo->curr_pr_stat  ) && 
-                                 ( IV0MODE_AUTO               == ptr_ctrl_algo->cur_sel_mode  ) )
+                            if ( ( IV0PRST_VALID_PRESS_LEVEL    != ptr_ctrl_algo->curr_pr_stat ) && 
+                                ( IV0PRST_PRESS_STATUS_UNKNOWN != ptr_ctrl_algo->curr_pr_stat ) &&  
+                                ( IV0MODE_AUTO               == ptr_ctrl_algo->cur_sel_mode  ))
                             {
+                                /* When the program control reached this point which means pressure exceeds the acceptable range 
+                                The timer is start here for a defined period of time to validate the 
+                                pressure compensation control, after this timer expires */
+
                                 /* Reset the timer flag before starting the timer */
                                 ptr_ctrl_algo->wait_tmr_exp = false;
-                                /* Start timer to wait for 10 min */
-                                start_wait_tmr(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN));
-                                /* Set the state to be transfer */
-                                ptr_ctrl_algo->curr_state = INVENTILATE_STATE_WAIT_FOR_IDLE_SETTLE;
+                                /* Set the DP compensation threshold */
+                                update_dp_comp_threshold_val(ptr_ctrl_algo);
+                                /* Start wait timer */
+                                start_wait_tmr(MIN_TO_MSEC(RV_PRESS_COMP_WAIT_TIME_MIN));
+                                /* Update state */
+                                ptr_ctrl_algo->curr_state = INVENTILATE_STATE_PRESS_CTRL;
+                            }
+                            else if ( ( IV0MODE_AUTO == ptr_ctrl_algo->cur_sel_mode  ) && 
+                                    ( ( ( IV0AQST_AIR_QUALITY_GOOD != ptr_ctrl_algo->curr_iaq_stat ) && ( IV0AQST_AIR_QUALITY_UNKNOWN != ptr_ctrl_algo->curr_iaq_stat ) ) ||  
+                                    (iaq_value > IAQ_DEF_GOOD_MAX) ) )
+                            {
+                                /* Update state */
+                                iaq_run_state = 0;
+                                ptr_ctrl_algo->curr_state = INVENTILATE_STATE_AQ_CTRL;
+                            }
+                            else if ( ptr_ctrl_algo->cur_sel_mode != ptr_ctrl_algo->prev_sel_mode  )
+                            {
+                                ///reset_dev_config();
+                                //LOG(I,"rst_dev curr_mode %d prev_mode %d ",ptr_ctrl_algo->cur_sel_mode, ptr_ctrl_algo->prev_sel_mode );
+                            }
+                            else
+                            {
+                                LOG(I,"pp_els curr_mode %d prev_mode %d ",ptr_ctrl_algo->cur_sel_mode, ptr_ctrl_algo->prev_sel_mode );
+                                if ( ( IV0AQST_AIR_QUALITY_GOOD   == ptr_ctrl_algo->curr_iaq_stat ) && 
+                                    ( IV0PRST_VALID_PRESS_LEVEL  == ptr_ctrl_algo->curr_pr_stat  ) && 
+                                    ( IV0MODE_AUTO               == ptr_ctrl_algo->cur_sel_mode  ) )
+                                {
+                                    /* Reset the timer flag before starting the timer */
+                                    ptr_ctrl_algo->wait_tmr_exp = false;
+                                    /* Start timer to wait for 30 min */
+                                    start_wait_tmr(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN));
+                                    /* Set the state to be transfer */
+                                    ptr_ctrl_algo->curr_state = INVENTILATE_STATE_WAIT_FOR_IDLE_SETTLE;
+                                }
                             }
                         }
                     }
                     break;
 
                 case INVENTILATE_STATE_PRESS_CTRL:
-                    if ( true == ptr_ctrl_algo->data_received )
+                    if ( ( true == ptr_ctrl_algo->data_received ) && ( IV0MODE_AUTO == ptr_ctrl_algo->cur_sel_mode ) )
                     {
                         /* Reset data received flag */
                         ptr_ctrl_algo->data_received = false;
@@ -748,19 +753,30 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                         ptr_ctrl_algo->prev_avg_dp_value = ptr_ctrl_algo->curr_avg_dp_value;
                         iaq_run_state = 0;
                     }
+                    else if ( IV0MODE_AUTO != ptr_ctrl_algo->cur_sel_mode ) 
+                    {
+                        ptr_ctrl_algo->curr_state = INVENTILATE_STATE_PROCESS_PARAM;
+                        LOG(I,"press mode %d",ptr_ctrl_algo->cur_sel_mode);
+                    }
                     break;
 
                 case INVENTILATE_STATE_AQ_CTRL:
                     /* 1. Air quality will be control only when the pressure inside the RV is valid or unknown
                        2. BME68X Sensor accuracy should be high ( 3 ) */
                     
-                    if (  ( ( IV0PRST_VALID_PRESS_LEVEL    == ptr_ctrl_algo->curr_pr_stat  ) || 
-                         ( IV0PRST_PRESS_STATUS_UNKNOWN == ptr_ctrl_algo->curr_pr_stat  ) ) )
+                    if ( ( IV0MODE_AUTO == ptr_ctrl_algo->cur_sel_mode ) && 
+                         ( ( IV0PRST_VALID_PRESS_LEVEL    == ptr_ctrl_algo->curr_pr_stat  ) || 
+                           ( IV0PRST_PRESS_STATUS_UNKNOWN == ptr_ctrl_algo->curr_pr_stat  ) ) )
                     {
-                        LOG(I,"[IAQ_control_state]");
-                        
-                        //if ( ( IV0AQST_CALIBRATION_ONGOING  != ptr_ctrl_algo->curr_iaq_stat )  && (ptr_ctrl_algo->curr_avg_iaq_value > IAQ_DEF_GOOD_MAX ) )       // for Accuracy level >1
-                        if ( ( IV0AQST_CALIBRATION_ONGOING  != ptr_ctrl_algo->curr_iaq_stat )  || (iaq_value > IAQ_DEF_GOOD_MAX ) )         // for accuracy level 0 to 3
+                        LOG(I,"[IAQ_control_state iaq_rn_st: %d accu %d curr_avg_iaq %d]",iaq_run_state, ptr_ctrl_algo->sens_acc, ptr_ctrl_algo->curr_avg_iaq_value);
+                        /*
+                        if( (IV0AQST_CALIBRATION_ONGOING != ptr_ctrl_algo->prev_iaq_stat ) && (IV0AQST_CALIBRATION_ONGOING == ptr_ctrl_algo->curr_iaq_stat) )
+                        {
+                            iaq_run_state = 0;
+                        }
+                        */
+
+                        if ( ( IV0AQST_CALIBRATION_ONGOING  == ptr_ctrl_algo->curr_iaq_stat ) && (ptr_ctrl_algo->curr_avg_iaq_value > IAQ_DEF_GOOD_MAX ) )         // iaq_value  for accuracy level 0 to 3
                         { 
                             if(iaq_run_state == 0)
                             {
@@ -768,6 +784,8 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                                 ptr_ctrl_algo->wait_tmr_exp = false;
                                 start_wait_tmr(MIN_TO_MSEC(IV_IAQ_ACC0_WAIT_MIN));
                                 iaq_run_state = 1;
+                                iaqprev_30min = *ptr_ctrl_algo->ptr_prev_data;
+                                LOG(I, "30min IAQ:%d", iaqprev_30min);
                             }
                             
                             if( ( true == ptr_ctrl_algo->wait_tmr_exp ) && (iaq_run_state == 1) )
@@ -775,15 +793,16 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                                 iaq_run_state = 2;
                                 stop_wait_tmr();
                                 LOG(I,"[IAQ_control_stop_timer_rs:2]");
+                                *ptr_ctrl_algo->ptr_prev_data = iaqprev_30min;
+                                LOG(W,"iaq_prev %d iaq30min %d", *ptr_ctrl_algo->ptr_prev_data, iaqprev_30min);
                             }
-                            
-                            
                         }
                         else
                         {
                             iaq_run_state = 2;
                             stop_wait_tmr();
-                             LOG(I,"[IAQ_control_stop_timer_rs:2E]");
+                            LOG(I,"[IAQ_control_stop_timer_rs:2E]");
+                            //ptr_ctrl_algo->ptr_prev_data = iaqprev_30min;
                         }
 
                         if(iaq_run_state == 2)
@@ -832,8 +851,8 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                     break;
 
                 case INVENTILATE_STATE_WAIT_FOR_IDLE_SETTLE:
-                    if ( ( IV0PRST_VALID_PRESS_LEVEL   != ptr_ctrl_algo->curr_pr_stat  ) ||
-                         ( IV0AQST_AIR_QUALITY_GOOD    != ptr_ctrl_algo->curr_iaq_stat ) || 
+                    if ( ( ( IV0PRST_VALID_PRESS_LEVEL != ptr_ctrl_algo->curr_pr_stat  ) && ( IV0PRST_PRESS_STATUS_UNKNOWN != ptr_ctrl_algo->curr_pr_stat  ) ) ||
+                         ( IAQ_DEF_GOOD_MAX < ptr_ctrl_algo->curr_avg_iaq_value  ) || 
                          ( ptr_ctrl_algo->cur_sel_mode != ptr_ctrl_algo->prev_sel_mode ) )
                     {
 #if ( INVENT_HARWARE_VERSION >= HW_VERSION_4_1 )
@@ -895,8 +914,8 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                     break;
 
                 case INVENTILATE_STATE_IDLE:
-                    if ( ( IV0PRST_VALID_PRESS_LEVEL   != ptr_ctrl_algo->curr_pr_stat  ) ||
-                         ( IV0AQST_AIR_QUALITY_GOOD    != ptr_ctrl_algo->curr_iaq_stat ) || 
+                    if ( ( ( IV0PRST_VALID_PRESS_LEVEL   != ptr_ctrl_algo->curr_pr_stat  ) && ( IV0PRST_PRESS_STATUS_UNKNOWN != ptr_ctrl_algo->curr_pr_stat ) )||
+                         ( IAQ_DEF_GOOD_MAX < ptr_ctrl_algo->curr_avg_iaq_value ) || 
                          ( ptr_ctrl_algo->cur_sel_mode != ptr_ctrl_algo->prev_sel_mode ) )
                     {
                         /* Reset the dev compensation configuration */
@@ -1016,7 +1035,6 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
             /* Update the calculated RPM */
             update_dev_rpm(ptr_ctrl_algo, ptr_ctrl_algo->cur_sel_mode);
-
             if ( ptr_ctrl_algo->cur_sel_mode != ptr_ctrl_algo->prev_sel_mode )
             {
                 ptr_ctrl_algo->prev_sel_mode = ptr_ctrl_algo->cur_sel_mode;
@@ -1056,7 +1074,7 @@ void parse_received_data(void)
             { 
                 ptr_ctrl_algo->curr_state          = INVENTILATE_STATE_PROCESS_STANDBY;
                 ptr_ctrl_algo->prev_state          = INVENTILATE_STATE_PROCESS_STANDBY;
-
+                
 #if ( INVENT_HARWARE_VERSION >= HW_VERSION_4_1 )
                 // Power OFF Ionizer when the inventilate is powered OFF by user 
                 EN_IONIZER(0);
@@ -1074,7 +1092,7 @@ void parse_received_data(void)
 
         case IAQ_DATA: 
             ptr_ctrl_algo->iaq_data_count++;                                         /* Increment the data counter */
-            ptr_ctrl_algo->curr_avg_iaq_value += ptr_ctrl_algo->iv_data.data;        /* Add the new value with previous value */
+            ptr_ctrl_algo->accum_iaq_value += ptr_ctrl_algo->iv_data.data; 
             break;
 
         case IV_HUMIDITY_DATA:
@@ -1091,7 +1109,7 @@ void parse_received_data(void)
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &ptr_ctrl_algo->fan_mtr_dev_curr_stat, sizeof(int32_t), \
                                    connector_pwm_fan_motor.connector_id, portMAX_DELAY));
             
-            if (ptr_ctrl_algo->iv_data.data < (int32_t)DP_BAT_LIMIT)
+            if( ptr_ctrl_algo->iv_data.data < DP_BAT_LIMIT)
             {
                 //Send Error Code for DP sensor board.
                 TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &ptr_ctrl_algo->fan_mtr_dev_curr_stat, sizeof(int32_t), \
@@ -1099,7 +1117,9 @@ void parse_received_data(void)
 
             }
             break;
-        case DP_DATA:                                               
+
+        case DP_DATA: 
+            //Check if the value is within valid range -25 to +25 (-25000 to +25000)
             if ( ( (ptr_ctrl_algo->iv_data.data < DPSENS_PLAUSIBLE_UPRANGE) && (ptr_ctrl_algo->iv_data.data > 0) ) || \
                  ( (ptr_ctrl_algo->iv_data.data > DPSENS_PLAUSIBLE_DOWNRANGE) && (ptr_ctrl_algo->iv_data.data < 0) ) )
             {
@@ -1837,7 +1857,7 @@ static void stop_storage_timer(void)
 
     xStorageTimerStopped = xTimerStop( xStorageHumid_chk_Timer, portMAX_DELAY );
 	
-    if ( xStorageTimerStopped != pdPASS )
+    if ( xStorageHumid_chk_Timer != pdPASS )
     {
 		LOG(E, "Storage humid check Timer stop failed");
     }
@@ -1925,7 +1945,6 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
 
     // Increase counter to indicate we have a valid interrupt
     capture_counter[capture_signal] = capture_counter[capture_signal] + 1u;
-
     // Calculate time since last interrupt. Need to handle overflow.
     time_now[capture_signal]     = xTaskGetTickCountFromISR();
     time_diff[capture_signal]    = time_now[capture_signal] - last_tick[capture_signal];
@@ -1960,10 +1979,9 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
         tacho_event.capture_signal = capture_signal;
         tacho_event.capture_info.dev_rpm = dev_capt[capture_signal].dev_rpm;
         ddmp2_create_set(&frame_event_to_send, MTR0_NEW_TACHO_DATA_EVENT, (const void*)&tacho_event, sizeof(tacho_event), connector_pwm_fan_motor.connector_id);
-
         if (pdFALSE == xRingbufferSendFromISR(connector_pwm_fan_motor.to_connector, &frame_event_to_send, ddmp2_full_frame_size(DDMP2_CONTROL_SET, sizeof(tacho_event)), &pxHigherPriorityTaskWoken))
         {
-            LOG(E, "Tacho Reading Queue Full Error");
+            /* Do Nothing */
         }
         // Check if we need to yield in caller function
         if (pxHigherPriorityTaskWoken == pdTRUE)
@@ -1999,7 +2017,7 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
                 pxHigherPriorityTaskWoken = pdFALSE;
                 if (pdFALSE == xRingbufferSendFromISR(connector_pwm_fan_motor.to_connector, &frame_event_to_send, ddmp2_full_frame_size(DDMP2_CONTROL_SET, sizeof(tacho_event)), &pxHigherPriorityTaskWoken))
                 {
-                    LOG(E, "Tacho Reading Queue Full Error");
+                	/* Do Nothing */
                 }
                 // Check if we need to yield in caller function
                 if (pxHigherPriorityTaskWoken == pdTRUE)

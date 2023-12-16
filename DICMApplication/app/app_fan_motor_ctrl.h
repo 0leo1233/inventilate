@@ -60,15 +60,13 @@
 #define NUM_OPERATING_MODES                       ((uint8_t)   4u + 1u)
 
 #define IV_CONTROL_PROCESSING_INTERVAL_MIN        ((uint8_t)    1u)         //Ticks in minutes
-#define IV_CONTROL_PROCESSING_INTERVAL_SECONDS    ((uint16_t)    5000u)     //Tick in seconds    
-#define RV_IDLE_COND_WAIT_TIME_MIN                ((uint8_t)   30u)   
+#define IV_CONTROL_PROCESSING_INTERVAL_SECONDS    ((uint16_t)5000u)     	//Tick in seconds    
+#define RV_IDLE_COND_WAIT_TIME_MIN                ((uint8_t)   30u)           
 #define RV_PRESS_COMP_WAIT_TIME_MIN               ((uint8_t)    2u)
-#define RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN    ((uint8_t)   10u)
+#define RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN    ((uint8_t)   10u)          
 #define FAN_MOTOR_VALIDATION_INTERVAL_MIN         ((uint8_t)    5u)
 #define IV_STORAGE_HUMID_CHK_MIN                  ((uint8_t)    1u)
-#define IV_IAQ_ACC0_WAIT_MIN                           ((uint8_t)   30u)     //The wait time when the accuracy is 0 and IAQ is not GOOD
-
-
+#define IV_IAQ_ACC0_WAIT_MIN                      ((uint8_t)    30u)        //The wait time when the accuracy is 0 and IAQ is not GOOD
 
 #define IAQ_DEF_GOOD_MIN    ((uint16_t)   0u)
 #define IAQ_DEF_GOOD_MAX    ((uint16_t) 100u)
@@ -124,7 +122,7 @@ Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 #define STORAGE_MODE_RUN_TIME_03_HR               STORAGE_MODE_RUN_TIME_03_HR_TEST
 
 #define STORAGE_RUN_START_TIME             (1u)
-#define STORAGE_RUN_END_TIME               (3u)
+#define STORAGE_RUN_END_TIME               (2u)
 
 #else
 
@@ -181,7 +179,8 @@ Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 #define DIFF_PRESS_ROC_MAX                        ((float)  50.0f)
 
 #define INVENT_CONTROL_PERIODIC_TMR_TICKS         pdMS_TO_TICKS(MIN_TO_MSEC(IV_CONTROL_PROCESSING_INTERVAL_MIN))
-#define IV_IAQ_PROCESSING_TICKS                   pdMS_TO_TICKS(IV_CONTROL_PROCESSING_INTERVAL_SECONDS)
+#define IV_IAQ_PROCESSING_TICKS                   pdMS_TO_TICKS(MIN_TO_MSEC(IV_CONTROL_PROCESSING_INTERVAL_MIN))
+
 
 #define RV_IDLE_COND_SETTLE_WAIT_TIME_TICKS       pdMS_TO_TICKS(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN))
 #define RV_PRESS_COMP_WAIT_TIME_TICKS             pdMS_TO_TICKS(MIN_TO_MSEC(RV_PRESS_COMP_WAIT_TIME_MIN))
@@ -356,7 +355,7 @@ typedef union
     uint8_t byte;
     struct 
     {
-        uint8_t VAC_CHANGED      : 1;
+        uint8_t VAC_CHANGED         : 1;
         uint8_t IINDPM_STAT         : 1;
         uint32_t VINDPM_STAT        : 1;
         uint8_t TREG_STAT           : 1;
@@ -396,6 +395,9 @@ typedef struct __inventilate_control_algo
     int32_t               curr_avg_iaq_value;
     int32_t               curr_avg_dp_value;
     int32_t               curr_avg_hum_value;
+    int32_t               accum_iaq_value;
+    int32_t               accum_dp_value;
+    int32_t               accum_hum_value;
     int32_t               roc_max_val;
     int32_t*              ptr_curr_data;
     int32_t*              ptr_prev_data;
@@ -458,7 +460,7 @@ extern EXT_RAM_ATTR FILTER_INFO filter_data;
 extern int32_t bme68x_humid_value;
 extern int32_t bm_humid_prev;
 extern int32_t bm_humid_curr;
-extern int32_t press_sim_value;
+
 
 void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* iv_algo);
 

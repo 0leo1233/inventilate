@@ -65,11 +65,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #define CHIP_TYPE_INTERNAL_BME688  0
 #define BME68X_CHIP_TYPE           CHIP_TYPE_INTERNAL_BME688
-//Enable to test storage mode
-//#define STORAGE_TEST_MODE			/*Storage mode test Idle time 10 min Run time 6 min*/
-//#define FILTER_TEST				/*FILTER_LIFE_TIME_MIN is set to 3 minutes to test the Filter */
-
-//#define INVENT_BATTERY_TESTING
 
 #define INVENTILATE_FAN_PULSE_CNT_PER_REVOL       ((uint8_t) 2u)
 #define INVENTILATE_MOTOR_ENG_PULSE_CNT_PER_REVOL ((uint8_t) 6u)
@@ -402,15 +397,10 @@ EN_IONIZER_FLAG - Defined
 
 
 /* Battery charger IC */
-#define ENABLE_BAT_SHIP                     1
-#define DISABLE_BAT_SHIP                    0
+#define ENABLE_BAT_SHIP                     1               //with sepic
+#define DISABLE_BAT_SHIP                    0               //without sepic
 
-#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)	
 #define BAT_SHIP_VALUE                      ENABLE_BAT_SHIP		//With Sepic
-//#define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP		//Sepic bypassed
-#else
-#define BAT_SHIP_VALUE                      DISABLE_BAT_SHIP
-#endif
 
 typedef enum {
     IO_EX_GPIO_NUM_NC  = -1,     /*!< Use to signal not connected to S/W */

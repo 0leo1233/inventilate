@@ -63,9 +63,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define CONFIG_RTC_CLK_SWITCH_TO_EXT_XTAL 0
 #define LINDEV_GENERIC_VERBOSE_LOG	0
 
-#define COMM_BLE                   0
-#define COMM_I2C                   1
-
 #define CHIP_TYPE_INTERNAL_BME688  0
 #define BME68X_CHIP_TYPE           CHIP_TYPE_INTERNAL_BME688
 //Enable to test storage mode
@@ -363,8 +360,8 @@ EN_IONIZER_FLAG - Defined
 #ifdef HAL_I2C_MASTER
 #define I2C_MASTER0
 #define I2C_MASTER0_PORT        0      //I2C_NUM_0
-#define I2C_MASTER0_SDA				  GPIO_NUM_0      //GPIO_NUM_4 changed to 0
-#define I2C_MASTER0_SCL			    GPIO_NUM_4      //GPIO_NUM_0 changed to 4
+#define I2C_MASTER0_SDA				  GPIO_NUM_0
+#define I2C_MASTER0_SCL			    GPIO_NUM_4
 #define I2C_MASTER0_FREQ			  100000
 #endif // HAL_I2C_MASTER
 

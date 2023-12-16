@@ -14,11 +14,7 @@
 #include "ddm2_parameter_list.h"
 #include "osal.h"
 #include "sorted_list.h"
-#if defined(DEVICE_BQ25792)
-#include "drv_bq25792.h"
-#endif
-
-#if defined(DEVICE_BQ25798) 
+#if defined DEVICE_BQ25798 
 #include "drv_bq25798.h"
 #endif
 
@@ -71,10 +67,8 @@ typedef enum _bat_sts_
 
 }INV_BAT_STS;
 
-#ifdef INVENT_BATTERY_TESTING
 static uint8_t poor_source_flag = 0;
 static uint8_t poor_source_count = 0;
-#endif // INVENT_BATTERY_TESTING
 
 static int initialize_connector_pwrctrl_service(void);
 static error_type initialize_pwr_control_module(void);
@@ -87,17 +81,13 @@ static void process_subscribe_request(uint32_t ddm_param);
 static void l_update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t value);
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param);
 static void conn_pwr_ctrl_manager_task(void *pvParameter);
-#ifdef INVENT_BATTERY_TESTING
-#ifdef DEVICE_BQ25792
-static void conn_pwr_ctrl_bms_task_bq25792(void *pvParameter);
-#endif
 
 #ifdef DEVICE_BQ25798
 static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter);
 #endif 
 
-float bq_read_vbat(void);
-#endif // INVENT_BATTERY_TESTING
+float bq_read_vbat();
+
 static void init_pwr_ctrl_sm(PWR_CTRL_SM* pwr_ctrl_sm);
 static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data);
 static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame);
@@ -110,21 +100,16 @@ static void start_filter_timer(void);
 static void stop_filter_timer(PWR_CTRL_SM* ptr_pwr_ctrl_sm);
 static void change_ivpmgr_state(IVPMGR0STATE_ENUM  inv_pwr_ctrl_state);
 static FILTER_RESET_STATUS validate_filter_time(PWR_CTRL_SM* ptr_pwr_ctrl_sm);
-#if defined (INVENT_BATTERY_TESTING) || defined (EMC_TEST_CASE_SOLAR)
 static void update_active_power_source(void);
 
+#ifdef DEVICE_BQ25798 
 static void push_pwrsrc_status_in_queue(IV0PWRSRC_ENUM curr_active_source);
-#endif
-
-#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798) 
-
-#ifdef INVENT_BATTERY_TESTING
 static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error);
-//! Error code handle variable
-static uint32_t invent_pwr_ctrl_error_stat = 0;
-#endif
+
 static uint8_t batt_ch_intr_stat = BATT_CH_STATE_IC_INIT;
 
+//! Error code handle variable
+static uint32_t invent_pwr_ctrl_error_stat = 0; 
 
 static REG26_FAULT_FLAG_0_REG     fault_flag0_reg     = {0};
 static REG27_FAULT_FLAG_1_REG     fault_flag1_reg     = {0};
@@ -134,33 +119,30 @@ static REG1B_CHARGER_STATUS_0_REG chr_status0_reg     = {0};
 static REG1D_CHARGER_STATUS_2_REG chr_status2_reg     = {0};
 static REG22_CHARGER_FLAG_0_REG   chr_flag0_reg       = {0};
 static REG23_CHARGER_FLAG_1_REG   chr_flag1_reg       = {0};
-
 static REG13_CHARGER_CTRL_4       chg_ctrl_reg4;
-static REG29_CHARGER_1_MASK       chg_1_mask_reg29;
+static REG29_CHARGER_1_MASK       chg_1_mask_reg29; 
 static REG1E_CHARGER_STATUS_3_REG ch_stat_3;
 
-static IV0_SETTINGS                 inv_setting;
-//static BMS_STATUS_FLAGS             bms_interrupt_flag;
+static BMS_STATUS_FLAGS             bms_interrupt_flag;
 static REG1E_CHARGER_STATUS_3_REG   bms_interrupt_reg1e;
 
 static float vac1 = 0.0f;
 static float vac2 = 0.0f;
-
-static uint8_t update_active_source_flag = 0;
-static uint8_t update_active_source_timer = 0;
+static uint8_t update_active_source_flag    = 0;
+static uint8_t update_active_source_timer   = 0;
 static uint8_t update_interrupt_event       = 0;
-static uint8_t display_bms_info_timer  = 0;
-static uint8_t reg22_byte_prev = 0;
+static uint8_t display_bms_info_timer       = 0;
+static uint8_t reg22_byte_prev              = 0;
+static uint8_t reg22_byte_curr              = 0;
 
-extern int32_t press_sim_value;
 REG1C_CHARGER_STATUS_1_REG ch_stat_1;
 
 IV0PWRSRC_ENUM curr_active_src = IV0PWRSRC_BACKUP_BATTERY + 1;
 IV0PWRSRC_ENUM prev_active_src = IV0PWRSRC_BACKUP_BATTERY + 1;
-#endif // defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)
-#ifdef INVENT_BATTERY_TESTING
-static inv_bat_status_flags BATTERY_STATUS;
 #endif
+
+static inv_bat_status_flags BATTERY_STATUS;
+
 /* Structure for Connector fan motor */
 CONNECTOR connector_pwr_ctrl_service =
 {
@@ -191,10 +173,8 @@ static PWR_CTRL_SM pwr_ctrl_sm;
 static TimerHandle_t xFilterTimer;
 static TimerHandle_t xPowerControl_Timer;
 
-#ifdef INVENT_BATTERY_TESTING
 //! Battery status for  idle mode
 static uint8_t inv_bkup_bat_sts = INV_BATTERY_GOOD;
-#endif
 /*
 battery condition   status
 good                0
@@ -235,15 +215,8 @@ static int initialize_connector_pwrctrl_service(void)
     TRUE_CHECK(osal_task_create(conn_pwr_ctrl_manager_task, CONNECTOR_PWR_CTRL_MANAGER_TASK_NAME, CONNECTOR_PWR_CTRL_MNGR_TASK_DEPTH, inv_pwr_ctrl_que_hdle, CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY, NULL));
     if ( RES_PASS == res )
     {
-#ifdef INVENT_BATTERY_TESTING
-#ifdef DEVICE_BQ25792      
-        TRUE_CHECK(osal_task_create(conn_pwr_ctrl_bms_task_bq25792, CONNECTOR_PWR_CTRL_BMS_TASK_NAME, CONNECTOR_PWR_CTRL_BMS_TASK_STACK_DEPTH, NULL, CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY, NULL));
-#endif
-
 #ifdef DEVICE_BQ25798       
         TRUE_CHECK(osal_task_create(conn_pwr_ctrl_bms_task_bq25798, CONNECTOR_PWR_CTRL_BMS_TASK_NAME, CONNECTOR_PWR_CTRL_BMS_TASK_STACK_DEPTH, NULL, CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY, NULL));
-#endif
-
 #endif
     }
 
@@ -305,6 +278,7 @@ static void install_parameters(void)
   */
 static void start_subscribe(void)
 {
+	DDMP2_FRAME frame;
 	conn_pwr_ctrl_parameter_t *ptr_param_db;
 	uint8_t db_idx;
 
@@ -314,14 +288,12 @@ static void start_subscribe(void)
         /* Check the DDM parameter need subscribtion */
 		if ( ptr_param_db->sub )
 		{
-			/* Create and send the DDMP frame to subscribe for the ddmp paremeter IAQ index to broker */
-            TRUE_CHECK(connector_send_frame_to_connector(
-                DDMP2_CONTROL_SUBSCRIBE,
-                ptr_param_db->ddm_parameter,
-                NULL,
-                0,
-                connector_pwr_ctrl_service.connector_id,
-                (TickType_t)portMAX_DELAY))
+			/* Create the DDMP frame to subscribe for the ddmp paremeter IAQ index to broker */
+			ddmp2_create_subscribe(&frame, ptr_param_db->ddm_parameter, connector_pwr_ctrl_service.connector_id);
+			/* Set the connector id in the frame */
+			frame.source_connector = connector_pwr_ctrl_service.connector_id;
+			/* Send the data to broker */
+			TRUE_CHECK(xRingbufferSend(connector_pwr_ctrl_service.to_broker, (void *)&frame, sizeof(DDMP2_FRAME), (TickType_t)portMAX_DELAY));
 		}
 	}
 }
@@ -486,9 +458,7 @@ static void conn_pwr_ctrl_manager_task(void *pvParameter)
     }
 }
 
-#ifdef INVENT_BATTERY_TESTING
-
-#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798) 
+#ifdef DEVICE_BQ25798 
 char* debug_arr_ch_stat[] = {
 "Not Charging",
 "Trickle Charge",
@@ -499,380 +469,7 @@ char* debug_arr_ch_stat[] = {
 "Top-off timer active charging",
 "Charge termination done"
 };
-#endif //defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)
-
-
-#ifdef DEVICE_BQ25792
-/**
-  * @brief  Task for battery management service
-  * @param  pvParameter.
-  * @retval none.
-  */
-static void conn_pwr_ctrl_bms_task_bq25792(void *pvParameter)
-{
-    TickType_t task_frequency = (TickType_t)pdMS_TO_TICKS(5000); 
-    TickType_t last_wake_time = xTaskGetTickCount();
-    uint16_t src_check_count = 0;
-
-    uint8_t data_1;
-    uint16_t data_2;
-    uint8_t flag_process_timer      = 0;
-    uint8_t bms_flag_timer = 0;
-    error_type result;
-    float vbat = 0.0f;
-    float vsys = 0.0f;
-    float f_ibus = 0.0f;
-    int16_t i16_ibus = 0; 
-    float f_ibat = 0.0f;
-    int16_t i16_ibat = 0;
-    int16_t i16_tdie = 0;
-    float ichg = 0.0f;
-    float iterm = 0.0f;
-    float f_ts  = 0.0f;
-    float f_tdie = 0.0f;
-    float f_vsysmin = 0.0f;
-    float f_ch_v_lim = 0.0f;
-
-    REG00_MINIMAL_SYS_VOLTAGE  min_sys_volt_limit;
-    REG01_CHARGE_VOLTAGE_LIMIT ch_volt_lim_reg;
-    REG03_CHARGE_CURRENT_LIMIT ch_cur_lim_reg;
-    REG05_INPUT_VOLTAGE_LIMIT  inp_volt_lim_reg;
-    REG06_INPUT_CURRENT_LIMIT  inp_cur_lim_reg;
-    REG08_PRECHARGE_CONTROL_REG pre_ch_ctrl_reg;
-    REG08_TERMINATION_CONTROL_REG term_ctrl_reg;
-
-    REG0E_TIMER_CONTROL_REG   tmr_ctrl_reg;
-    REG0A_RECHARGE_CTRL_REG rechg_ctrl_reg;
-    REG33_IBAT_ADC_REG      ibat_adc_reg;
-    REG1B_CHARGER_STATUS_0_REG ch_stat_0;
-    REG1D_CHARGER_STATUS_2_REG ch_stat_2;
-    REG1F_CHARGER_STATUS_4_REG ch_stat_4;
-
-
-#if CONN_PWR_DEBUG_LOG
-    LOG(I,"Battery low cut off %d mV",((MINIMUM_SYSTEM_VOLTAGE_VALUE * 250 ) + 2500));
-    LOG(I,"Battery low alert %f",BACKUP_BATTERY_LOW_THRESHOLD);
-    LOG(I,"Battery Charge cut off %d mV",CHARGE_VOLTAGE_LIMIT_VALUE);
 #endif
-    while (1)
-    {
-#ifdef EMC_TEST_CASE        
-        ivsett_config.EN_DIS_SOLAR = true; 
-#endif         
-        if(ivsett_config.EN_DIS_SOLAR == true)
-        {
-            /* Reset the battery charger IC before it get expires */
-            bq25792_wd_reset();
-            if ( update_active_source_flag > 0)
-            {
-                update_active_source_flag = 0;
-                update_active_power_source();
-            }
-            
-            display_bms_info_timer ++;
-            if(display_bms_info_timer > 0)
-            {
-#if CONN_PWR_DEBUG_LOG
-                display_bms_info_timer = 0;
-                result = bq25792_read_reg(RECHARGE_CONTROL_REG0AH, &rechg_ctrl_reg.byte, 1u);
-                LOG(I, "RECHARGE_CONTROL_REG0AH 0x%x", rechg_ctrl_reg.byte);
-                LOG(I, "CELL   = 0x%x", rechg_ctrl_reg.CELL);
-                LOG(I, "TRECHG = 0x%x", rechg_ctrl_reg.TRECHG);
-                LOG(I, "VRECHG 0x%x | VRECHG = %d mV", rechg_ctrl_reg.VRECHG, ( rechg_ctrl_reg.VRECHG * 50) + VRECHG_FIXED_OFFSET_MILLIVOLT);
-
-                result = bq25792_read_reg(TIMER_CONTROL_REG0EH, &tmr_ctrl_reg.byte, 1u);
-                LOG(I, "TIMER_CONTROL_REG0EH 0x%x", tmr_ctrl_reg.byte);
-
-                LOG(I, "TOP_OFF_TMR   0x%x", tmr_ctrl_reg.TOPOFF_TMR);
-                LOG(I, "EN_TRICHG_TMR 0x%x", tmr_ctrl_reg.EN_TRICHG_TMR);
-                LOG(I, "EN_PRECHG_TMR 0x%x", tmr_ctrl_reg.EN_PRECHG_TMR);
-                LOG(I, "EN_CHG_TMR    0x%x", tmr_ctrl_reg.EN_CHG_TMR);
-                LOG(I, "CHG_TMR       0x%x", tmr_ctrl_reg.CHG_TMR);
-                LOG(I, "TMR2X_EN      0x%x", tmr_ctrl_reg.TMR2X_EN);
-#endif
-                result = bq25792_read_reg(TERMINATION_CONTROL_REG09H, &data_1, 1u);
-                LOG(I, "TERMINATION_CONTROL_REG09H 0x%x", data_1);
-
-                data_1 = data_1 & 0x1F;
-                iterm = (float)data_1 * 40.0f;
-
-                LOG(I, "ITERM %f mA", iterm);
-
-                data_1 = 0;
-
-                result = bq25792_read_reg(CHARGE_CURRENT_LIMIT_REG03H, (uint8_t*)&data_2, 2u);
-                LOG(I, "CHARGE_CURRENT_LIMIT_REG03H 0x%x", data_2);
-                
-                data_2 = SWAP2(data_2);
-                data_2 = data_2 * 10;
-                ichg = (float)data_2 / 1000.0f;
-
-                LOG(W, "ICHG = %f Amp", ichg);
-                data_2 = 0;
-
-                result = bq25792_read_reg(CHARGE_CONTROL_0_REG0FH, &data_1, 1u);
-                LOG(I, "CHARGE_CTRL_REG0 0x%x", data_1);
-                data_1 = 0;
-
-                
-                result = bq25792_read_reg(CHARGE_STATUS_0_REG1BH, &ch_stat_0.byte, 1u);
-#if CONN_PWR_DEBUG_LOG
-                LOG(I, "VBUS_PRESENT_STAT = %d", ch_stat_0.VBUS_PRESENT_STAT);
-                LOG(I, "VAC1_PRESENT_STAT = %d", ch_stat_0.VAC1_PRESENT_STAT);
-                LOG(I, "VAC2_PRESENT_STAT = %d", ch_stat_0.VAC2_PRESENT_STAT);
-                /*Send staus to other connectors*/
-                LOG(I, "PG_STAT = %d", ch_stat_0.PG_STAT);
-                LOG(I, "POORSRC_STAT = %d", ch_stat_0.POORSRC_STAT);
-                LOG(I, "WD_STAT = %d", ch_stat_0.WD_STAT);
-                LOG(I, "VINDPM_STAT = %d", ch_stat_0.VINDPM_STAT);
-                LOG(I, "IINDPM_STAT = %d", ch_stat_0.IINDPM_STAT);
-#endif
-                result = bq25792_read_reg(CHARGE_STATUS_1_REG1CH, &ch_stat_1.byte, 1u);
-#if CONN_PWR_DEBUG_LOG
-                LOG(I, "BC1_2_DONE_STAT = %d", ch_stat_1.BC1_2_DONE_STAT);
-                LOG(I, "VBUS_STAT = %d", ch_stat_1.VBUS_STAT);
-                LOG(I, "CHG_STAT = %d", ch_stat_1.CHG_STAT);
-#endif                
-                if ( ( ch_stat_1.CHG_STAT <= CHARGING_TERMINATION_DONE ) && ( result == RES_PASS ) )
-                {
-                    LOG(W, "Charging Status : %s", debug_arr_ch_stat[ch_stat_1.CHG_STAT]);
-                }
-
-                result = bq25792_read_reg(CHARGE_STATUS_2_REG1DH, &ch_stat_2.byte, 1u);
-#if CONN_PWR_DEBUG_LOG
-                LOG(I, "VBAT_PRESENT_STAT = %d", ch_stat_2.VBAT_PRESENT_STAT);
-                LOG(I, "DPDM_STAT = %d", ch_stat_2.DPDM_STAT);
-                LOG(I, "TREG_STAT = %d", ch_stat_2.TREG_STAT);
-                LOG(I, "ICO_STAT = %d", ch_stat_2.ICO_STAT);
-#endif                
-                result = bq25792_read_reg(CHARGE_STATUS_4_REG1FH, &ch_stat_4.byte, 1u);
-#if CONN_PWR_DEBUG_LOG
-                LOG(I, "TS_HOT_STAT = %d", ch_stat_4.TS_HOT_STAT);
-                LOG(I, "TS_WARM_STAT = %d", ch_stat_4.TS_WARM_STAT);
-                LOG(I, "TS_COOL_STAT = %d", ch_stat_4.TS_COOL_STAT);
-                LOG(I, "TS_COLD_STAT = %d", ch_stat_4.TS_COLD_STAT);
-                LOG(I, "VBATOTG_LOW_STAT = %d", ch_stat_4.VBATOTG_LOW_STAT);
-#endif
-                result = bq25792_read_reg(CHARGE_CONTROL_4_REG13H, &data_1, 1u);
-                LOG(I, "CHARGE_CONTROL_4_REG13H 0x%x", data_1);
-
-#if CONN_PWR_DEBUG_LOG
-                data_1 = 0;
-
-                result = bq25792_read_reg(MINIMUM_SYSTEM_VOLTAGE_REG0H, &min_sys_volt_limit.byte, 1u);
-                f_vsysmin = ( ( MINIMUM_SYS_VOLT_REG_BIT_STEP_SIZE_MV * min_sys_volt_limit.byte ) + MINIMUM_SYS_VOLT_REG_OFFSET_MV )  / 1000.0f;
-                LOG(I, "VSYSMIN = %f volt", f_vsysmin);
-
-                result = bq25792_read_reg(CHARGE_VOLTAGE_LIMIT_REG01H, (uint8_t*)&ch_volt_lim_reg.byte2, 2u);
-                f_ch_v_lim = (float)SWAP2(ch_volt_lim_reg.byte2);
-                LOG(I, "VREG = %f volt", ((f_ch_v_lim * 10.0f ) / 1000.0f));
-                data_2 = 0;
-
-                result = bq25792_read_reg(CHARGE_CURRENT_LIMIT_REG03H, (uint8_t*)&ch_cur_lim_reg.byte2, 2u);
-                data_2 = SWAP2(ch_cur_lim_reg.byte2);
-                LOG(I, "ICHG = %d mA", (data_2 * 10));
-
-                result = bq25792_read_reg(INPUT_VOLTAGE_LIMIT_REG05H, (uint8_t*)&inp_volt_lim_reg.byte, 1u);
-                LOG(I, "VINDPM = %d mV", (uint16_t)((uint16_t)inp_volt_lim_reg.byte * (uint16_t)100));
-
-                result = bq25792_read_reg(INPUT_CURRENT_LIMIT_REG06H, (uint8_t*)&inp_cur_lim_reg.byte2, 2u);
-                data_2 = SWAP2(inp_cur_lim_reg.byte2);
-                LOG(I, "IINDPM = %d mA", data_2 * 10);
-
-                result = bq25792_read_reg(PRECHARGE_CONTROL_REG08H, (uint8_t*)&pre_ch_ctrl_reg.byte, 1u);
-                LOG(I, "IPRECHG = %d mA VBAT_LOWV = 0x%x", (pre_ch_ctrl_reg.IPRECHG * 40), pre_ch_ctrl_reg.VBAT_LOWV);
-
-                result = bq25792_read_reg(TERMINATION_CONTROL_REG09H, (uint8_t*)&term_ctrl_reg.byte, 1u);
-                LOG(I, "ITERM = %d mA REG_RST = 0x%x", (term_ctrl_reg.ITERM * 40), term_ctrl_reg.REG_RST);
-#endif
-                result = bq25792_read_reg(CHARGE_STATUS_3_REG1EH, &ch_stat_3.byte, 1u);
-#if CONN_PWR_DEBUG_LOG
-                LOG(I, "PRECHG_TMR_STAT = %d", ch_stat_3.PRECHG_TMR_STAT);
-                LOG(I, "TRICHG_TMR_STAT = %d", ch_stat_3.TRICHG_TMR_STAT);
-                LOG(I, "CHG_TMR_STAT = %d", ch_stat_3.CHG_TMR_STAT);
-                LOG(I, "VSYS_STAT = %d", ch_stat_3.VSYS_STAT);
-                LOG(I, "ADC_DONE_STAT = %d", ch_stat_3.ADC_DONE_STAT);
-                LOG(I, "ACRB1_STAT = %d", ch_stat_3.ACRB1_STAT);
-                LOG(I, "ACRB2_STAT = %d", ch_stat_3.ACRB2_STAT);
-#endif
-
-                if ( ( ch_stat_3.ADC_DONE_STAT == 1 ) && ( result == RES_PASS ) )
-                {
-                    ch_stat_3.ADC_DONE_STAT = 0;
-
-                    result = bq25792_read_reg(VBAT_ADC_REG3BH, (uint8_t*)&data_2, 2u);
-                    LOG(I, "VBAT_ADC_REG3BH 0x%x", SWAP2(data_2));
-
-                    data_2 = SWAP2(data_2);
-                    vbat = (float)data_2 / 1000.0f;
-
-                            
-                    LOG(W, "VBAT = %f Volt",vbat);
-                    data_2 = 0;
-
-                    result = bq25792_read_reg(VAC1_ADC_REG37H, (uint8_t*)&data_2, 2u);
-                    LOG(I, "VAC1_ADC_REG37H 0x%x", SWAP2(data_2));
-
-                    data_2 = SWAP2(data_2);
-                    vac1 = (float)data_2 / 1000.0f;
-
-                    LOG(I, "VAC1 = %f Volt",vac1);
-
-                    result = bq25792_read_reg(VAC2_ADC_REG39H, (uint8_t*)&data_2, 2u);
-                    LOG(I, "VAC2_ADC_REG39H 0x%x", SWAP2(data_2));
-
-                    data_2 = SWAP2(data_2);
-                    vac2 = (float)data_2 / 1000.0f;
-
-                    LOG(I, "VAC2 = %f Volt",vac2);
-
-                    data_2 = 0;
-
-                    result = bq25792_read_reg(VSYS_ADC_REG3DH, (uint8_t*)&data_2, 2u);
-                    LOG(I, "VSYS_ADC_REG3DH 0x%x", SWAP2(data_2));
-
-                    data_2 = SWAP2(data_2);
-                    vsys = (float)data_2 / 1000.0f;
-
-                    LOG(I, "VSYS = %f Volt",vsys);
-
-                    data_2 = 0;
-
-                    result = bq25792_read_reg(IBUS_ADC_REG31H, (uint8_t*)&data_2, 2u);
-                    LOG(I, "IBUS_ADC_REG31H 0x%x", SWAP2(data_2));
-
-                    data_2 = SWAP2(data_2);
-                    i16_ibus = (int16_t)data_2;
-                    f_ibus = (float)i16_ibus / 1000.0f;
-
-                    LOG(W, "IBUS = %f Amp",f_ibus);
-
-                    data_2 = 0;
-                    
-                    result = bq25792_read_reg(IBAT_ADC_REG33H, (uint8_t*)&data_2, 2u);
-                    LOG(I, "IBAT_ADC_REG33H 0x%x", SWAP2(data_2));
-
-                    data_2 = SWAP2(data_2);
-                    i16_ibat = (int16_t)data_2;
-                    f_ibat = (float)i16_ibat / 1000.0f;
-
-                    LOG(W, "IBAT = %f Amp", f_ibat);
-
-                    data_2 = 0;
-
-                    result = bq25792_read_reg(IBAT_ADC_REG33H, (uint8_t*)&ibat_adc_reg.byte, 2u);
-                    LOG(I, "IBAT_ADC_REG33H 0x%x", ibat_adc_reg.ibat_adc);
-
-                    data_2 = 0;
-
-                    result = bq25792_read_reg(TS_ADC_REG3FH, (uint8_t*)&data_2, 2u);
-                    LOG(I, "TS_ADC_REG3FH 0x%x", SWAP2(data_2));
-                    data_2 = SWAP2(data_2);
-                    f_ts = (float)data_2 * TS_BIT_STEP_SIZE;
-
-                    LOG(W, "TS = %f percent", f_ts);
-
-                    data_2 = 0;
-
-                    result = bq25792_read_reg(TDIE_ADC_REG41H, (uint8_t*)&data_2, 2u);
-                    LOG(I, "TDIE_ADC_REG41H 0x%x", SWAP2(data_2));
-
-                    data_2 = SWAP2(data_2);
-                    i16_tdie = (int16_t)data_2;
-                    f_tdie = (float)i16_tdie * TDIE_BIT_STEP_SIZE;
-
-                    LOG(W, "TDIE = %f degC", f_tdie);
-                    result = bq25792_start_adc_conversion();
-
-                    LOG(I, "result = %d", result);
-                    
-                }
-#if (EN_POOR_SOURCE_CHECK == 1)
-
-                if ( ch_stat_0.POORSRC_STAT == TRUE) 
-                {
-                    src_check_count++;
-                }
-#if CONN_PWR_DEBUG_LOG
-                LOG(I,"[src_cnt %d flg %d count = %d]",src_check_count, ch_stat_0.POORSRC_STAT, poor_source_count);
-#endif
-                if(src_check_count > POOR_SOURCE_TIMER)
-                {
-                    if(poor_source_count <  POOR_SOURCE_MAX_COUNT)
-                    {
-                        poor_source_count++;
-                    }
-                    src_check_count = 0;
-                    if( ((ch_stat_0.POORSRC_STAT == 1) && (vbat < BACKUP_BATTERY_LOW_LIMIT) ) || (poor_source_count > = POOR_SOURCE_COUNT_LIMIT ) )
-                    {
-                        
-                        poor_source_flag = TRUE;
-#if CONN_PWR_DEBUG_LOG
-                        LOG(W, "[poor_source_found]");
-#endif
-                    }
-                    else
-                    {
-                    poor_source_flag = FALSE; 
-                    }
-                    
-                    ch_stat_0.POORSRC_STAT = 0;
-                    result = bq25792_read_reg(CHARGE_CONTROL_0_REG0FH, &data_1, 1u);
-                    data_1 = data_1 & (~ FLAG_EN_HIZ);
-                    result = bq25792_write_reg(CHARGE_CONTROL_0_REG0FH, &data_1, ONE_BYTE);
-
-                    result = bq25792_read_reg(CHARGE_CONTROL_4_REG13H, &data_1, 1u);
-#if CONN_PWR_DEBUG_LOG
-                    LOG(I, "[Reset EN_HIZ Rst_CHARGE_CONTROL_4_REG13H 0x%x]", data_1);
-#endif
-                }
-#endif
-
-            if(ch_stat_4.TS_HOT_STAT == true)
-            {
-                //battery overheating
-                pwr_ctrl_error_code(PWR_BAT_OVER_HEATING);
-            }
-            else if(ch_stat_4.TS_COOL_STAT == true)
-            {
-                pwr_ctrl_error_code(PWR_BAT_COOL);
-            }
-            
-            if ( (vbat < BACKUP_BATTERY_LOW_THRESHOLD) && (inv_bkup_bat_sts != INV_BATTERY_LOW) )
-            {
-                update_and_send_value_to_broker(IV0MODE, IV0MODE_OFF);
-                update_and_send_value_to_broker(IV0PWRON, IV0PWRON_OFF);
-                update_and_send_value_to_broker(DIM0LVL, 20);
-#if CONN_PWR_DEBUG_LOG
-                    LOG(I,"Battery Low! mode  changed  to stand-by");
-#endif
-                inv_bkup_bat_sts = INV_BATTERY_LOW;
-                pwr_ctrl_error_code(PWR_BACKUP_BAT_LOW);
-            }
-            else if ( ( vbat > BACKUP_BATTERY_HIGH_THRESHOLD) && (inv_bkup_bat_sts != INV_BATTERY_GOOD) ) 
-            {
-                inv_bkup_bat_sts = INV_BATTERY_GOOD;
-                pwr_ctrl_error_code(PWR_BACKUP_BAT_NORMAL);
-            }
-                    //!< battery Charging current monitor
-            if ( ( result == RES_PASS ) && ( data_2 >= 13700 ) && ( ch_stat_1.CHG_STAT == CHARGING_TERMINATION_DONE ) && \
-                (BATTERY_STATUS.charging_current_exceed != true) )
-            {
-                /*Battery fully charged reguce charging current to avoid BMS IC heating*/
-                result = bq25792_set_charging_current_limit(BQ25792_BATTERY_LIMITED_CURRENT); 
-                BATTERY_STATUS.charging_current_exceed = true;
-            }
-            else if ( ( result == RES_PASS ) && ( ch_stat_1.CHG_STAT < CHARGING_TERMINATION_DONE ) && (BATTERY_STATUS.charging_current_exceed != false) )
-            {
-                result = bq25792_set_charging_current_limit(CHARGE_CURRENT_LIMIT_VALUE); 
-                BATTERY_STATUS.charging_current_exceed = false;
-            }       
-            }
-        } //Solar_enable
-        vTaskDelayUntil(&last_wake_time, task_frequency);
-    } //While loop
-}
-#endif // DEVICE_BQ25792
 
 
 /*BMS control task for BQ25798*/
@@ -930,10 +527,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
 #endif
     while (1)
     {
-#ifdef EMC_TEST_CASE        
-        ivsett_config.EN_DIS_SOLAR = true; 
-#endif        
-        if(ivsett_config.EN_DIS_SOLAR == true)
+       if(ivsett_config.EN_DIS_SOLAR == true)
         {
            /* Reset the battery charger IC before it get expires */
             bq25798_wd_reset();
@@ -1261,20 +855,14 @@ float bq_read_vbat(void)
     error_type result;
     float vbat_volt = 0.0f;
     uint16_t data_2;
-#ifdef DEVICE_BQ25792    
-    result = bq25792_read_reg(VBAT_ADC_REG3BH, (uint8_t*)&data_2, 2u);
-#endif
-#ifdef DEVICE_BQ25798    
+    
     result = bq25798_read_reg(VBAT_ADC_REG3BH, (uint8_t*)&data_2, 2u);
-#endif
-
     LOG(I, "VBAT_ADC_REG3BH 0x%x", SWAP2(data_2));
 
     data_2 = SWAP2(data_2);
     vbat_volt = (float)data_2 / 1000.0f;
     return vbat_volt;
 }
-#endif  //INVENT_BATTERY_TESTING
 
 /**
   * @brief  Function to process the set and publish parameter from broker
@@ -1497,25 +1085,6 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 static error_type initialize_pwr_control_module(void)
 {
     error_type res = RES_FAIL;
-
-#ifdef DEVICE_BQ25792
-   
-    drv_bus_conf bq25792_bus_conf;
-
-    bq25792_bus_conf.type = SEQ_BUS_CONF_TYPE_I2C;
-
-    bq25792_bus_conf.i2c.port    = I2C_MASTER0_PORT;
-    bq25792_bus_conf.i2c.sda     = I2C_MASTER0_SDA;
-    bq25792_bus_conf.i2c.scl     = I2C_MASTER0_SCL;
-    bq25792_bus_conf.i2c.bitrate = I2C_MASTER0_FREQ;
-
-    res = bq25792_init(&bq25792_bus_conf);
-
-    if ( RES_PASS != res )
-    {
-        LOG(E, "bq25792_init failed = %d", res);
-    }
-#endif
 
 #ifdef DEVICE_BQ25798
     drv_bus_conf bq25798_bus_conf;
@@ -1897,172 +1466,13 @@ static FILTER_RESET_STATUS validate_filter_time(PWR_CTRL_SM* ptr_pwr_ctrl_sm)
     return filt_stat;
 }
 
-#if defined(DEVICE_BQ25792) || defined(DEVICE_BQ25798)
-
-#ifdef EMC_TEST_CASE_SOLAR
-/**
-  * @brief  Function to update the active power source selection
-  *         Solar is selected as primary source for EMC testing
-  * @param  void
-  * @retval void.
-  */
-static void update_active_power_source(void)
-{
-    error_type result;
-    uint8_t data_ccreg;;
-
-    LOG(W, "Charger flag status changed = 0x%x", chr_flag0_reg.byte);
-    LOG(I, "S_UAPS_VAC1 = %f Volt  VAC2 = %f",vac1, vac2);
-#ifdef DEVICE_BQ25792 
-    /* Read the STATUS REG1B to get the status of VAC1 and VAC2 */
-    result  = bq25792_read_reg(CHARGE_STATUS_0_REG1BH, &chr_status0_reg.byte, 1u);
-
-    /* Read the STATUS REG1D to get the status of VBAT */
-    result |= bq25792_read_reg(CHARGE_STATUS_2_REG1DH, &chr_status2_reg.byte, 1u);
-#endif
-
-#ifdef DEVICE_BQ25798 
-    /* Read the STATUS REG1B to get the status of VAC1 and VAC2 */
-    result  = bq25798_read_reg(CHARGE_STATUS_0_REG1BH, &chr_status0_reg.byte, 1u);
-
-    /* Read the STATUS REG1D to get the status of VBAT */
-    result |= bq25798_read_reg(CHARGE_STATUS_2_REG1DH, &chr_status2_reg.byte, 1u);
-#endif
-
-
-    if ( result != RES_FAIL )
-    {
-        LOG(W, "CHARGE_STATUS_0_REG1BH 0x%x", chr_status0_reg.byte);
-        LOG(W, "CHARGE_STATUS_2_REG1DH 0x%x", chr_status2_reg.byte);
-        
-#ifdef DEVICE_BQ25792        
-        result = bq25792_read_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, 1u);
-        //if ( data_ccreg & 0x04 )
-        {
-            data_ccreg = data_ccreg & (~ 0x04);
-            LOG(I,"R:CCREG0F 0x%x",data_ccreg);
-            result = bq25792_write_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, ONE_BYTE);
-        }
-#endif
-
-
-#ifdef DEVICE_BQ25798        
-        result = bq25798_read_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, 1u);
-        //if ( data_ccreg & 0x04 )
-        {
-            data_ccreg = data_ccreg & (~ 0x04);
-            LOG(I,"R:CCREG0F 0x%x",data_ccreg);
-            result = bq25798_write_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, ONE_BYTE);
-        }
-#endif
-
-       
-        if ( IS_VAC1_AVAIL(chr_status0_reg.byte) &&                             // VAC1 solar power is not avilable
-            ( curr_active_src != IV0PWRSRC_SOLAR_POWER_INPUT ) )
-        {
-            /* As per the system requirment/design solarpower(VAC1) will be primary source 
-               So whenever the valid solar power is available having the capable of driving the system 
-               Source shall be switch from the CAR battery source (VAC2) to solar power (VAC1) */
-			
-			LOG(W, "VAC1 solar power is available");
-            
-            if  ( IS_VALID_BAT_PWR_AVAIL(chr_status2_reg.byte) )                      //Chk the solar power for good range
-            {
-                /* Source switching should be done only when the battery power is avilable..
-                   Otherwise the system reset could occur */
-
-                LOG(W, "Valid battery source is available");
-
-                chg_ctrl_reg4.B6_EN_ACDRV1 = 1; // Select VAC1  Solar
-                chg_ctrl_reg4.B7_EN_ACDRV2 = 0; // Disable  VAC2 12V CAR Battery
-#ifdef DEVICE_BQ25792  
-                result = bq25792_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
-#endif
-#ifdef DEVICE_BQ25798  
-                result = bq25798_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
-#endif
-
-                if ( result != RES_FAIL )
-                {
-                    /* Update the current active source as VAC1 solar */
-                    curr_active_src = IV0PWRSRC_SOLAR_POWER_INPUT;
-                    LOG(W, "Active power source is VAC1 solar");
-                    
-                }
-
-                
-            }
-            else
-            {
-                LOG(E, "Battery backup is not available..Source switching to VAC1 is not possible");
-            }
-        }
-        /*CAR battery detected and Solar not detected*/
-        else if ( ( IS_VAC2_AVAIL(chr_status0_reg.byte)                )   &&        // VAC2 car battery is avilable
-                  ( IS_VAC1_AVAIL(chr_status0_reg.byte) == 0           )   &&   // VAC1 Solar is not avilable
-                  ( curr_active_src != IV0PWRSRC_12V_CAR_BATTERY_INPUT ) )          // Current active source in not a CAR battery
-        {
-            /* VAC2 Car battery is available */
-            LOG(W, "VAC2 Car battery is available ");
-            if ( ( IS_VALID_BAT_PWR_AVAIL(chr_status2_reg.byte) ) )
-            {
-                /* Source switching should be done only when the battery power is avilable,
-                Otherwise the system reset could occur */
-                LOG(W, "Valid battery source is available");
-                chg_ctrl_reg4.B6_EN_ACDRV1 = 0; // Disable VAC1 Solar
-                chg_ctrl_reg4.B7_EN_ACDRV2 = 1; // Select VAC2 12V
-
-#ifdef DEVICE_BQ25792               
-                result = bq25792_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
-#endif
-#ifdef DEVICE_BQ25798               
-                result = bq25798_disable_mppt();
-                result = bq25798_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
-#endif
-                if ( result != RES_FAIL )
-                {
-                    /* Update the current active source as VAC2 car battery */
-                    curr_active_src = IV0PWRSRC_12V_CAR_BATTERY_INPUT;
-                    LOG(W, "Active power source is VAC2 car battery");
-                }
-            }
-            else
-            {
-                LOG(E, "Battery backup is not available..Source switching to VAC2 is not possible");
-            }
-        }
-        else if ( ( IS_VAC1_AVAIL(chr_status0_reg.byte) == 0     ) && // VAC1 not available
-                  ( IS_VAC2_AVAIL(chr_status0_reg.byte) == 0     ) && // VAC2 not available
-                  ( IS_VALID_BAT_PWR_AVAIL(chr_status2_reg.byte) ) )  // Valid battery voltage available
-        {
-            /* Both VAC1 and VAC2 is not available and the system runs on battery backup */
-            LOG(W, "Active power source is backup battery");
-            curr_active_src = IV0PWRSRC_BACKUP_BATTERY;
-        }
-        else
-        {
-            LOG(W, "No need switch power src current src %d",curr_active_src);
-        }
-    }
-    else
-    {
-        LOG(E, "Error read CHARGE_STATUS_0_REG1BH %d", result);
-    }
-
-    if ( curr_active_src != prev_active_src )
-    {
-        push_pwrsrc_status_in_queue(curr_active_src);
-    }
-}
-
-#else // EMC_TEST_CASE_SOLAR
+#ifdef DEVICE_BQ25798
 
 /**
   * @brief  Function to update the active power source selection
   * @param  void
   * @retval void.
   */
-#ifdef INVENT_BATTERY_TESTING
 static void update_active_power_source(void)
 {
     error_type result;
@@ -2072,12 +1482,6 @@ static void update_active_power_source(void)
     LOG(I, "UAPS_VAC1 = %f Volt  VAC2 = %f",vac1, vac2);
 
     /* Read the STATUS REG1B to get the status of VAC1 and VAC2 */
-#ifdef DEVICE_BQ25792    
-    result  = bq25792_read_reg(CHARGE_STATUS_0_REG1BH, &chr_status0_reg.byte, 1u);
-    /* Read the STATUS REG1D to get the status of VBAT */
-    result |= bq25792_read_reg(CHARGE_STATUS_2_REG1DH, &chr_status2_reg.byte, 1u);
-#endif
-
 #ifdef DEVICE_BQ25798  
     result  = bq25798_read_reg(CHARGE_STATUS_0_REG1BH, &chr_status0_reg.byte, 1u);
     /* Read the STATUS REG1D to get the status of VBAT */
@@ -2090,15 +1494,6 @@ static void update_active_power_source(void)
         LOG(W, "CHARGE_STATUS_0_REG1BH 0x%x", chr_status0_reg.byte);
         LOG(W, "CHARGE_STATUS_2_REG1DH 0x%x", chr_status2_reg.byte);
         
-#ifdef DEVICE_BQ25792          
-        result = bq25792_read_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, 1u);
-        //if ( data_ccreg & 0x04 )
-        {
-            data_ccreg = data_ccreg & (~ 0x04);
-            LOG(I,"R:CCREG0F 0x%x",data_ccreg);
-            result = bq25792_write_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, ONE_BYTE);
-        }
-#endif
 #ifdef DEVICE_BQ25798          
         result = bq25798_read_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, 1u);
         //if ( data_ccreg & 0x04 )
@@ -2127,10 +1522,6 @@ static void update_active_power_source(void)
 
                 chg_ctrl_reg4.B6_EN_ACDRV1 = 0; // Disable VAC1 Solar
                 chg_ctrl_reg4.B7_EN_ACDRV2 = 1; // Select VAC2 12V
-
-#ifdef DEVICE_BQ25792          
-                result = bq25792_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
-#endif
 
 #ifdef DEVICE_BQ25798          
                 result = bq25798_disable_mppt();
@@ -2169,9 +1560,6 @@ static void update_active_power_source(void)
                 chg_ctrl_reg4.B6_EN_ACDRV1 = 1; // Select VAC1  Solar
                 chg_ctrl_reg4.B7_EN_ACDRV2 = 0; // Disable  VAC2 12V CAR Battery
 
-#ifdef DEVICE_BQ25792          
-                result = bq25792_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
-#endif
 #ifdef DEVICE_BQ25798          
                 result = bq25798_enable_mppt();
                 result = bq25798_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
@@ -2216,193 +1604,6 @@ static void update_active_power_source(void)
         push_pwrsrc_status_in_queue(curr_active_src);
     }
 }
-#endif // INVENT_BATTERY_TESTING
-#endif // EMC_TEST_CASE_SOLAR
-
-#ifdef DEVICE_BQ25792
-/**
-  * @brief  Callback function to handle the interrupt data forward from the GPIO task
-  * @param  device
-  * @param  port
-  * @param  pin
-  * @retval void.
-  */
-void battery_ic_interrupt_cb(int device, int port, int pin)
-{
-    error_type result;
-
-    switch (batt_ch_intr_stat)
-    {
-        case BATT_CH_STATE_IC_INIT:
-            
-            if ( BQ25792_PART_NUMBER == bq25792_get_chip_id() )
-            {
-                /* Update the active power source detected at startup */
-                if(ivsett_config.EN_DIS_SOLAR == true)
-                {
-                    update_active_source_timer = 1;   /*update_active_power_source */
-                }
-                /* Change the state to init done */
-                batt_ch_intr_stat = BATT_CH_STATE_IC_INIT_DONE;
-            }
-
-
-            break;
-
-        case BATT_CH_STATE_IC_INIT_DONE:
-            {
-                result = bq25792_read_reg(FAULT_STATUS_0_REG20H, (uint8_t*)&fault_stat0_reg.byte, 1u);
-
-                if ( ( result != RES_FAIL ) && ( fault_stat0_reg.byte != 0 ) )
-                {
-                    LOG(W, "FAULT_STATUS_0_REG20H 0x%x", fault_stat0_reg.byte);
-                }
-                
-                result = bq25792_read_reg(FAULT_FLAG_0_REG26H, (uint8_t*)&fault_flag0_reg.byte, 1u);
-
-                if ( ( result != RES_FAIL ) && ( fault_flag0_reg.byte != 0 ) )
-                {
-                    LOG(W, "FAULT_FLAG_0_REG26H 0x%x", fault_flag0_reg.byte);
-                }
-
-                result = bq25792_read_reg(FAULT_STATUS_1_REG21H, (uint8_t*)&fault_stat1_reg.byte, 1u);
-
-                if ( ( result != RES_FAIL ) && ( fault_stat1_reg.byte != 0 ) )
-                {
-                    LOG(W, "FAULT_STATUS_1_REG21H 0x%x", fault_stat1_reg.byte);
-                }
-
-                result = bq25792_read_reg(FAULT_FLAG_1_REG27H, (uint8_t*)&fault_flag1_reg.byte, 1u);
-
-                if ( ( result != RES_FAIL ) && ( fault_flag1_reg.byte != 0 ) )
-                {
-                    LOG(W, "FAULT_FLAG_1_REG27H 0x%x", fault_flag1_reg.byte);
-                }
-
-                /* Read the FLAG0 register to validate the change in status of power source */
-                result = bq25792_read_reg(CHARGER_FLAG_0_REG22H, &chr_flag0_reg.byte, 1u);
-                
-                if (reg22_byte_prev != chr_flag0_reg.byte )
-                {
-                    reg22_byte_prev = chr_flag0_reg.byte;
-                    update_active_source_timer = 1;         /*update_active_power_source */
-                }
-
-                
-
-                result = bq25792_read_reg(CHARGER_FLAG_1_REG23H, &chr_flag1_reg.byte, 1u);
-
-                if ( ( result != RES_FAIL ) && ( chr_flag1_reg.byte != 0 ) )
-                {
-                    
-                    LOG(W, "CHARGER_FLAG_1_REG23H 0x%x", chr_flag1_reg.byte);                   
-                }
-
-                if ( ( chr_status0_reg.IINDPM_STAT == 1 ) || ( chr_flag0_reg.IINDPM_FLAG == 1 ) )
-                {
-                    LOG(E, "IINDPM Regulation");
-                }
-
-                if ( ( chr_status0_reg.VINDPM_STAT == 1 ) || ( chr_flag0_reg.VINDPM_FLAG == 1 ) )
-                {
-                    LOG(E, "VINDPM Regulation");
-                }
-
-                if ( ( chr_status2_reg.TREG_STAT == 1 ) || ( chr_flag1_reg.TREG_FLAG == 1 ) )
-                {
-                    LOG(E, "THERMAL Regulation");
-                }
-
-                if ( ( chr_status2_reg.ICO_STAT == 1 ) || ( chr_flag1_reg.ICO_FLAG == 1 ) )
-                {
-                    LOG(E, "ICO Algo running");
-                }
-
-                if ( (  VAC1_FAULT_STAT_DEV_IN_OVP == fault_stat0_reg.VAC1_OVP_STAT ) ||
-                     (  FAULT_FLAG0_VAC1_ENTER_OVP == fault_flag0_reg.VAC1_OVP_FLAG ) )
-                {
-                    LOG(E, "VAC1 OVP");
-                }
-
-                if ( (  VAC2_FAULT_STAT_DEV_IN_OVP == fault_stat0_reg.VAC2_OVP_STAT ) ||
-                     (  FAULT_FLAG0_VAC2_ENTER_OVP == fault_flag0_reg.VAC2_OVP_FLAG ) )
-                {
-                    LOG(E, "VAC2 OVP");
-                }
-
-                if ( (  CONV_FAULT_STAT_DEV_IN_OCP == fault_stat0_reg.CONV_OCP_STAT ) ||
-                     ( FAULT_FLAG0_CONV_ENTER_OCP  == fault_flag0_reg.CONV_OCP_FLAG ) )
-                {
-                    LOG(E, "CONV OCP");
-                }
-
-                if ( (  IBAT_FAULT_STAT_DEV_IN_OCP           == fault_stat0_reg.IBAT_OCP_STAT ) ||
-                     ( FAULT_FLAG0_IBAT_ENTER_DISCHARGED_OCP == fault_flag0_reg.IBAT_OCP_FLAG ) )
-                {
-                    LOG(E, "IBAT OCP");
-                }
-
-                if ( ( IBUS_FAULT_STAT_DEV_IN_OCP == fault_stat0_reg.IBUS_OCP_STAT ) ||
-                     ( FAULT_FLAG0_IBUS_ENTER_OCP == fault_flag0_reg.IBUS_OCP_FLAG ) )
-                {
-                    LOG(E, "IBUS OCP");
-                }
-
-                if ( ( VBAT_FAULT_STAT_DEV_IN_OVP == fault_stat0_reg.VBAT_OVP_STAT ) ||
-                     ( FAULT_FLAG0_VBAT_ENTER_OVP == fault_flag0_reg.VBAT_OVP_FLAG ) )
-                {
-                    LOG(E, "VBAT OVP");
-                }
-
-                if ( ( VBUS_FAULT_STAT_DEV_IN_OVP == fault_stat0_reg.VBUS_OVP_STAT ) ||
-                     ( FAULT_FLAG0_VBUS_ENTER_OVP == fault_flag0_reg.VBUS_OVP_FLAG ) )
-                {
-                    LOG(E, "VBUS OVP");
-                }
-
-                if ( ( IBAT_FAULT_STAT_DEV_IN_BAT_DISCHARG_CR   == fault_stat0_reg.IBAT_REG_STAT ) ||
-                    ( FAULT_FLAG0_IBAT_ENTER_OR_EXIT_REGULATION == fault_flag0_reg.IBAT_REG_FLAG ) )
-                {
-                    LOG(E, "IBAT DISCHARGE CURRENT REGULATION");
-                }
-
-                if ( ( TSHUT_FAULT_STAT_DEV_IN_THER_SHUTDOWN_PROTEC == fault_stat1_reg.TSHUT_STAT ) ||
-                     ( FAULT_FLAG1_TSHUT                            == fault_flag1_reg.TSHUT_FLAG ) )
-                {
-                    LOG(E, "THERMAL SHUTDOWN");
-                }
-
-                if ( ( OTG_FAULT_STAT_DEV_OTG_UNDER_VOLTAGE           == fault_stat1_reg.OTG_UVP_STAT ) ||
-                     ( FAULT_FLAG1_STOP_OTG_DUE_TO_VBUS_UNDER_VOLTAGE == fault_flag1_reg.OTG_UVP_FLAG ) )
-                {
-                    LOG(E, "STOP OTG : VBUS UNDER VOLTAGE");
-                }
-
-                if ( ( OTG_FAULT_STAT_DEV_OTG_OVER_VOLTAGE            == fault_stat1_reg.OTG_OVP_STAT ) ||
-                     ( FAULT_FLAG1_STOP_OTG_DUE_TO_VBUS_UNDER_VOLTAGE == fault_flag1_reg.OTG_OVP_FLAG ) )
-                {
-                    LOG(E, "STOP OTG : VBUS OVER VOLTAGE");
-                }
-
-                if ( ( VSYS_FAULT_STAT_DEV_IN_SYS_OVP                        == fault_stat1_reg.VSYS_OVP_STAT ) ||
-                     ( FAULT_FLAG1_VSYS_STOP_SWITCH_DUE_TO_SYS_OVER_VOLTAGE  == fault_flag1_reg.VSYS_OVP_FLAG ) )
-                {
-                    LOG(E, "VSYS OVP");
-                }
-
-                if ( ( VSYS_FAULT_STAT_DEV_IN_SYS_SHORT_CIRCUIT_PROTEC       == fault_stat1_reg.VSYS_SHORT_STAT ) ||
-                     ( FAULT_FLAG1_STOP_SWITCH_DUE_TO_SYS_SHORT              == fault_flag1_reg.VSYS_SHORT_FLAG ) )
-                {
-                    LOG(E, "VSYS SHORT CIRCUIT PROTECTION");
-                }
-            }
-            break;
-
-        default:
-            break;
-    }
-}
-#endif // DEVICE_BQ25792
 
 /*BQ25798 interrupt handling*/
 #ifdef DEVICE_BQ25798
@@ -2478,8 +1679,6 @@ void battery_ic_interrupt_cb(int device, int port, int pin)
 }
 #endif  // DEVICE_BQ25798
 
-
-#if defined (INVENT_BATTERY_TESTING) || defined (EMC_TEST_CASE_SOLAR)
 /**
   * @brief  Functionto push the active power source in the queue
   * @param  curr_active_source Current active power soure refer enum IV0PWRSRC_ENUM
@@ -2500,10 +1699,8 @@ static void push_pwrsrc_status_in_queue(IV0PWRSRC_ENUM curr_active_source)
         LOG(E, "Error Queuw %d", ret);
     }
 }
-#endif // defined (INVENT_BATTERY_TESTING) || defined (EMC_TEST_CASE_SOLAR)
 
-#ifdef INVENT_BATTERY_TESTING
-#if defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)
+#ifdef DEVICE_BQ25798
 /**
  * @brief  Callback function to handle subscribed data
  * @param  table_index
@@ -2561,9 +1758,8 @@ static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error)
         connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(err_frame), connector_pwr_ctrl_service.connector_id, (TickType_t)portMAX_DELAY);
     }
 }
-#endif // defined(DEVICE_BQ25792)  || defined(DEVICE_BQ25798)
-#endif // INVENT_BATTERY_TESTING
+#endif //def DEVICE_BQ25798
 
-#endif // defined(DEVICE_BQ25792) || defined(DEVICE_BQ25798)
+#endif // defined(DEVICE_BQ25798)
 
 #endif /*CONNECTOR_POWER_CONTROL_SERVICE*/ 

@@ -10,6 +10,7 @@
 #include "app_onboard_hmi_ctrl.h"
 #include "app_fan_motor_ctrl.h"
 #include "app_light_ctrl.h"
+#include "app_error_code.h"
 
 #ifdef DEVICE_UC1510C
 #include "drv_uc1510c.h"
@@ -160,7 +161,7 @@ void reset_hmi_btn_ctrl_variables(void)
   * @param  Button pressed value.
   * @retval Error Type.
   */
-uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM inv_state)
+uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM inv_state, uint32_t error_code)
 {
 	uint8_t                        result = HMI_EVT_PRO_FAIL;
     uint8_t                         index = 0u;
@@ -169,10 +170,22 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     BTN_PRESSED_EVT           hmi_btn_evt = (BTN_PRESSED_EVT)(event_data & 0xFF);
     BTN_PRESS_EVENT_TYPE       event_type = (BTN_PRESS_EVENT_TYPE)((event_data >> 8) & BUTTON_PRESS_MASK_3 );
     uint8_t                    seg = 0;
+    uint32_t                inv_err_codes = 0;
 
+    inv_err_codes = error_code;
+    
     if ( IVPMGR0STATE_STANDBY == inv_state )
     {
-        if(hmi_stanby_mode == 1)
+        //Check for battery low condition and turn on inventilate
+        if( (inv_err_codes & (1 << BACKUP_BATTERY_LOW )) > 0 )
+        {
+            /* Check battery low*/
+#ifdef EN_APP_ONBHMI_LOG            
+                LOG(W, "low battery: Skip mode/LP btn event");
+#endif                
+                index = ONBOARD_HMI_EVT_TABLE_SIZE; 
+        }
+        else if(hmi_stanby_mode == 1)
         {
             /* When the inventilate is in STANDBY state, skip the processing of this MODE button events and long press events */
             if ( ( BTN_MODE == hmi_btn_evt ) || ( BUTTON_EVT_LONG_PRESS == event_type ) || ( BUTTON_EVT_LONG_PRESS_2 == event_type ) )
@@ -193,13 +206,15 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     }
     else
     {
-        LOG(I, "process hmi_btn_evt = %d event_type = %d", hmi_btn_evt, event_type);
+#ifdef EN_APP_ONBHMI_LOG        
+        LOG(I, "process hmi_btn_evt = %d event_type = %d err_code %d", hmi_btn_evt, event_type,inv_err_codes);
+#endif    
     }
     
-
+    /*  When any error occurs, MODE button, warning and respective icons will blink.   
+    First short press of MODE button is the action to acknowledge the error. */
     if ( ( BTN_MODE == hmi_btn_evt ) && ( BUTTON_EVT_SHORT_PRESS == event_type ) && (errack != 0) )
     {
-        LOG(W, "Error_handle short press");
         error_check_ack();
         update_blink_info(0);
         for (seg = 0; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++ )
@@ -208,7 +223,8 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
         }
         index = ONBOARD_HMI_EVT_TABLE_SIZE;
         errack = 0;
-    }
+    } 
+ 
 
     
     for ( ;index < ONBOARD_HMI_EVT_TABLE_SIZE; index++ ) 
@@ -231,8 +247,6 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
                     }
 
                     onbrd_hmi_evt = ptr_event->short_press_evt_cnt;
-
-                    LOG(W, "sh pr onbrd_hmi_evt = %d", onbrd_hmi_evt);
                     break;
 
                 case BUTTON_EVT_LONG_PRESS:
@@ -245,18 +259,17 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
                     {
                         ptr_event->long_press_evt_cnt = ptr_event->min_evt_lng_press;
                     }
-                    
-                    LOG(W, "lng pr onbrd_hmi_evt = %d", onbrd_hmi_evt);
                     break;
                 
                 case BUTTON_EVT_LONG_PRESS_2:
                     onbrd_hmi_evt = ptr_event->long_press_evt_cnt;
                     ptr_event->long_press_evt_cnt = ptr_event->max_evt_lng_press;
-                    LOG(W, "lng pr onbrd_hmi_evt_lp_2 = %d", onbrd_hmi_evt);
                     break;
 
                 default:
-                    LOG(I, "Error Unhandle button event = %d", event_type);
+#ifdef EN_APP_ONBHMI_LOG                     
+                    LOG(W, "Button event: invalid = %d", event_type);
+#endif                    
                     break;
             }
 
@@ -304,7 +317,6 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 }
                 else
                 {
-
                     if(inv_acqrc_level > BME6X_LOW_ACCURACY)
                     {
                         if ( IV0AQST_AIR_QUALITY_GOOD == i32value )
@@ -338,11 +350,8 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 {
                     uc1510c_set_segment(seg, seg_stat[seg]);
                 }
-                
 #else
                 /* IAQ value greater than threshold means air quality bad --> Turn OFF segement */
-                
-                
                 bool curr_aq_stat = SEG_OFF;
 
                 if(seg_stat[SEG_STORAGE_MODE] == SEG_ON)
@@ -367,7 +376,6 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             }
             break;
 		case UPDATE_SEG_AQ_OFF:
-            LOG(I,"[IAQ_ICON_OFF]");
             uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_1_LOW, SEG_OFF);
             uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_2_MID, SEG_OFF);
             uc1510c_set_segment(SEG_AIR_QUALITY_LEVEL_3_HIGH, SEG_OFF);
@@ -389,10 +397,8 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 			
 		case UPDATE_SEG_MODE:
             {
-                LOG(I, "IV0MODE_SEG = %d", i32value);
-                if ( (int32_t)NUM_OPERATING_MODES > i32value )
+                if ( NUM_OPERATING_MODES > i32value )
                 {
-                    LOG(I, "IV0MODE = %d", i32value);
                     onboard_hmi_mode_seg_update((LCDSEG_STATUS*)&hmi_mode_seg_stat[(IV0MODE_ENUM)i32value][0u]);
                 }
             }
@@ -401,7 +407,6 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
         case UPDATE_SEG_VEHMOD: //For Storage mode active or inactive
 			{
 				seg_stat[SEG_STORAGE_MODE] = ( IV0STORAGE_ACTIVATE == (IV0STORAGE_ENUM) i32value ) ? SEG_ON : SEG_OFF;
-                LOG(I, "UPDATE_SEG_VEHMOD i32value = %d", i32value);
                 uc1510c_set_segment(SEG_STORAGE_MODE, seg_stat[SEG_STORAGE_MODE]);
                 seg_stat[SEG_WIFI_STATUS] = SEG_OFF;
                 uc1510c_set_segment(SEG_WIFI_STATUS, seg_stat[SEG_WIFI_STATUS]);
@@ -427,7 +432,6 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
         case UPDATE_SEG_PWRSRC:
             {
                 seg_stat[SEG_SOLAR_BATTERY_STATUS] = ( IV0PWRSRC_SOLAR_POWER_INPUT == (IV0PWRSRC_ENUM) i32value ) ? SEG_ON : SEG_OFF;
-                LOG(I, "SEG_SOLAR_BATTERY_STATUS i32value = %d", i32value);
                 uc1510c_set_segment(SEG_SOLAR_BATTERY_STATUS, seg_stat[SEG_SOLAR_BATTERY_STATUS]);
             }
             break;
@@ -442,7 +446,6 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 else
                 {
                     seg_stat[SEG_WIFI_STATUS] = ( WIFI0STS_CONNECTED == (WIFI0STS_ENUM)i32value ) ? SEG_ON : SEG_OFF;
-                    LOG(I, "SEG_WIFI_STATUS = %d", seg_stat[SEG_WIFI_STATUS]);
                     uc1510c_set_segment(SEG_WIFI_STATUS, seg_stat[SEG_WIFI_STATUS]);
                 }
             }
@@ -457,7 +460,6 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 }
                 else
                 {
-                    LOG(I,"update_seg_ble_value = %d", i32value);
                     if(i32value != BT0PAIR_OUT_PAIRING_MODE_INACTIVE )
                     {
                         seg_stat[SEG_BLE_STATUS] = ( BT0PAIR_OUT_PAIRING_MODE_ACTIVE == (BT0PAIR_OUT_ENUM)i32value ) ? SEG_ON : SEG_OFF;
@@ -485,7 +487,6 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 {
                     seg_stat[SEG_BLE_STATUS] = SEG_OFF;
                     uc1510c_set_segment(SEG_BLE_STATUS, seg_stat[SEG_BLE_STATUS]);
-                    LOG(I, "STOR_ON_UPDATE_SEG_BLE = %d App_con_sts %d", seg_stat[SEG_BLE_STATUS], ble_peri_status);
                 }
                 else
                 {
@@ -493,7 +494,6 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                     if( (seg_stat[SEG_BLE_STATUS] == 0) &&(ble_peri_status == 1) )
                     {
                             seg_stat[SEG_BLE_STATUS] = 1;
-                            LOG(I,"App connected Show BLE");
                     }
                     LOG(I, "UPDATE_SEG_BLE = %d App_con_sts %d", seg_stat[SEG_BLE_STATUS], ble_peri_status);
                     //Check for App connection before hiding BLE ICON for DP sensor
@@ -590,7 +590,6 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 			
         case UPDATE_SEG_PWRSRC:
             seg_stat[SEG_SOLAR_BATTERY_STATUS] = ( IV0PWRSRC_SOLAR_POWER_INPUT == (IV0PWRSRC_ENUM) i32value ) ? SEG_ON : SEG_OFF;
-            LOG(I, "SEG_SOLAR_BATTERY_STATUS i32value = %d", i32value);
             break;
 			
         case UPDATE_SEG_WIFI:
@@ -609,13 +608,11 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 if( (seg_stat[SEG_BLE_STATUS] == 0) &&(ble_peri_status == 1) )
                 {
                         seg_stat[SEG_BLE_STATUS] = 1;
-                        LOG(I,"App connected Show BLE_B_var");
                 }
                 
                 if ( ble_dp_con_sts == 1)
                 {
                     seg_stat[SEG_BLE_STATUS] = 1;
-                    LOG(I,"DP connected Show BLE_B_var");
                     
                 }
                 
@@ -627,7 +624,6 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             if( (seg_stat[SEG_BLE_STATUS] == 0) &&(ble_peri_status == 1) )
             {
                     seg_stat[SEG_BLE_STATUS] = 1;
-                    LOG(I,"App connected Show BLE_var");
             }
             break;
 
@@ -731,14 +727,11 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
                 seg_stat[SEG_MODE_AUTO]        = SEG_ON;
                 seg_stat[SEG_MODE_MENU_LINE]   = SEG_ON;
                 seg_stat[SEG_STORAGE_MODE]     = SEG_OFF;
-                
-                
                 seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW]  = SEG_OFF;
                 
                 for ( seg = SEG_AIR_QUALITY_LEVEL_1_LOW; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++ )
                 {
                     uc1510c_set_segment(seg, seg_stat[seg]);
-                    LOG(I, "seg = %d stat = %d", seg, seg_stat[seg]);
                 }
             }
             break;

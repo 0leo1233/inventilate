@@ -65,11 +65,6 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #define CHIP_TYPE_INTERNAL_BME688  0
 #define BME68X_CHIP_TYPE           CHIP_TYPE_INTERNAL_BME688
-//Enable to test storage mode
-//#define STORAGE_TEST_MODE			/*Storage mode test Idle time 10 min Run time 6 min*/
-//#define FILTER_TEST				/*FILTER_LIFE_TIME_MIN is set to 3 minutes to test the Filter */
-
-//#define INVENT_BATTERY_TESTING
 
 #define INVENTILATE_FAN_PULSE_CNT_PER_REVOL       ((uint8_t) 2u)
 #define INVENTILATE_MOTOR_ENG_PULSE_CNT_PER_REVOL ((uint8_t) 6u)

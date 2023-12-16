@@ -17,12 +17,13 @@ typedef enum __dpsens_err
     DPSENS_BOARD_DISCONNECTED       = 1,
     DPSENS_BOARD_CONN_RETRY         = 2,
     DPSENS_NO_DATA_ERROR            = 3,
-    DPSENS_DATA_PLAUSIBLE_ERROR     = 4,
-    DPSENS_BOARD_BATTERY_LOW        = 5
-} DPSENS_ERROR;
+    DPSENS_BOARD_CONNECTED          = 4,
+    DPSENS_DATA_PLAUSIBLE_ERROR     = 5,
+    DPSENS_BOARD_BATTERY_LOW        = 6
+}DPSENS_ERROR;
 
 
-typedef void (*conn_diff_param_changed_t )( int32_t i32Value);
+typedef void (*conn_diff_param_changed_t )(uint32_t dev_id, int32_t i32Value);
 
 typedef struct
 {

@@ -33,7 +33,7 @@ extern CONNECTOR connector_pwm_fan_motor;
 #define CONN_PWM_DEBUG_LOG             0u
 #define DP_ERR_DEBUG                   0u
 #define CONN_PWM_FAN_MTR_SUB_DEPTH	   50
-#define DP_BAT_LIMIT                   2700u
+#define DP_BAT_LIMIT                   2700
 
 #endif //CONNECTOR_FAN_MOTOR
 

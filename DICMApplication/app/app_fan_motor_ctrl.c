@@ -367,7 +367,7 @@ void reset_accumulated_data(INVENTILATE_CONTROL_ALGO* ptr_iv)
   */
 void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
 {
-    if ( ptr_iv->iaq_data_count > 0u )
+    if ( ptr_iv->iaq_data_count > 0 )
     {
         /* Calculate the average value of IAQ */
         ptr_iv->curr_avg_iaq_value = ptr_iv->accum_iaq_value / ptr_iv->iaq_data_count;
@@ -376,10 +376,10 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
         LOG(I, "avg_iaq=%d cnt=%d", ptr_iv->curr_avg_iaq_value, ptr_iv->iaq_data_count);
 #endif
          /* Average value will be consider as 1 sample */
-        ptr_iv->iaq_data_count = 1u;                                                     
+        ptr_iv->iaq_data_count = 1;
     }
 
-    if ( ptr_iv->dp_data_count > 0u )
+    if ( ptr_iv->dp_data_count > 0 )
     {
         /* Calculate the average value of DP */
         ptr_iv->curr_avg_dp_value = ptr_iv->curr_avg_dp_value / ptr_iv->dp_data_count;
@@ -387,10 +387,10 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
         LOG(I, "avg_dp=%d cnt=%d", ptr_iv->curr_avg_dp_value, ptr_iv->dp_data_count);
 #endif
         /* Average value will be consider as 1 sample */
-        ptr_iv->dp_data_count = 1u;                                                     
+        ptr_iv->dp_data_count = 1;
     }
 
-    if ( ptr_iv->humidity_data_count > 0u )
+    if ( ptr_iv->humidity_data_count > 0 )
     {
         /* Calculate the average value of relative humidity */
         ptr_iv->curr_avg_hum_value = ptr_iv->curr_avg_hum_value / ptr_iv->humidity_data_count;
@@ -398,7 +398,7 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
         LOG(I, "avg_hum=%d cnt=%d", ptr_iv->curr_avg_hum_value, ptr_iv->humidity_data_count);
 #endif
          /* Average value will be consider as 1 sample */
-        ptr_iv->humidity_data_count = 1u;
+        ptr_iv->humidity_data_count = 1;
     }
 }
 
@@ -411,14 +411,14 @@ IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
 {
     IV0PRST_ENUM pressure_stat = IV0PRST_PRESS_STATUS_UNKNOWN;
 
-    if ( ptr_iv->dp_data_count > DP_ZERO_COUNT )
+    if (ptr_iv->dp_data_count > DP_ZERO_COUNT )
     {
         /* Find the pressure compensation status */
         if ( ptr_iv->curr_avg_dp_value < ptr_iv->dp_neg_acceptable_lim )
         {
             /* Under pressure */
             ptr_iv->dp_exceed_count ++;
-            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
+            if (ptr_iv->dp_exceed_count > DP_EXCEED_LIMIT)
             {
                 pressure_stat = IV0PRST_UNDER_PRESS;
             }
@@ -427,7 +427,7 @@ IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
         {
 			/* Over pressure */
             ptr_iv->dp_exceed_count ++;
-            if(ptr_iv->dp_exceed_count >DP_EXCEED_LIMIT)
+            if (ptr_iv->dp_exceed_count  >DP_EXCEED_LIMIT)
             {
                 pressure_stat = IV0PRST_OVER_PRESS;
             }
@@ -463,13 +463,13 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
     ptr_iv->ptr_prev_data  = &ptr_iv->prev_avg_iaq_value;
     ptr_iv->roc_max_val    = INVENT_IAQ_INDEX_MAX;
 
-    if ( ( ( ptr_iv->iaq_data_count > 0u ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) ) || ( ( ptr_iv->iaq_data_count > 0u ) && ( ptr_iv->sens_acc == BME6X_MEDIUM_ACCURACY ) ))
+    if ( ( ( ptr_iv->iaq_data_count > 0 ) && ( ptr_iv->sens_acc == BME6X_HIGH_ACCURACY ) ) || ( ( ptr_iv->iaq_data_count > 0 ) && ( ptr_iv->sens_acc == BME6X_MEDIUM_ACCURACY ) ))
     {
         /* Find the Air Quality status from IAQ */
         for ( index = 0; index < IAQ_RANGE_LEVELS; index++ )
         {
-            if ( ( ptr_iv->curr_avg_iaq_value >= iaq_range_level[index].iaq_range.min ) && 
-                 ( ptr_iv->curr_avg_iaq_value <= iaq_range_level[index].iaq_range.max ) )
+            if ( ( ptr_iv->curr_avg_iaq_value >= (int32_t)iaq_range_level[index].iaq_range.min ) &&
+                 ( ptr_iv->curr_avg_iaq_value <= (int32_t)iaq_range_level[index].iaq_range.max ) )
             {
                 iaq_status = iaq_range_level[index].iaq_status;       /* Get the IAQ status */
                 index      = IAQ_RANGE_LEVELS;                        /* Exit from the loop */
@@ -477,7 +477,7 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv)
         }
 
         /* Validate the humidity when the air quality is good inside the RV */
-        if ( ( IV0AQST_AIR_QUALITY_GOOD == iaq_status ) && ( ptr_iv->humidity_data_count > 0u ) )
+        if ( ( IV0AQST_AIR_QUALITY_GOOD == iaq_status ) && ( ptr_iv->humidity_data_count > 0 ) )
         {
             /* Even when IAQ is GOOD, but the relative humdity is not within the acceptable range,
                then air quality will be considered as BAD */

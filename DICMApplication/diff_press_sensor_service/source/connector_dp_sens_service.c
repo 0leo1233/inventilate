@@ -95,7 +95,6 @@ typedef struct __que_data
 
 static uint32_t invent_dp_error_stat = 0;
 static DPSENS_ERROR dps_curr_err_stat = DPSENS_NO_ERROR;
-static DPSENS_ERROR dps_prev_err_stat = DPSENS_NO_ERROR;
 
 /* Instance for State Machine */
 static diff_press_read_sm sm_instance;
@@ -790,7 +789,6 @@ static void push_data_to_que(DATA_ID data_id, int32_t i32Value)
 static void handle_dpsens_data(uint32_t ddm_param, int32_t data)
 {
     QUE_DATA iv_data;
-    uint32_t dp_plausible_errst = 0;
 
     /* set the data */
     iv_data.data = data;

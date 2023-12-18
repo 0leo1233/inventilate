@@ -1,7 +1,7 @@
 /*! \file eol_invent.c
 	\brief eol for Inventilate
  */
-
+#if 0
 /** Includes ******************************************************************/
 #include <stdio.h>
 #include <string.h>
@@ -64,7 +64,7 @@ EOL_ERROR_FRAME displaytest(EOL_DATA_FRAME* eol_data_frame)
 
     return eol_data_frame->eol_ack;
 }
-
+#endif
 
 
 /*......................................................................................................................................*/

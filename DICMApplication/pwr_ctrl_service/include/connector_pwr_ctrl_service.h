@@ -68,10 +68,20 @@ typedef union
 }REG1E_CHARGER_STATUS_3_REG;
 */
 
+typedef struct __batt_reg
+{
+    uint16_t bat_volt;                 //charging voltage           VBAT
+    uint16_t bat_curr;                 //charging current           IBAT
+    uint16_t veh_batt_volt;            //vehicle batt voltage       VAC1
+    uint16_t solar_volt;               //Solar voltage              VAC2
+    uint8_t chrg_stat;                 //Charging status
+    uint16_t batt_ip_curr;             //Batttery input current     IBUS
+} batt_reg;
 
 /* Extern Declarations */
 extern CONNECTOR connector_pwr_ctrl_service;
-
+batt_reg get_battval(void);
+int16_t power_consumption(void);
 #endif //CONNECTOR_POWER_CONTROL_SERVICE
 
 #endif //CONNECTOR_PWR_CTRL_SERVICE_H_

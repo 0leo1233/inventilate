@@ -16,5 +16,5 @@ target_include_directories(${PROJECT_NAME}
                             PUBLIC
                                 $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 							)
-target_link_libraries(${PROJECT_NAME} PRIVATE DICMFramework DICMFrameworkConfiguration DICMConnectorApp PUBLIC idf::freertos)
+target_link_libraries(${PROJECT_NAME} PRIVATE DICMFramework DICMFrameworkConfiguration DICMConnectorPwrCtrlService DICMConnectorApp idf::esp_wifi PUBLIC idf::freertos)
 target_link_libraries(${PROJECT_NAME} INTERFACE "-u connector_eol -u connector_lin_comm_test -u connector_rvc_eol") 

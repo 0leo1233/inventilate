@@ -64,7 +64,7 @@ static int initialize_lin_comm_test(void)
 
 	init_uart_lin();
 
-    EN_LIN(1);
+	LIN_SLEEP(1);
 
 	return i;
 }
@@ -88,7 +88,7 @@ static uint8_t calculate_chksum(const uint8_t *data, size_t len)
 		start = 1; // Classic checksum without the PID
 	}
 
-	for (int i = start; i < len; i++)
+	for (size_t i = start; i < len; i++)
 	{
 		checksum = checksum + data[i];
 		if (checksum >= 256)
@@ -124,7 +124,7 @@ void lin_tx_data(LIN_TX_FRAME* ptr_lin_tx)
 
 static void lin_transmit(const uint8_t *data, size_t len)
 {
-    int index;
+    size_t index;
 	const uint8_t syncb = 0x55;
 
     uart_set_line_inverse(CONNECTOR_LIN_UART_NUM, UART_SIGNAL_TXD_INV);

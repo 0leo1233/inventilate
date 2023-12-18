@@ -1109,7 +1109,7 @@ void parse_received_data(void)
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &ptr_ctrl_algo->fan_mtr_dev_curr_stat, sizeof(int32_t), \
                                    connector_pwm_fan_motor.connector_id, portMAX_DELAY));
             
-            if( ptr_ctrl_algo->iv_data.data < DP_BAT_LIMIT)
+            if (ptr_ctrl_algo->iv_data.data < DP_BAT_LIMIT)
             {
                 //Send Error Code for DP sensor board.
                 TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &ptr_ctrl_algo->fan_mtr_dev_curr_stat, sizeof(int32_t), \
@@ -1857,7 +1857,7 @@ static void stop_storage_timer(void)
 
     xStorageTimerStopped = xTimerStop( xStorageHumid_chk_Timer, portMAX_DELAY );
 	
-    if ( xStorageHumid_chk_Timer != pdPASS )
+    if ( xStorageTimerStopped != pdPASS )
     {
 		LOG(E, "Storage humid check Timer stop failed");
     }

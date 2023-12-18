@@ -397,7 +397,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 			
 		case UPDATE_SEG_MODE:
             {
-                if ( NUM_OPERATING_MODES > i32value )
+                if ( NUM_OPERATING_MODES > (uint8_t)i32value )
                 {
                     onboard_hmi_mode_seg_update((LCDSEG_STATUS*)&hmi_mode_seg_stat[(IV0MODE_ENUM)i32value][0u]);
                 }

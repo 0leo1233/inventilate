@@ -188,7 +188,7 @@ Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 
 #define STORAGE_HUM_CHK_TMR_TICKS                 pdMS_TO_TICKS(MIN_TO_MSEC(IV_STORAGE_HUMID_CHK_MIN))
 
-#define DP_ZERO_COUNT                                 0u
+#define DP_ZERO_COUNT                                 0
 #define DP_EXCEED_LIMIT                               1u
 
 typedef enum _invent_device_id

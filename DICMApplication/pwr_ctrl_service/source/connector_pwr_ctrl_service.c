@@ -65,9 +65,10 @@ typedef enum _bat_sts_
 
 }INV_BAT_STS;
 
+#if (EN_POOR_SOURCE_CHECK == 1)
 static uint8_t poor_source_flag = 0;
 static uint8_t poor_source_count = 0;
-
+#endif
 static int initialize_connector_pwrctrl_service(void);
 static error_type initialize_pwr_control_module(void);
 static void install_parameters(void);
@@ -106,19 +107,13 @@ static uint8_t batt_ch_intr_stat = BATT_CH_STATE_IC_INIT;
 //! Error code handle variable
 static uint32_t invent_pwr_ctrl_error_stat = 0; 
 
-static REG26_FAULT_FLAG_0_REG     fault_flag0_reg     = {0};
-static REG27_FAULT_FLAG_1_REG     fault_flag1_reg     = {0};
-static REG20_FAULT_STATUS_0_REG   fault_stat0_reg     = {0};
-static REG21_FAULT_STATUS_1_REG   fault_stat1_reg     = {0};
 static REG1B_CHARGER_STATUS_0_REG chr_status0_reg     = {0};
 static REG1D_CHARGER_STATUS_2_REG chr_status2_reg     = {0};
 static REG22_CHARGER_FLAG_0_REG   chr_flag0_reg       = {0};
 static REG23_CHARGER_FLAG_1_REG   chr_flag1_reg       = {0};
 static REG13_CHARGER_CTRL_4       chg_ctrl_reg4;
-static REG29_CHARGER_1_MASK       chg_1_mask_reg29; 
 static REG1E_CHARGER_STATUS_3_REG ch_stat_3;
 
-static BMS_STATUS_FLAGS             bms_interrupt_flag;
 static REG1E_CHARGER_STATUS_3_REG   bms_interrupt_reg1e;
 
 static float vac1 = 0.0f;
@@ -128,12 +123,15 @@ static uint8_t update_active_source_timer   = 0;
 static uint8_t update_interrupt_event       = 0;
 static uint8_t display_bms_info_timer       = 0;
 static uint8_t reg22_byte_prev              = 0;
-static uint8_t reg22_byte_curr              = 0;
 
 REG1C_CHARGER_STATUS_1_REG ch_stat_1;
 
 IV0PWRSRC_ENUM curr_active_src = IV0PWRSRC_BACKUP_BATTERY + 1;
 IV0PWRSRC_ENUM prev_active_src = IV0PWRSRC_BACKUP_BATTERY + 1;
+
+static batt_reg battreg_currval;
+static float f_ibus = 0.0f;
+static float f_ibat = 0.0f;
 
 static inv_bat_status_flags BATTERY_STATUS;
 
@@ -474,18 +472,18 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
 {
     TickType_t task_frequency = (TickType_t)pdMS_TO_TICKS(5000); 
     TickType_t last_wake_time = xTaskGetTickCount();
+#if (EN_POOR_SOURCE_CHECK == 1)
     uint16_t src_check_count = 0;
+#endif
 
     uint8_t data_1;
     uint16_t data_2;
-    uint8_t flag_process_timer      = 0;
-    uint8_t bms_flag_timer = 0;
     error_type result;
     float vbat = 0.0f;
     float vsys = 0.0f;
-    float f_ibus = 0.0f;
+    //float f_ibus = 0.0f;
     int16_t i16_ibus = 0; 
-    float f_ibat = 0.0f;
+    //float f_ibat = 0.0f;
     int16_t i16_ibat = 0;
     int16_t i16_tdie = 0;
     float ichg = 0.0f;
@@ -603,6 +601,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 if ( ( ch_stat_1.CHG_STAT <= CHARGING_TERMINATION_DONE ) && ( result == RES_PASS ) )
                 {
                     LOG(W, "Charging Status : %s", debug_arr_ch_stat[ch_stat_1.CHG_STAT]);
+					battreg_currval.chrg_stat = ch_stat_1.CHG_STAT;
                 }
 
                 result = bq25798_read_reg(CHARGE_STATUS_2_REG1DH, &ch_stat_2.byte, 1u);
@@ -679,6 +678,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
 
                     data_2 = SWAP2(data_2);
                     vbat = (float)data_2 / 1000.0f;
+					battreg_currval.bat_volt = vbat * 100;
                     LOG(W, "VBAT = %f Volt",vbat);
                    
                     data_2 = 0;
@@ -689,12 +689,13 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     data_2 = SWAP2(data_2);
                     vac1 = (float)data_2 / 1000.0f;
                     LOG(I, "VAC1 = %f Volt",vac1);
-
+					battreg_currval.solar_volt =  vac1*100;
                     result = bq25798_read_reg(VAC2_ADC_REG39H, (uint8_t*)&data_2, 2u);
                     LOG(I, "VAC2_ADC_REG39H 0x%x", SWAP2(data_2));
 
                     data_2 = SWAP2(data_2);
                     vac2 = (float)data_2 / 1000.0f;
+					battreg_currval.veh_batt_volt = vac2*100;
                     LOG(I, "VAC2 = %f Volt",vac2);
 
                     data_2 = 0;
@@ -725,7 +726,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     data_2 = SWAP2(data_2);
                     i16_ibat = (int16_t)data_2;
                     f_ibat = (float)i16_ibat / 1000.0f;
-
+					battreg_currval.bat_curr = f_ibat*100;
                     LOG(W, "IBAT = %f Amp", f_ibat);
 
                     data_2 = 0;
@@ -847,7 +848,7 @@ float bq_read_vbat(void)
     uint16_t data_2;
     
     result = bq25798_read_reg(VBAT_ADC_REG3BH, (uint8_t*)&data_2, 2u);
-    LOG(I, "VBAT_ADC_REG3BH 0x%x", SWAP2(data_2));
+    LOG(I, "VBAT_ADC_REG3BH(%d) 0x%x", result, SWAP2(data_2));
 
     data_2 = SWAP2(data_2);
     vbat_volt = (float)data_2 / 1000.0f;
@@ -1172,8 +1173,8 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
             break;
 
         case INVENT_SET_CHARGING_CURRENT:
-            LOG(I,"Charge ichg  set to %d mA",pwr_ctrl_data_frame->data);           
-            result = bq25798_set_charging_current_limit( pwr_ctrl_data_frame->data/10 );         
+            result = bq25798_set_charging_current_limit( pwr_ctrl_data_frame->data/10 );
+            LOG(I,"Charge ichg(%d)  set to %d mA",result, pwr_ctrl_data_frame->data);
             break;
 
         case INVENT_EN_DIS_SOLAR:
@@ -1725,4 +1726,26 @@ static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error)
     }
 }
 
+batt_reg get_battval(void)
+{
+    return battreg_currval;
+}
+
+int16_t power_consumption(void)
+{
+    int16_t isys = 0;
+    int16_t ibus = 0;
+    int16_t ibat = 0;
+
+    ibus = f_ibus * 1000;
+    ibat = f_ibat * 1000;
+    isys = ibus - ibat;
+
+    LOG(W,"F_IBUS %2f", f_ibus);
+    LOG(W,"IBUS %d", ibus);
+    LOG(W,"F_IBAT %d", ibat);
+    LOG(W,"IBAT %2f", f_ibat);
+
+    return isys;
+}
 #endif /*CONNECTOR_POWER_CONTROL_SERVICE*/ 

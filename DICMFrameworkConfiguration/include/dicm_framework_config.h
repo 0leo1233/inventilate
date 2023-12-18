@@ -149,6 +149,7 @@ EN_IONIZER_FLAG - Defined
 */
 //Uncomment EN_IONIZER_FLAG to configure using IV0sett DDMP
 //#define EN_IONIZER_FLAG
+#ifndef INVENT_EOL_TESTING
 #define DICM_APPLICATION_CONNECTOR_EXTERN()\
         extern CONNECTOR connector_diffpress_sensor;\
         extern CONNECTOR connector_voc_sensor;\
@@ -162,6 +163,27 @@ EN_IONIZER_FLAG - Defined
         &connector_onboard_hmi,\
         &connector_pwr_ctrl_service,\
         &connector_pwm_fan_motor,
+
+#else
+#define DICM_APPLICATION_CONNECTOR_EXTERN()\
+        extern CONNECTOR connector_voc_sensor;\
+        extern CONNECTOR connector_onboard_hmi;\
+        extern CONNECTOR connector_pwr_ctrl_service;\
+        extern CONNECTOR connector_pwm_fan_motor;\
+        extern CONNECTOR connector_eol;\
+        extern CONNECTOR connector_lin_comm_test;\
+        extern CONNECTOR connector_rvc_eol;
+
+#define DICM_APPLICATION_CONNECTORS()\
+        &connector_voc_sensor,\
+        &connector_onboard_hmi,\
+        &connector_pwr_ctrl_service,\
+        &connector_pwm_fan_motor,\
+        &connector_eol,\
+        &connector_lin_comm_test,\
+        &connector_rvc_eol,
+
+#endif
 
 #define CONNECTOR_EOL_CTRL_TASK_PRIORITY				((unsigned short)    5u)
 #define CONNECTOR_EOL_PROCESS_TASK_PRIORITY				((unsigned short)    6u)
@@ -197,7 +219,7 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_EOL_CONTROL_TASK_NAME					((const char* const) "conn_eol_ctr_tk")
 #define CONNECTOR_OBHMI_BTN_TASK_NAME					((const char* const) "conn_btn_evnt_tk")
 
-#ifndef CONNECTOR_EOL_SERVICE
+#ifndef INVENT_EOL_TESTING
 
 #define CONNECTOR_ONBOARD_HMI_PROCESS_STACK_DEPTH       ((unsigned short) 4096)
 #define CONNECTOR_ONBOARD_HMI_CTRL_TASK_STACK_DEPTH     ((unsigned short) 4096)
@@ -213,7 +235,7 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_DIFFPRESS_READ_STACK_DEPTH            ((unsigned short) 4096)
 #define CONNECTOR_EOL_PROCESS_STACK_DEPTH               ((unsigned short) 4096)
 #define CONNECTOR_EOL_CONTROL_STACK_DEPTH               ((unsigned short) 4096)
-#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH			      ((unsigned short) 2048)
+#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH            ((unsigned short) 2048)
 
 #else
 
@@ -231,19 +253,19 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_DIFFPRESS_READ_STACK_DEPTH            ((unsigned short) 4096)
 #define CONNECTOR_EOL_PROCESS_STACK_DEPTH               ((unsigned short) 2048)
 #define CONNECTOR_EOL_CONTROL_STACK_DEPTH               ((unsigned short) 4096)
+#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH            ((unsigned short) 2048)
 
 #endif
 
 
 
-#ifdef CONNECTOR_EOL_SERVICE
+#if defined(INVENT_EOL_TESTING)
 
-#ifdef CONNECTOR_RVC_EOL
+#if defined(CONNECTOR_RVC_EOL)
 #define CONNECTOR_RVC_CAN_RX		GPIO_NUM_22 
 #define CONNECTOR_RVC_CAN_TX		GPIO_NUM_21 
-//#define CONNECTOR_LIN_COMM_TEST
 
-#endif //CONNECTOR_RVC
+#endif //CONNECTOR_RVC_EOL
 /* UART for communication with EOL/PCBA Windows Application */
 #if defined(CONNECTOR_UART)
 #define CONNECTOR_UART_RX			GPIO_NUM_3
@@ -251,7 +273,7 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_UART_NUM			UART_NUM_1
 #define CONNECTOR_UART_BUF_SIZE		256
 #endif // CONNECTOR_UART
-#endif /* CONNECTOR_EOL_SERVICE */
+#endif /* INVENT_EOL_TESTING */
 
 #define BLE_GATT
 #define BLE_GAP

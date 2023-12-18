@@ -45,7 +45,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
-#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
+//#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
 #else
 
@@ -55,7 +55,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define FIRMWARE_STRING				"DICM Inventilate"
 #define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
-#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
+//#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
 #endif
 
@@ -355,9 +355,9 @@ EN_IONIZER_FLAG - Defined
 #ifdef HAL_I2C_MASTER
 #define I2C_MASTER0
 #define I2C_MASTER0_PORT        0      //I2C_NUM_0
-#define I2C_MASTER0_SDA				  GPIO_NUM_0
-#define I2C_MASTER0_SCL			    GPIO_NUM_4
-#define I2C_MASTER0_FREQ			  100000
+#define I2C_MASTER0_SDA			GPIO_NUM_4
+#define I2C_MASTER0_SCL			GPIO_NUM_0
+#define I2C_MASTER0_FREQ		100000
 #endif // HAL_I2C_MASTER
 
 #if defined(CONNECTOR_LINDEV)

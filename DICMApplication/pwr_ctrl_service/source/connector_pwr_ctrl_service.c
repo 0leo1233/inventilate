@@ -16,6 +16,21 @@
 #include "sorted_list.h"
 #include "drv_bq25798.h"
 
+typedef enum
+{
+    PWR_BACKUP_BAT_NORMAL            = 0,
+    PWR_BACKUP_BAT_LOW               = 1,
+    PWR_CAR_BAT_INPUT_NOT_FOUND      = 2,
+    PWR_CAR_BAT_INPUT_FOUND          = 3,
+    PWR_SOLAR_INPUT_NOT_FOUND        = 4,
+    PWR_SOLAR_INPUT_FOUND            = 5,
+    PWR_COMM_ERROR_WITH_BAT_IC       = 6,
+    PWR_BAT_OVER_HEATING             = 7,
+    PWR_BAT_COOL                     = 8,
+    PWR_BAT_EXPIRED                  = 9,
+} PWR_CTRL_ERR_CODES;
+
+
 /* Macro Definitions */
 #define CONN_PWR_DEBUG_LOG      1
 #define EN_POOR_SOURCE_CHECK    0

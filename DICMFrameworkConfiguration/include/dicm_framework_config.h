@@ -45,7 +45,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
 #define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
-#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
+//#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
 #else
 
@@ -55,7 +55,7 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define FIRMWARE_STRING				"DICM Inventilate"
 #define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
-#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
+//#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
 #endif
 

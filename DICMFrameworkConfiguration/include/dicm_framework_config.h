@@ -238,14 +238,14 @@ EN_IONIZER_FLAG - Defined
 
 #ifdef CONNECTOR_EOL_SERVICE
 
-#ifdef CONNECTOR_RVC
+#ifdef CONNECTOR_RVC_EOL
 #define CONNECTOR_RVC_CAN_RX		GPIO_NUM_22 
 #define CONNECTOR_RVC_CAN_TX		GPIO_NUM_21 
 //#define CONNECTOR_LIN_COMM_TEST
 
 #endif //CONNECTOR_RVC
 /* UART for communication with EOL/PCBA Windows Application */
-#ifdef CONNECTOR_UART
+#if defined(CONNECTOR_UART)
 #define CONNECTOR_UART_RX			GPIO_NUM_3
 #define CONNECTOR_UART_TX			GPIO_NUM_1
 #define CONNECTOR_UART_NUM			UART_NUM_1
@@ -257,7 +257,7 @@ EN_IONIZER_FLAG - Defined
 #define BLE_GAP
 #define DOMETIC_BLE_ID 0x0845
 
-#if defined(CONNECTOR_RVC)
+#if defined(CONNECTOR_RVC_EOL)
 #define CAN1_EN(x)
 #define DEVICE_TWAI                 // Enable support for internal can
 #define DEVICE_TWAI_EN(x)           CAN1_EN((x) ? 0 : 1)

@@ -22,6 +22,31 @@
 
 #include "app_error_code.h"
 
+typedef enum __dpsens_err
+{
+    DPSENS_NO_ERROR                 = 0,
+    DPSENS_BOARD_DISCONNECTED       = 1,
+    DPSENS_BOARD_CONN_RETRY         = 2,
+    DPSENS_NO_DATA_ERROR            = 3,
+    DPSENS_BOARD_CONNECTED          = 4,
+    DPSENS_DATA_PLAUSIBLE_ERROR     = 5,
+    DPSENS_BOARD_BATTERY_LOW        = 6
+}DPSENS_ERROR;
+
+
+typedef void (*conn_diff_param_changed_t )(uint32_t dev_id, int32_t i32Value);
+
+typedef struct
+{
+    uint32_t ddm_parameter;
+    DDM2_TYPE_ENUM type;
+    uint8_t pub;
+    uint8_t sub;
+    int32_t i32Value;
+    conn_diff_param_changed_t cb_func;
+} conn_diff_press_sensor_param_t;
+
+
 #define CONN_DP_SENS_SERV_LOGS                         1
 
 #define CONN_DP_SENS_SUB_DEPTH		                   ((uint8_t) 20u)
@@ -214,8 +239,8 @@ static void start_subscribe(void)
         /* Check the DDM parameter need subscribtion */
 		if ( ptr_param_db->sub )
 		{
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, \
-                       &ptr_param_db->i32Value, sizeof(int32_t), connector_diffpress_sensor.connector_id, portMAX_DELAY));
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0,
+                    connector_diffpress_sensor.connector_id, portMAX_DELAY));
         }
 	}
 }
@@ -251,11 +276,9 @@ static void start_publish(void)
   */
 static void install_parameters(void)
 {
-    int32_t available = 1;
-
     LOG(W, "Subscribe request for DDMP SNODE0AVL from conn_dp_sens");
     // Whenever the availability of sensor node received then the subscribtion should be done again
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0AVL, &available,sizeof(int32_t), \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0AVL, NULL, 0,
             connector_diffpress_sensor.connector_id, portMAX_DELAY));
 }
 
@@ -495,11 +518,11 @@ static void conn_diffpress_read_task(void *pvParameter)
     while (1)
 	{
         //send battery voltage
-        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, \
+        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
 
         //command to send DP sensor data            
-        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0, \
+        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
 
 
@@ -955,16 +978,16 @@ static void stop_ble_scan_timer(void)
   */
 static void configure_sdp_sensor(int32_t send_dp, int32_t sample_int)
 {
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, SDP0SENDDP, (const void*)&send_dp, sizeof(int32_t), \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, SDP0SENDDP, (const void*)&send_dp, sizeof(int32_t),
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, SDP0SAMPP, (const void*)&sample_int, sizeof(int32_t), \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, SDP0SAMPP, (const void*)&sample_int, sizeof(int32_t),
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
     
     //command to send DP sensor data            
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0, \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
       
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));            
 }
 
@@ -1028,13 +1051,13 @@ static void dpsens_battlvl_errchk(int32_t battlvl)
 
     if ( err_frame != invent_dp_error_stat )
     {
-        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(int32_t), \
+        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(int32_t),
         connector_diffpress_sensor.connector_id, portMAX_DELAY));
     }
     invent_dp_error_stat = err_frame;
 
     //Subscribe to get DP sensor battery voltage            
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));            
 }
 

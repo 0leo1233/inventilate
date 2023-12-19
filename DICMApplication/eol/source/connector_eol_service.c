@@ -191,8 +191,7 @@ static void start_subscribe(void)
 		if ( ptr_param_db->sub )
 		{
             LOG(I, "Subscribed DDMP for %s is 0x%x", connector_eol.name, ptr_param_db->ddm_parameter);
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, &ptr_param_db->i32Value, \
-                       sizeof(int32_t), connector_eol.connector_id, portMAX_DELAY));
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_eol.connector_id, portMAX_DELAY));
         }
 	}
 }
@@ -830,7 +829,6 @@ static void conn_eol_ctrl_task(void *pvParameter)
     uint8_t ionizer_stat;
     int16_t pwr_arr[8];
     error_type result;
-    int32_t dp_data;
 
     while (1)
     {
@@ -839,9 +837,8 @@ static void conn_eol_ctrl_task(void *pvParameter)
 #if CONN_EOL_DEBUG_LOG
             LOG(I, "EOL Test ID = %d EOL TEST DATA = %d", eol_data_frame.data_id, eol_data_frame.data);
 #endif
-            dp_data = 0x0003;
             //command to send DP sensor data            
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, (const void*)&dp_data, sizeof(int32_t), \
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0,
                 connector_eol.connector_id, portMAX_DELAY));
 
             if ( eol_data_frame.eol_ack == PCBA_EOL_NO_ERR )

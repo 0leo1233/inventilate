@@ -17,6 +17,9 @@
 #include "sorted_list.h"
 #include "app_error_code.h"
 
+#define CONN_PWM_FAN_MTR_SUB_DEPTH     50
+#define DP_BAT_LIMIT                   2700
+
 // Defining local parameter space
 #define MTR0_NEW_TACHO_DATA_EVENT	    (DDM2_PARAMETER_CLASS(MTR0AVL) | DDM2_PARAMETER_PROPERTY_FIELD(0xf0))
 
@@ -24,6 +27,20 @@
 #define TACHO_SEND_MIN_INTERNAL_MS      (1000u)
 // Minimal time between sending zero tacho value from interrupt, when no new interrupts has been received
 #define TACHO_ERROR_MIN_INTERNAL_MS     (2000u)
+
+/* Function pointer declaration */
+typedef void (*conn_mtr_param_changed_t)(uint32_t dev_id, int32_t i32Value);
+
+/* Struct Type Definitions */
+typedef struct
+{
+    uint32_t ddm_parameter;
+    DDM2_TYPE_ENUM type;
+    uint8_t pub;
+    uint8_t sub;
+    int32_t i32Value;
+    conn_mtr_param_changed_t cb_func;
+} conn_fan_motor_parameter_t;
 
 
 //! Holds Tacho Information
@@ -279,7 +296,7 @@ static void start_subscribe(void)
 		if ( ptr_param_db->sub )
 		{
             LOG(I, "Subscribed DDMP for %s is 0x%x", connector_pwm_fan_motor.name, ptr_param_db->ddm_parameter);
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, &ptr_param_db->i32Value, sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_pwm_fan_motor.connector_id, portMAX_DELAY));
         }
 	}
 }

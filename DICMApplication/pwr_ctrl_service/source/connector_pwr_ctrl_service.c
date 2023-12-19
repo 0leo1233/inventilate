@@ -294,11 +294,7 @@ static void start_subscribe(void)
 		if ( ptr_param_db->sub )
 		{
 			/* Create the DDMP frame to subscribe for the ddmp paremeter IAQ index to broker */
-			ddmp2_create_subscribe(&frame, ptr_param_db->ddm_parameter, connector_pwr_ctrl_service.connector_id);
-			/* Set the connector id in the frame */
-			frame.source_connector = connector_pwr_ctrl_service.connector_id;
-			/* Send the data to broker */
-			TRUE_CHECK(xRingbufferSend(connector_pwr_ctrl_service.to_broker, (void *)&frame, sizeof(DDMP2_FRAME), (TickType_t)portMAX_DELAY));
+		    connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_pwr_ctrl_service.connector_id, (TickType_t)portMAX_DELAY);
 		}
 	}
 }

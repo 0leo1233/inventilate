@@ -24,6 +24,21 @@
 #include "hal_timer.h"
 #include "osal.h"
 
+
+/* Function pointer declaration */
+typedef void (*conn_onbhmi_param_changed_t)(uint32_t ddm_param, int32_t i32value);
+
+/* Struct Type Definitions */
+typedef struct
+{
+    uint32_t ddm_parameter;
+    DDM2_TYPE_ENUM type;
+    uint8_t pub;
+    uint8_t sub;
+    int32_t i32Value;
+    conn_onbhmi_param_changed_t cb_func;
+} conn_onboardhmi_param_t;
+
 /******************************** Defines ************************************/
 #define CONN_ONBHMI_DEBUG_LOG               0
 #define CONN_ONBHMI_CRITICAL_LOG            0
@@ -1992,14 +2007,14 @@ static void update_hmi_btn_ctrl_variables(uint32_t ddmp, int32_t data)
             {
                 LOG(W, "Subscribe request for DDMP SDP0AVL");
                 // Whenever the availability of sensor node received then the subscribtion should be done again
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0, \
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0,
                            connector_onboard_hmi.connector_id, portMAX_DELAY));
            
             }
 
             if( DP_SENSOR_AVAILABLE == data)
             {
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0, \
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0,
                            connector_onboard_hmi.connector_id, portMAX_DELAY));
 
                 // Whenever the availability of sensor node received then the subscribtion should be done again

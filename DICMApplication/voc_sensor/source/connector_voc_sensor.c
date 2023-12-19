@@ -202,7 +202,7 @@ static void start_subscribe(void)
 		if ( ptr_param_db->sub )
 		{
             LOG(I, "Subscribed DDMP for %s is 0x%x", connector_voc_sensor.name, ptr_param_db->ddm_parameter);
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, &ptr_param_db->i32Value, sizeof(int32_t), connector_voc_sensor.connector_id, portMAX_DELAY));
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_voc_sensor.connector_id, portMAX_DELAY));
         }
 	}
 }

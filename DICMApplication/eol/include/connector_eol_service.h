@@ -11,7 +11,6 @@
 #ifdef CONNECTOR_EOL_SERVICE
 
 #include "connector.h"
-//#include "eolpcba_invent.h"
 
 /* Macro Definitions */
 #define BQ25672_PART_NUMBER     1u

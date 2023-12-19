@@ -283,7 +283,6 @@ static void install_parameters(void)
   */
 static void start_subscribe(void)
 {
-	DDMP2_FRAME frame;
 	conn_pwr_ctrl_parameter_t *ptr_param_db;
 	uint8_t db_idx;
 

@@ -47,7 +47,7 @@ typedef struct
 } conn_diff_press_sensor_param_t;
 
 
-#define CONN_DP_SENS_SERV_LOGS                         1
+#define CONN_DP_SENS_SERV_LOGS                         0
 
 #define CONN_DP_SENS_SUB_DEPTH		                   ((uint8_t) 20u)
 #define DDMP_UNAVAILABLE                               ((uint8_t) 0xFFu)
@@ -468,6 +468,7 @@ static void conn_diffpress_process_task(void *pvParameter)
             }
             else
             {
+                // Handle BT0SCAN results here
                 size_t payload_size = ddmp2_value_size(pframe);
 
                 if ( payload_size > 0 )
@@ -756,11 +757,11 @@ static void process_ble_scan_data(const uint8_t * const value)
     DP_SENS_STATUS scan_stat = DP_SENS_NODE_NOT_FOUND;
 	const BLE_DEVICE_ENUM_FRAME *ble_enum = (BLE_DEVICE_ENUM_FRAME*) value;
 
-    LOG(I, "Received BT0SCAN list");
-	LOG(W, "\tmfg=%04x node_type=%02x node_id=%02x\n", ble_enum->manufacturer, ble_enum->node_id, ble_enum->node_type);
-	LOG(W, "\tble_id=%u:" MACSTR "\n", ble_enum->ble_address_type , MAC2STR(ble_enum->ble_address));
-	LOG(W, "\trssi=%d\n", ble_enum->rssi);
-	LOG(W, "\tname=%.16s\n", ble_enum->name);
+    LOG(D, "Received BT0SCAN list");
+	LOG(D, "\tmfg=%04x node_type=%02x node_id=%02x\n", ble_enum->manufacturer, ble_enum->node_id, ble_enum->node_type);
+	LOG(D, "\tble_id=%u:" MACSTR "\n", ble_enum->ble_address_type , MAC2STR(ble_enum->ble_address));
+	LOG(D, "\trssi=%d\n", ble_enum->rssi);
+	LOG(D, "\tname=%.16s\n", ble_enum->name);
 
     if ( ( ble_enum->manufacturer == DOMETIC_BLE_ID             ) && 
          ( ble_enum->node_type    == NODE_TYPE_DOMETIC          ) && 

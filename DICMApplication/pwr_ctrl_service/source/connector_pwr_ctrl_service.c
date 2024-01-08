@@ -15,6 +15,7 @@
 #include "osal.h"
 #include "sorted_list.h"
 #include "drv_bq25798.h"
+#include "broker.h"
 
 typedef enum
 {
@@ -32,7 +33,7 @@ typedef enum
 
 
 /* Macro Definitions */
-#define CONN_PWR_DEBUG_LOG      1
+#define CONN_PWR_DEBUG_LOG      0
 #define EN_POOR_SOURCE_CHECK    0
 
 #define CONN_PWR_CTRL_SUB_DEPTH           ((uint8_t)   20u)
@@ -264,16 +265,16 @@ static void start_publish(void)
 }
 
 /**
-  * @brief  Function to publish Connector Power control Service AVL to broker
+  * @brief  Function to register IVPMGR0 with broker
   * @param  none.
   * @retval none.
   */
 static void install_parameters(void)
 {
-	int32_t available = 1;
-    
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, IVPMGR0AVL, &available, sizeof(int32_t), \
-                connector_pwr_ctrl_service.connector_id, portMAX_DELAY));
+	int instance = -1;
+    uint32_t class = IVPMGR0;
+	instance = broker_register_instance(&class, connector_pwr_ctrl_service.connector_id);
+	assert(instance != -1);
 }
 
 /**

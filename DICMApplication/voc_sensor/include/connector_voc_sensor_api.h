@@ -6,7 +6,7 @@
 #define CONNECTOR_VOC_SENSOR_API_H_
 
 /** Includes ******************************************************************/
-
+#include <stdint.h>
 
 bool update_and_publish_to_broker(uint32_t ddm_parameter, int32_t i32Value);
 

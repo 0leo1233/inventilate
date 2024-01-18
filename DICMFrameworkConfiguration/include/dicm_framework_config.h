@@ -10,8 +10,6 @@
 #define NUM_MILL_SEC_PER_SECOND                   ((uint32_t) 1000u)
 #define MIN_TO_MSEC(x)                            (NUM_MILL_SEC_PER_SECOND * NUM_SECONDS_PER_MINUTE * x)
 
-//#define INVENT_EOL_TESTING
-
 extern void onboard_hmi_interrupt_cb(int device, int port, int pin);
 extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
@@ -43,9 +41,9 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define FIRMWARE_BUILD_ID			"INV"
 #define FIRMWARE_STRING				"DICM Inventilate"
 
-#define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
+#define HARDWARE_STRING				"Dometic Inventilate Rev 4.3"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
-//#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
+#define INVENT_HARWARE_VERSION      HW_VERSION_4_3
 
 #else
 
@@ -53,9 +51,9 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define FIRMWARE_MINOR				 5
 #define FIRMWARE_BUILD_ID			"INV"
 #define FIRMWARE_STRING				"DICM Inventilate"
-#define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
+#define HARDWARE_STRING				"Dometic Inventilate Rev 4.3"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
-//#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
+#define INVENT_HARWARE_VERSION      HW_VERSION_4_3
 
 #endif
 
@@ -138,17 +136,18 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 Requirement for Ionizer:
 Ionizer is after market feature, by default it is enable in the code
 EN_IONIZER_FLAG - Not Defined
-* As per latest discussion, Ionizer shall be enabled by default when Inventilate is powered ON. 
+* As per latest discussion, Ionizer shall be enabled by default when Inventilate is powered ON.
 * So, comment this macro, to enable this functionality
 
 EN_IONIZER_FLAG - Defined
 * As per previous requirement, this was based on a DDMP which can be set from other devices.
-  ie/.Ionizer feature can be enabled or disabled from other devices, using the DDMP "IV0SETT". 
+  ie/.Ionizer feature can be enabled or disabled from other devices, using the DDMP "IV0SETT".
   IV0SETT -> Bit1 -> 1:Ionizer Enabled, 0: Ionizer Disabled
 * So, uncomment this macro, to enable this functionality
 */
 //Uncomment EN_IONIZER_FLAG to configure using IV0sett DDMP
 //#define EN_IONIZER_FLAG
+#ifndef INVENT_EOL_TESTING
 #define DICM_APPLICATION_CONNECTOR_EXTERN()\
         extern CONNECTOR connector_diffpress_sensor;\
         extern CONNECTOR connector_voc_sensor;\
@@ -163,13 +162,34 @@ EN_IONIZER_FLAG - Defined
         &connector_pwr_ctrl_service,\
         &connector_pwm_fan_motor,
 
+#else
+#define DICM_APPLICATION_CONNECTOR_EXTERN()\
+        extern CONNECTOR connector_voc_sensor;\
+        extern CONNECTOR connector_onboard_hmi;\
+        extern CONNECTOR connector_pwr_ctrl_service;\
+        extern CONNECTOR connector_pwm_fan_motor;\
+        extern CONNECTOR connector_eol;\
+        extern CONNECTOR connector_lin_comm_test;\
+        extern CONNECTOR connector_rvc_eol;
+
+#define DICM_APPLICATION_CONNECTORS()\
+        &connector_voc_sensor,\
+        &connector_onboard_hmi,\
+        &connector_pwr_ctrl_service,\
+        &connector_pwm_fan_motor,\
+        &connector_eol,\
+        &connector_lin_comm_test,\
+        &connector_rvc_eol,
+
+#endif
+
 #define CONNECTOR_EOL_CTRL_TASK_PRIORITY				((unsigned short)    5u)
 #define CONNECTOR_EOL_PROCESS_TASK_PRIORITY				((unsigned short)    6u)
 #define CONNECTOR_FAN_MOTOR_PROCESS_TASK_PRIORITY		((unsigned short)    7u)
 #define CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_PRIORITY	((unsigned short)    8u)
 #define CONNECTOR_LIGHT_PROCESS_TASK_PRIORITY			((unsigned short)   10u)
 #define CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY			((unsigned short)   11u)
-#define CONNECTOR_VOC_PROCESS_TASK_PRIO					((unsigned short)   12u) 
+#define CONNECTOR_VOC_PROCESS_TASK_PRIO					((unsigned short)   12u)
 #define CONNECTOR_PWR_CTRL_SERV_TASK_PRIORITY			((unsigned short)   13u)
 #define CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY			((unsigned short)   14u)
 #define CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY			((unsigned short)   15u)
@@ -197,7 +217,7 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_EOL_CONTROL_TASK_NAME					((const char* const) "conn_eol_ctr_tk")
 #define CONNECTOR_OBHMI_BTN_TASK_NAME					((const char* const) "conn_btn_evnt_tk")
 
-#ifndef CONNECTOR_EOL_SERVICE
+#ifndef INVENT_EOL_TESTING
 
 #define CONNECTOR_ONBOARD_HMI_PROCESS_STACK_DEPTH       ((unsigned short) 4096)
 #define CONNECTOR_ONBOARD_HMI_CTRL_TASK_STACK_DEPTH     ((unsigned short) 4096)
@@ -213,7 +233,7 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_DIFFPRESS_READ_STACK_DEPTH            ((unsigned short) 4096)
 #define CONNECTOR_EOL_PROCESS_STACK_DEPTH               ((unsigned short) 4096)
 #define CONNECTOR_EOL_CONTROL_STACK_DEPTH               ((unsigned short) 4096)
-#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH			      ((unsigned short) 2048)
+#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH            ((unsigned short) 2048)
 
 #else
 
@@ -231,33 +251,33 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_DIFFPRESS_READ_STACK_DEPTH            ((unsigned short) 4096)
 #define CONNECTOR_EOL_PROCESS_STACK_DEPTH               ((unsigned short) 2048)
 #define CONNECTOR_EOL_CONTROL_STACK_DEPTH               ((unsigned short) 4096)
+#define CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH            ((unsigned short) 2048)
 
 #endif
 
 
 
-#ifdef CONNECTOR_EOL_SERVICE
+#if defined(INVENT_EOL_TESTING)
 
-#ifdef CONNECTOR_RVC
-#define CONNECTOR_RVC_CAN_RX		GPIO_NUM_22 
-#define CONNECTOR_RVC_CAN_TX		GPIO_NUM_21 
-//#define CONNECTOR_LIN_COMM_TEST
+#if defined(CONNECTOR_RVC_EOL)
+#define CONNECTOR_RVC_CAN_RX		GPIO_NUM_22
+#define CONNECTOR_RVC_CAN_TX		GPIO_NUM_21
 
-#endif //CONNECTOR_RVC
+#endif //CONNECTOR_RVC_EOL
 /* UART for communication with EOL/PCBA Windows Application */
-#ifdef CONNECTOR_UART
+#if defined(CONNECTOR_UART)
 #define CONNECTOR_UART_RX			GPIO_NUM_3
 #define CONNECTOR_UART_TX			GPIO_NUM_1
 #define CONNECTOR_UART_NUM			UART_NUM_1
 #define CONNECTOR_UART_BUF_SIZE		256
 #endif // CONNECTOR_UART
-#endif /* CONNECTOR_EOL_SERVICE */
+#endif /* INVENT_EOL_TESTING */
 
 #define BLE_GATT
 #define BLE_GAP
 #define DOMETIC_BLE_ID 0x0845
 
-#if defined(CONNECTOR_RVC)
+#if defined(CONNECTOR_RVC_EOL)
 #define CAN1_EN(x)
 #define DEVICE_TWAI                 // Enable support for internal can
 #define DEVICE_TWAI_EN(x)           CAN1_EN((x) ? 0 : 1)
@@ -309,11 +329,11 @@ EN_IONIZER_FLAG - Defined
 #define LED_DIMMER_ON_DUTY_CYCLE      LEDC_PWM_MAX_DUTY_CYCLE
 #define LED_DIMMER_OFF_DUTY_CYCLE     LEDC_PWM_MIN_DUTY_CYCLE
 
-/* Temporarily min duty cycle set as 100 
+/* Temporarily min duty cycle set as 100
   later based on testing this will set to a value that user can easily control the LCD during power saving mode */
 #define ONBOARD_HMI_PWM_MIN_DUTY_CYCLE  LEDC_PWM_MAX_DUTY_CYCLE //2048
 
-#define ONBOARD_HMI_MAX_DUTY_CYCLE           LEDC_PWM_MAX_DUTY_CYCLE //127 // 100% duty cycle  
+#define ONBOARD_HMI_MAX_DUTY_CYCLE           LEDC_PWM_MAX_DUTY_CYCLE //127 // 100% duty cycle
 #define ONBOARD_HMI_MIN_DUTY_CYCLE           38 // 30%  duty cycle
 #define ONBOARD_HMI_OFF_DUTY_CYCLE           LEDC_PWM_MIN_DUTY_CYCLE //  0%  duty cycle
 #define ONBOARD_HMI_50_DUTY_CYCLE			 50
@@ -328,7 +348,7 @@ EN_IONIZER_FLAG - Defined
 #define LED_STRIP_PWM_SET_FREQUENCY         ((uint32_t)  20000u)
 
 /* PWM Configuartion for HMI Backlight */
-#define HMI_BACKLIGHT_GPIO_PIN              GPIO_NUM_23          
+#define HMI_BACKLIGHT_GPIO_PIN              GPIO_NUM_23
 #define HMI_BACKLIGHT_PWM_SET_FREQUENCY     ((uint32_t)  20000u)
 
 #endif // HAL_LEDC_PWM
@@ -455,7 +475,7 @@ GPIO_PIN( 	     EN_RS485,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              
 	\param clk_cfg          Clock Configuration \sa ledc_clk_cfg_t
 	\param channel	        Channel Number \sa ledc_channel_t
 	\param duty	            duty
-	\param hpoint	        high point 
+	\param hpoint	        high point
 */
 #define LEDC_CONFIGURATION \
 LEDC_PWM(light_dimmer,          LED_STRIP_GPIO_PIN,   LEDC_PWM_DUTY_BIT_RESOLUTION,     LED_STRIP_PWM_SET_FREQUENCY,   LEDC_HIGH_SPEED_MODE, LEDC_TIMER_0, LEDC_AUTO_CLK, LEDC_CHANNEL_0,    0,       0) \

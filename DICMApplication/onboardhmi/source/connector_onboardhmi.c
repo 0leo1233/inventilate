@@ -9,9 +9,8 @@
 #ifdef CONNECTOR_ONBOARD_HMI
 #include "iGeneralDefinitions.h"
 
-#include "connector.h"
 #include "connector_onboardhmi.h"
-
+#include "broker.h"
 #include "app_api.h"
 
 #ifdef DEVICE_UC1510C
@@ -23,6 +22,21 @@
 #include "hal_ledc.h"
 #include "hal_timer.h"
 #include "osal.h"
+
+
+/* Function pointer declaration */
+typedef void (*conn_onbhmi_param_changed_t)(uint32_t ddm_param, int32_t i32value);
+
+/* Struct Type Definitions */
+typedef struct
+{
+    uint32_t ddm_parameter;
+    DDM2_TYPE_ENUM type;
+    uint8_t pub;
+    uint8_t sub;
+    int32_t i32Value;
+    conn_onbhmi_param_changed_t cb_func;
+} conn_onboardhmi_param_t;
 
 /******************************** Defines ************************************/
 #define CONN_ONBHMI_DEBUG_LOG               0
@@ -1262,9 +1276,8 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 	conn_onboardhmi_param_t* param_db;
 	uint8_t db_idx = DDMP_UNAVAILABLE; 
 	uint8_t index;
-	bool avail = false;
 
-	for ( index = 0u; ( ( index < conn_onbhmi_db_elements ) && ( avail == false ) ); index++ )
+	for ( index = 0u; index < conn_onbhmi_db_elements; index++ )
  	{
 		param_db = &conn_onboardhmi_param_db[index];
       	
@@ -1272,7 +1285,7 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 		if ( param_db->ddm_parameter == ddm_param )
 	  	{
 			db_idx = index;
-			avail = true;
+			break;
 		}
 	}
 	
@@ -1306,18 +1319,17 @@ static void initialize_dev_onboardhmi()
 }
 
 /**
-  * @brief  Function to publish the available classes in connedtor onboard HMI to the broker
+  * @brief  Function to publish the available classes in connector onboard HMI to the broker
   * @param  none.
   * @retval none.
   */
 static void install_parameters(void)
 {
 	int32_t available = 1;
-	
-	/* Connector Onboard HMI publish the available of Inventilate Class and Button Class */
-    /* Create the DDMP frame to Publish Inventilate "Available" to broker */
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, IV0AVL, &available, sizeof(int32_t), \
-               connector_onboard_hmi.connector_id, portMAX_DELAY));
+	uint32_t device_class = IV0;
+	/* Register Onboard Inventilate and Button Class */
+	int instance = broker_register_instance(&device_class, connector_onboard_hmi.connector_id);
+	ASSERT(instance != -1);
 
     /* "Subscribe DDMP SNODEAVL"*/
     TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, SNODE0AVL, &available, sizeof(int32_t), \
@@ -1992,14 +2004,14 @@ static void update_hmi_btn_ctrl_variables(uint32_t ddmp, int32_t data)
             {
                 LOG(W, "Subscribe request for DDMP SDP0AVL");
                 // Whenever the availability of sensor node received then the subscribtion should be done again
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0, \
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0,
                            connector_onboard_hmi.connector_id, portMAX_DELAY));
            
             }
 
             if( DP_SENSOR_AVAILABLE == data)
             {
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0, \
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0,
                            connector_onboard_hmi.connector_id, portMAX_DELAY));
 
                 // Whenever the availability of sensor node received then the subscribtion should be done again

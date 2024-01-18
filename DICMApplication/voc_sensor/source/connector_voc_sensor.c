@@ -9,6 +9,8 @@
 #ifdef CONNECTOR_VOC_SENSOR
 
 #include <stdint.h>
+
+#include "broker.h"
 #include "osal.h"
 #include "connector_voc_sensor.h"
 #include "app_error_code.h"
@@ -48,6 +50,7 @@ static void inv_err_stat_callback(uint8_t table_index, int32_t i32Value);
 static osal_queue_handle_t voc_sens_queue;
 static uint32_t invent_error_stat = 0;
 
+static int l_sbmeb_instance;
 /* Structure for Connector VOC Sensor */
 CONNECTOR connector_voc_sensor =
 {
@@ -178,10 +181,9 @@ static void conn_voc_read_task(void *pvParameter)
   */
 static void install_parameters(void)
 {
-	int32_t available = 1;
-
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, SBMEB0AVL, &available, sizeof(int32_t), \
-               connector_voc_sensor.connector_id, portMAX_DELAY));
+	uint32_t device_class = SBMEB0AVL;
+	l_sbmeb_instance = broker_register_instance(&device_class, connector_voc_sensor.connector_id);
+	ASSERT(l_sbmeb_instance != -1);
 }
 
 /**
@@ -202,7 +204,7 @@ static void start_subscribe(void)
 		if ( ptr_param_db->sub )
 		{
             LOG(I, "Subscribed DDMP for %s is 0x%x", connector_voc_sensor.name, ptr_param_db->ddm_parameter);
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, &ptr_param_db->i32Value, sizeof(int32_t), connector_voc_sensor.connector_id, portMAX_DELAY));
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_voc_sensor.connector_id, portMAX_DELAY));
         }
 	}
 }
@@ -224,7 +226,12 @@ static void start_publish(void)
         /* Check the DDM parameter need to publish */
         if ( ptr_param_db->pub ) 
         {
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ptr_param_db->ddm_parameter, &ptr_param_db->i32Value, sizeof(int32_t), connector_voc_sensor.connector_id, portMAX_DELAY));
+            uint32_t param = ptr_param_db->ddm_parameter;
+            if (DDM2_PARAMETER_CLASS(ptr_param_db->ddm_parameter) == SBMEB0)
+            {
+                param = DDM2_PARAMETER_BASE_INSTANCE(ptr_param_db->ddm_parameter) | DDM2_PARAMETER_INSTANCE(l_sbmeb_instance);
+            }
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, param, &ptr_param_db->i32Value, sizeof(int32_t), connector_voc_sensor.connector_id, portMAX_DELAY));
         }
     }
 }

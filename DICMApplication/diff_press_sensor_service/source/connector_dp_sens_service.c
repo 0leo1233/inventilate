@@ -22,9 +22,33 @@
 
 #include "app_error_code.h"
 
-#define CONN_DP_SENS_SERV_LOGS                         1
+typedef enum __dpsens_err
+{
+    DPSENS_NO_ERROR                 = 0,
+    DPSENS_BOARD_DISCONNECTED       = 1,
+    DPSENS_BOARD_CONN_RETRY         = 2,
+    DPSENS_NO_DATA_ERROR            = 3,
+    DPSENS_BOARD_CONNECTED          = 4,
+    DPSENS_DATA_PLAUSIBLE_ERROR     = 5,
+    DPSENS_BOARD_BATTERY_LOW        = 6
+}DPSENS_ERROR;
 
-#define CONN_DP_SENS_SUB_DEPTH		                   ((uint8_t) 20u)
+
+typedef void (*conn_diff_param_changed_t )(uint32_t dev_id, int32_t i32Value);
+
+typedef struct
+{
+    uint32_t ddm_parameter;
+    DDM2_TYPE_ENUM type;
+    uint8_t pub;
+    uint8_t sub;
+    int32_t i32Value;
+    conn_diff_param_changed_t cb_func;
+} conn_diff_press_sensor_param_t;
+
+
+#define CONN_DP_SENS_SERV_LOGS                         0
+
 #define DDMP_UNAVAILABLE                               ((uint8_t) 0xFFu)
 #define DP_SENS_QUE_LEN			                       ((osal_base_type_t) 10)                      //DP sensor Queue length
 #define DP_SENS_QUE_ITEM_SIZE   	                   ((osal_base_type_t) sizeof(QUE_DATA))        //DPsensor Queue size
@@ -36,8 +60,8 @@
 #define SDP_SENSOR_VALID_SAMPLING_INTERVAL             5000
 #define DP_SENSOR_AVAILABLE                            ((uint8_t)  1u)                              //DP sensor is available
 #define DP_SENSOR_NOT_AVAILABLE                        ((uint8_t)  0u)                              //NO DP sensor found
-#define DP_SENSOR_BAT_MIN                              ((uint16_t)1000u)                            //Minimum battery level for DP sensor 
-#define DP_SENSOR_BAT_MAX                              ((uint16_t)2700u)                            //Maximum battery level for DP sensor
+#define DP_SENSOR_BAT_MIN                              ((uint16_t)1800u)	//1000 changed to 1800
+#define DP_SENSOR_BAT_MAX                              ((uint16_t)3600u)	//2700
 
 /* Enum to map the received data in the queue with a DATA ID */
 typedef enum __data_id
@@ -95,7 +119,6 @@ typedef struct __que_data
 
 static uint32_t invent_dp_error_stat = 0;
 static DPSENS_ERROR dps_curr_err_stat = DPSENS_NO_ERROR;
-static DPSENS_ERROR dps_prev_err_stat = DPSENS_NO_ERROR;
 
 /* Instance for State Machine */
 static diff_press_read_sm sm_instance;
@@ -108,7 +131,6 @@ static int initialize_connector_dp_sens_service(void);
 static void start_subscribe(void);
 static void start_publish(void);
 static void install_parameters(void);
-static int add_subscription(DDMP2_FRAME *pframe);
 static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value, DDMP2_CONTROL_ENUM req_type);
 static void process_subscribe_request(uint32_t ddm_param);
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param);
@@ -155,8 +177,6 @@ static conn_diff_press_sensor_param_t conn_diffpress_sensor_param_db[] =
 
 /* Calculate the connector fan motor database table num elements */
 static const uint32_t conn_diff_press_db_elements = ELEMENTS(conn_diffpress_sensor_param_db);
-
-DECLARE_SORTED_LIST_EXTRAM(conn_dp_sens_sub_table, CONN_DP_SENS_SUB_DEPTH);       //!< \~ Subscription table storage
 
 /**
   * @brief  Initialize the connector for differential pressure sensor service
@@ -215,8 +235,8 @@ static void start_subscribe(void)
         /* Check the DDM parameter need subscribtion */
 		if ( ptr_param_db->sub )
 		{
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, \
-                       &ptr_param_db->i32Value, sizeof(int32_t), connector_diffpress_sensor.connector_id, portMAX_DELAY));
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0,
+                    connector_diffpress_sensor.connector_id, portMAX_DELAY));
         }
 	}
 }
@@ -252,25 +272,10 @@ static void start_publish(void)
   */
 static void install_parameters(void)
 {
-    int32_t available = 1;
-
     LOG(W, "Subscribe request for DDMP SNODE0AVL from conn_dp_sens");
     // Whenever the availability of sensor node received then the subscribtion should be done again
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0AVL, &available,sizeof(int32_t), \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0AVL, NULL, 0,
             connector_diffpress_sensor.connector_id, portMAX_DELAY));
-}
-
-/**
-  * @brief  Add device to inventory if it does not already exists
-  * @param  DDMP Frame.
-  * @retval result 0 - Succesfully added to list / 1 - Fail.
-  */
-static int add_subscription(DDMP2_FRAME *pframe)
-{
-    SORTED_LIST_KEY_TYPE     key = pframe->frame.subscribe.parameter;
-    SORTED_LIST_VALUE_TYPE value = 1;
-
-    return sorted_list_single_add(&conn_dp_sens_sub_table, key, value);
 }
 
 /**
@@ -346,52 +351,42 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 static void process_subscribe_request(uint32_t ddm_param)
 {
 	uint16_t db_idx;
-    uint32_t list_value = 0;
     int index;
     int32_t value = 0;
     int factor = 0;
 	conn_diff_press_sensor_param_t* param_db;
-    SORTED_LIST_RETURN_VALUE ret = sorted_list_unique_get(&list_value, &conn_dp_sens_sub_table, ddm_param, 0);
+    /* Validate the DDM parameter received */
+    db_idx = get_ddm_index_from_db(ddm_param);
 
-    if ( SORTED_LIST_FAIL != ret )
-	{
-		/* Validate the DDM parameter received */
-		db_idx = get_ddm_index_from_db(ddm_param);
+    if ( DDMP_UNAVAILABLE != db_idx )
+    {
+        param_db = &conn_diffpress_sensor_param_db[db_idx];
 
-		if ( DDMP_UNAVAILABLE != db_idx )
-	  	{
-			param_db = &conn_diffpress_sensor_param_db[db_idx];
+        index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_param));
 
-            index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_param));
+        if ( -1 != index )
+        {
+            factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
 
-            if ( -1 != index )
-			{
-                factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
+            /* The differential pressure value is stored in the database with factor multiplication
+               to avoid the loss of decimal resolution, So while sending no need to multiply with factor again */
+            factor = ( factor == 0 ) ? 1 : factor;
 
-                /* The differential pressure value is stored in the database with factor multiplication
-                   to avoid the loss of decimal resolution, So while sending no need to multiply with factor again */
-                factor = ( factor == 0 ) ? 1 : factor;
-                
-                /* Multiply with the factor */
-                value = param_db->i32Value * factor;
-                /* Frame and send the publish request */
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &value, sizeof(int32_t), \
-                            connector_diffpress_sensor.connector_id, portMAX_DELAY));
-            }
-            else
-            {
-                LOG(E, "DDMP 0x%x not found in ddm2_parameter_list_lookup", ddm_param);
-            }
-		}
+            /* Multiply with the factor */
+            value = param_db->i32Value * factor;
+            /* Frame and send the publish request */
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &value, sizeof(int32_t), \
+                        connector_diffpress_sensor.connector_id, portMAX_DELAY));
+        }
         else
         {
-            LOG(E, "Invalid DDMP Request ddm_param 0x%x", ddm_param);
+            LOG(E, "DDMP 0x%x not found in ddm2_parameter_list_lookup", ddm_param);
         }
-	}
-	else
-	{
-		LOG(E, "SORTLIST_INVALID_VALUE ddm_param 0x%x", ddm_param);
-	}
+    }
+    else
+    {
+        LOG(E, "Invalid DDMP Request ddm_param 0x%x", ddm_param);
+    }
 }
 
 /**
@@ -446,6 +441,7 @@ static void conn_diffpress_process_task(void *pvParameter)
             }
             else
             {
+                // Handle BT0SCAN results here
                 size_t payload_size = ddmp2_value_size(pframe);
 
                 if ( payload_size > 0 )
@@ -465,8 +461,7 @@ static void conn_diffpress_process_task(void *pvParameter)
             process_set_and_publish_request(pframe->frame.set.parameter, pframe->frame.set.value.int32,pframe->frame.control);
 			break;
 
-		case DDMP2_CONTROL_SUBSCRIBE:/* Send the request for the data */
-			add_subscription(pframe);
+		case DDMP2_CONTROL_SUBSCRIBE:
             process_subscribe_request(pframe->frame.subscribe.parameter);
 			break;
 
@@ -496,11 +491,11 @@ static void conn_diffpress_read_task(void *pvParameter)
     while (1)
 	{
         //send battery voltage
-        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, \
+        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
 
         //command to send DP sensor data            
-        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0, \
+        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
 
 
@@ -569,6 +564,7 @@ static void conn_diffpress_read_task(void *pvParameter)
                     /* Start the wait timer */
                     start_ble_scan_timer();
                     /* Change the state */
+                    sm_next_state = STATE_DP_SENS_BLE_PAIRING;
                 }
                 else
                 {
@@ -588,7 +584,7 @@ static void conn_diffpress_read_task(void *pvParameter)
                           ( DP_SENSOR_AVAILABLE == ptr_inst->dp_sensor_availablity ) )
                 {
 #if CONN_DP_SENS_SERV_LOGS                    
-                    LOG(W, "DP Sensor node found and pairing done succesfully");
+                    LOG(I, "DP Sensor node found and pairing done succesfully");
 #endif                    
                     stop_ble_scan_timer();
                     /* Configure the SDP sensor */
@@ -653,7 +649,7 @@ static void conn_diffpress_read_task(void *pvParameter)
                 }
                 else if ( DP_SENSOR_NOT_AVAILABLE == ptr_inst->dp_sensor_availablity )
                 {
-                    //DP_Sensor not vaialable or disconnected.
+                    //DP_Sensor not available or disconnected.
                     /* Reset the BL Request flag */
                     ptr_inst->bl_req = IV0BLREQ_IDLE;
                     /* Change the state */
@@ -734,11 +730,11 @@ static void process_ble_scan_data(const uint8_t * const value)
     DP_SENS_STATUS scan_stat = DP_SENS_NODE_NOT_FOUND;
 	const BLE_DEVICE_ENUM_FRAME *ble_enum = (BLE_DEVICE_ENUM_FRAME*) value;
 
-    LOG(I, "Received BT0SCAN list");
-	LOG(W, "\tmfg=%04x node_type=%02x node_id=%02x\n", ble_enum->manufacturer, ble_enum->node_id, ble_enum->node_type);
-	LOG(W, "\tble_id=%u:" MACSTR "\n", ble_enum->ble_address_type , MAC2STR(ble_enum->ble_address));
-	LOG(W, "\trssi=%d\n", ble_enum->rssi);
-	LOG(W, "\tname=%.16s\n", ble_enum->name);
+    LOG(D, "Received BT0SCAN list");
+	LOG(D, "\tmfg=%04x node_type=%02x node_id=%02x\n", ble_enum->manufacturer, ble_enum->node_id, ble_enum->node_type);
+	LOG(D, "\tble_id=%u:" MACSTR "\n", ble_enum->ble_address_type , MAC2STR(ble_enum->ble_address));
+	LOG(D, "\trssi=%d\n", ble_enum->rssi);
+	LOG(D, "\tname=%.16s\n", ble_enum->name);
 
     if ( ( ble_enum->manufacturer == DOMETIC_BLE_ID             ) && 
          ( ble_enum->node_type    == NODE_TYPE_DOMETIC          ) && 
@@ -790,7 +786,6 @@ static void push_data_to_que(DATA_ID data_id, int32_t i32Value)
 static void handle_dpsens_data(uint32_t ddm_param, int32_t data)
 {
     QUE_DATA iv_data;
-    uint32_t dp_plausible_errst = 0;
 
     /* set the data */
     iv_data.data = data;
@@ -957,16 +952,16 @@ static void stop_ble_scan_timer(void)
   */
 static void configure_sdp_sensor(int32_t send_dp, int32_t sample_int)
 {
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, SDP0SENDDP, (const void*)&send_dp, sizeof(int32_t), \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, SDP0SENDDP, (const void*)&send_dp, sizeof(int32_t),
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, SDP0SAMPP, (const void*)&sample_int, sizeof(int32_t), \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, SDP0SAMPP, (const void*)&sample_int, sizeof(int32_t),
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
     
     //command to send DP sensor data            
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0, \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0MDL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
       
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));            
 }
 
@@ -1030,13 +1025,13 @@ static void dpsens_battlvl_errchk(int32_t battlvl)
 
     if ( err_frame != invent_dp_error_stat )
     {
-        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(int32_t), \
+        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(int32_t),
         connector_diffpress_sensor.connector_id, portMAX_DELAY));
     }
     invent_dp_error_stat = err_frame;
 
     //Subscribe to get DP sensor battery voltage            
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0, \
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0BATTLVL, NULL, 0,
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));            
 }
 

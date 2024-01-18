@@ -10,8 +10,6 @@
 #define NUM_MILL_SEC_PER_SECOND                   ((uint32_t) 1000u)
 #define MIN_TO_MSEC(x)                            (NUM_MILL_SEC_PER_SECOND * NUM_SECONDS_PER_MINUTE * x)
 
-//#define INVENT_EOL_TESTING
-
 extern void onboard_hmi_interrupt_cb(int device, int port, int pin);
 extern void battery_ic_interrupt_cb(int device, int port, int pin);
 
@@ -43,9 +41,9 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define FIRMWARE_BUILD_ID			"INV"
 #define FIRMWARE_STRING				"DICM Inventilate"
 
-#define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
+#define HARDWARE_STRING				"Dometic Inventilate Rev 4.3"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
-//#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
+#define INVENT_HARWARE_VERSION      HW_VERSION_4_3
 
 #else
 
@@ -53,9 +51,9 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define FIRMWARE_MINOR				 5
 #define FIRMWARE_BUILD_ID			"INV"
 #define FIRMWARE_STRING				"DICM Inventilate"
-#define HARDWARE_STRING				"Dometic Inventilate Rev 4.1"
+#define HARDWARE_STRING				"Dometic Inventilate Rev 4.3"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
-//#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
+#define INVENT_HARWARE_VERSION      HW_VERSION_4_3
 
 #endif
 
@@ -138,12 +136,12 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 Requirement for Ionizer:
 Ionizer is after market feature, by default it is enable in the code
 EN_IONIZER_FLAG - Not Defined
-* As per latest discussion, Ionizer shall be enabled by default when Inventilate is powered ON. 
+* As per latest discussion, Ionizer shall be enabled by default when Inventilate is powered ON.
 * So, comment this macro, to enable this functionality
 
 EN_IONIZER_FLAG - Defined
 * As per previous requirement, this was based on a DDMP which can be set from other devices.
-  ie/.Ionizer feature can be enabled or disabled from other devices, using the DDMP "IV0SETT". 
+  ie/.Ionizer feature can be enabled or disabled from other devices, using the DDMP "IV0SETT".
   IV0SETT -> Bit1 -> 1:Ionizer Enabled, 0: Ionizer Disabled
 * So, uncomment this macro, to enable this functionality
 */
@@ -191,7 +189,7 @@ EN_IONIZER_FLAG - Defined
 #define CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_PRIORITY	((unsigned short)    8u)
 #define CONNECTOR_LIGHT_PROCESS_TASK_PRIORITY			((unsigned short)   10u)
 #define CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY			((unsigned short)   11u)
-#define CONNECTOR_VOC_PROCESS_TASK_PRIO					((unsigned short)   12u) 
+#define CONNECTOR_VOC_PROCESS_TASK_PRIO					((unsigned short)   12u)
 #define CONNECTOR_PWR_CTRL_SERV_TASK_PRIORITY			((unsigned short)   13u)
 #define CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY			((unsigned short)   14u)
 #define CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY			((unsigned short)   15u)
@@ -262,8 +260,8 @@ EN_IONIZER_FLAG - Defined
 #if defined(INVENT_EOL_TESTING)
 
 #if defined(CONNECTOR_RVC_EOL)
-#define CONNECTOR_RVC_CAN_RX		GPIO_NUM_22 
-#define CONNECTOR_RVC_CAN_TX		GPIO_NUM_21 
+#define CONNECTOR_RVC_CAN_RX		GPIO_NUM_22
+#define CONNECTOR_RVC_CAN_TX		GPIO_NUM_21
 
 #endif //CONNECTOR_RVC_EOL
 /* UART for communication with EOL/PCBA Windows Application */
@@ -331,11 +329,11 @@ EN_IONIZER_FLAG - Defined
 #define LED_DIMMER_ON_DUTY_CYCLE      LEDC_PWM_MAX_DUTY_CYCLE
 #define LED_DIMMER_OFF_DUTY_CYCLE     LEDC_PWM_MIN_DUTY_CYCLE
 
-/* Temporarily min duty cycle set as 100 
+/* Temporarily min duty cycle set as 100
   later based on testing this will set to a value that user can easily control the LCD during power saving mode */
 #define ONBOARD_HMI_PWM_MIN_DUTY_CYCLE  LEDC_PWM_MAX_DUTY_CYCLE //2048
 
-#define ONBOARD_HMI_MAX_DUTY_CYCLE           LEDC_PWM_MAX_DUTY_CYCLE //127 // 100% duty cycle  
+#define ONBOARD_HMI_MAX_DUTY_CYCLE           LEDC_PWM_MAX_DUTY_CYCLE //127 // 100% duty cycle
 #define ONBOARD_HMI_MIN_DUTY_CYCLE           38 // 30%  duty cycle
 #define ONBOARD_HMI_OFF_DUTY_CYCLE           LEDC_PWM_MIN_DUTY_CYCLE //  0%  duty cycle
 #define ONBOARD_HMI_50_DUTY_CYCLE			 50
@@ -350,7 +348,7 @@ EN_IONIZER_FLAG - Defined
 #define LED_STRIP_PWM_SET_FREQUENCY         ((uint32_t)  20000u)
 
 /* PWM Configuartion for HMI Backlight */
-#define HMI_BACKLIGHT_GPIO_PIN              GPIO_NUM_23          
+#define HMI_BACKLIGHT_GPIO_PIN              GPIO_NUM_23
 #define HMI_BACKLIGHT_PWM_SET_FREQUENCY     ((uint32_t)  20000u)
 
 #endif // HAL_LEDC_PWM
@@ -477,7 +475,7 @@ GPIO_PIN( 	     EN_RS485,       HAL_GPIO_DEVICE_TCA9554A,		    0,	              
 	\param clk_cfg          Clock Configuration \sa ledc_clk_cfg_t
 	\param channel	        Channel Number \sa ledc_channel_t
 	\param duty	            duty
-	\param hpoint	        high point 
+	\param hpoint	        high point
 */
 #define LEDC_CONFIGURATION \
 LEDC_PWM(light_dimmer,          LED_STRIP_GPIO_PIN,   LEDC_PWM_DUTY_BIT_RESOLUTION,     LED_STRIP_PWM_SET_FREQUENCY,   LEDC_HIGH_SPEED_MODE, LEDC_TIMER_0, LEDC_AUTO_CLK, LEDC_CHANNEL_0,    0,       0) \

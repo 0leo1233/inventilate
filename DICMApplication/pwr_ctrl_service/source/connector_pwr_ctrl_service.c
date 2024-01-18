@@ -52,7 +52,7 @@ typedef enum
 
 #endif // FILTER_TEST
 
-#define FILTER_NVS_WRITE_INTERVAL         ((uint8_t)     60)  
+#define FILTER_NVS_WRITE_INTERVAL         ((uint8_t)     60)
 #define SECONDS_PER_MINUTE                ((uint32_t)    60)
 #define MSEC_PER_MINUTE                   ((uint32_t) 60000)
 #define FILTER_TIMER_PERIOD_MIN           ((uint32_t)     1)
@@ -121,7 +121,7 @@ static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error);
 static uint8_t batt_ch_intr_stat = BATT_CH_STATE_IC_INIT;
 
 //! Error code handle variable
-static uint32_t invent_pwr_ctrl_error_stat = 0; 
+static uint32_t invent_pwr_ctrl_error_stat = 0;
 
 static REG1B_CHARGER_STATUS_0_REG chr_status0_reg     = {0};
 static REG1D_CHARGER_STATUS_2_REG chr_status2_reg     = {0};
@@ -173,7 +173,7 @@ static conn_pwr_ctrl_parameter_t conn_pwr_ctrl_param_db[] =
 static const uint32_t conn_pwrctrl_db_elements = ELEMENTS(conn_pwr_ctrl_param_db);
 
 DECLARE_SORTED_LIST_EXTRAM(conn_pwrctrl_table, CONN_PWR_CTRL_SUB_DEPTH);       //!< \~ Subscription table storage
- 
+
 static osal_queue_handle_t inv_pwr_ctrl_que_hdle;
 static PWR_CTRL_SM pwr_ctrl_sm;
 
@@ -186,7 +186,7 @@ static uint8_t inv_bkup_bat_sts = INV_BATTERY_GOOD;
 /*
 battery condition   status
 good                0
-bad                 1 
+bad                 1
 
 */
 
@@ -222,7 +222,7 @@ static int initialize_connector_pwrctrl_service(void)
 	TRUE_CHECK(osal_task_create(conn_pwr_ctrl_process_task, CONNECTOR_PWR_CTRL_SERV_PROCESS_TASK_NAME, CONNECTOR_PWR_CTRL_PROCESS_TASK_DEPTH, NULL, CONNECTOR_PWR_CTRL_SERV_TASK_PRIORITY, NULL));
     TRUE_CHECK(osal_task_create(conn_pwr_ctrl_manager_task, CONNECTOR_PWR_CTRL_MANAGER_TASK_NAME, CONNECTOR_PWR_CTRL_MNGR_TASK_DEPTH, inv_pwr_ctrl_que_hdle, CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY, NULL));
     if ( RES_PASS == res )
-    {      
+    {
         TRUE_CHECK(osal_task_create(conn_pwr_ctrl_bms_task_bq25798, CONNECTOR_PWR_CTRL_BMS_TASK_NAME, CONNECTOR_PWR_CTRL_BMS_TASK_STACK_DEPTH, NULL, CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY, NULL));
     }
 
@@ -250,13 +250,13 @@ static void start_publish(void)
     conn_pwr_ctrl_parameter_t *ptr_param_db;
     uint16_t db_idx;
     uint8_t num_elements = ELEMENTS(conn_pwr_ctrl_param_db);
-    
+
     for ( db_idx = 0; db_idx < num_elements; db_idx++ )
     {
         ptr_param_db = &conn_pwr_ctrl_param_db[db_idx];
 
         /* Check the DDM parameter need to publish */
-        if ( ptr_param_db->pub ) 
+        if ( ptr_param_db->pub )
         {
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ptr_param_db->ddm_parameter, &ptr_param_db->i32Value, \
                         sizeof(int32_t), connector_pwr_ctrl_service.connector_id, portMAX_DELAY));
@@ -331,7 +331,7 @@ static void conn_pwr_ctrl_process_task(void *pvParameter)
 		case DDMP2_CONTROL_PUBLISH:
 #if CONN_PWR_DEBUG_LOG
 		    LOG(I, "Received DDMP2_CONTROL_PUBLISH");
-#endif  
+#endif
             process_set_and_publish_request(pframe->frame.publish.parameter, pframe->frame.publish.value.int32, pframe->frame.control);
 			break;
 
@@ -364,7 +364,7 @@ static void conn_pwr_ctrl_process_task(void *pvParameter)
   *         Todo : Need to design the state machine generic way to handle for all other projects
   *         DDMP will be different for different projects
   * @param  pvParameter.
-  * @retval none.           
+  * @retval none.
   */
 static void conn_pwr_ctrl_manager_task(void *pvParameter)
 {
@@ -385,13 +385,13 @@ static void conn_pwr_ctrl_manager_task(void *pvParameter)
             switch (pwr_ctrl_sm.inv_pwr_ctrl_state)
             {
                 case IVPMGR0STATE_STANDBY:
-                    /* Powered OFF state - Device functionality not available 
+                    /* Powered OFF state - Device functionality not available
                        At system startup the device will enter into standby mode
                     */
 #if CONN_PWR_DEBUG_LOG
                     LOG(I, "invent_pwr_mode = %d, veh_running_status = %d", pwr_ctrl_sm.invent_pwr_mode, pwr_ctrl_sm.veh_running_status);
 #endif
-                    if ( ( IV0PWRON_ON           == pwr_ctrl_sm.invent_pwr_mode    ) && 
+                    if ( ( IV0PWRON_ON           == pwr_ctrl_sm.invent_pwr_mode    ) &&
                          ( VEHICLE_STATUS_HALTED == pwr_ctrl_sm.veh_running_status ) )
                     {
                         start_filter_timer();
@@ -403,7 +403,7 @@ static void conn_pwr_ctrl_manager_task(void *pvParameter)
                     break;
 
                 case IVPMGR0STATE_ACTIVE:
-                    if ( ( IV0PWRON_OFF           == pwr_ctrl_sm.invent_pwr_mode    ) || 
+                    if ( ( IV0PWRON_OFF           == pwr_ctrl_sm.invent_pwr_mode    ) ||
                          ( VEHICLE_STATUS_RUNNING == pwr_ctrl_sm.veh_running_status ) )
                     {
                         stop_filter_timer(&pwr_ctrl_sm);
@@ -423,7 +423,7 @@ static void conn_pwr_ctrl_manager_task(void *pvParameter)
                     break;
 
                 case IVPMGR0STATE_STORAGE:
-                    if ( ( IV0PWRON_OFF           == pwr_ctrl_sm.invent_pwr_mode    ) || 
+                    if ( ( IV0PWRON_OFF           == pwr_ctrl_sm.invent_pwr_mode    ) ||
                          ( VEHICLE_STATUS_RUNNING == pwr_ctrl_sm.veh_running_status ) )
                     {
                         /* When the device is powered OFF..Then the storage mode will be inactive */
@@ -481,7 +481,7 @@ char* debug_arr_ch_stat[] = {
   */
 static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
 {
-    TickType_t task_frequency = (TickType_t)pdMS_TO_TICKS(5000); 
+    TickType_t task_frequency = (TickType_t)pdMS_TO_TICKS(5000);
     TickType_t last_wake_time = xTaskGetTickCount();
 #if (EN_POOR_SOURCE_CHECK == 1)
     uint16_t src_check_count = 0;
@@ -493,16 +493,18 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
     float vbat = 0.0f;
     float vsys = 0.0f;
     //float f_ibus = 0.0f;
-    int16_t i16_ibus = 0; 
+    int16_t i16_ibus = 0;
     //float f_ibat = 0.0f;
     int16_t i16_ibat = 0;
     int16_t i16_tdie = 0;
-    float ichg = 0.0f;
-    float iterm = 0.0f;
     float f_ts  = 0.0f;
     float f_tdie = 0.0f;
+#if CONN_PWR_DEBUG_LOG
+    float ichg = 0.0f;
+    float iterm = 0.0f;
     float f_vsysmin = 0.0f;
     float f_ch_v_lim = 0.0f;
+#endif
 
     REG00_MINIMAL_SYS_VOLTAGE  min_sys_volt_limit;
     REG01_CHARGE_VOLTAGE_LIMIT ch_volt_lim_reg;
@@ -536,7 +538,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 update_active_source_flag = 0;
                 update_active_power_source();
             }
-            
+
             display_bms_info_timer ++;
             if(display_bms_info_timer > 0)
             {
@@ -550,7 +552,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 LOG(I, "VRECHG 0x%x | VRECHG = %d mV", rechg_ctrl_reg.VRECHG, ( rechg_ctrl_reg.VRECHG * 50) + VRECHG_FIXED_OFFSET_MILLIVOLT);
 #endif
                 result = bq25798_read_reg(TIMER_CONTROL_REG0EH, &tmr_ctrl_reg.byte, 1u);
-#if CONN_PWR_DEBUG_LOG                
+#if CONN_PWR_DEBUG_LOG
                 LOG(I, "TIMER_CONTROL_REG0EH 0x%x", tmr_ctrl_reg.byte);
 
                 LOG(I, "TOP_OFF_TMR   0x%x", tmr_ctrl_reg.TOPOFF_TMR);
@@ -565,8 +567,8 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 LOG(I, "TERMINATION_CONTROL_REG09H 0x%x", data_1);
 #endif
                 data_1 = data_1 & 0x1F;
-                iterm = (float)data_1 * 40.0f;
 #if CONN_PWR_DEBUG_LOG
+                iterm = (float)data_1 * 40.0f;
                 LOG(I, "ITERM %f mA", iterm);
 #endif
                 data_1 = 0;
@@ -574,22 +576,22 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 result = bq25798_read_reg(CHARGE_CURRENT_LIMIT_REG03H, (uint8_t*)&data_2, 2u);
 #if CONN_PWR_DEBUG_LOG
                 LOG(I, "CHARGE_CURRENT_LIMIT_REG03H 0x%x", data_2);
-#endif                
+#endif
                 data_2 = SWAP2(data_2);
                 data_2 = data_2 * 10;
-                ichg = (float)data_2 / 1000.0f;
 #if CONN_PWR_DEBUG_LOG
+                ichg = (float)data_2 / 1000.0f;
                 LOG(W, "ICHG = %f Amp", ichg);
-#endif                
+#endif
                 data_2 = 0;
 
                 result = bq25798_read_reg(CHARGE_CONTROL_0_REG0FH, &data_1, 1u);
 #if CONN_PWR_DEBUG_LOG
                 LOG(I, "CHARGE_CTRL_REG0 0x%x", data_1);
-#endif                
+#endif
                 data_1 = 0;
 
-                
+
                 result = bq25798_read_reg(CHARGE_STATUS_0_REG1BH, &ch_stat_0.byte, 1u);
 #if CONN_PWR_DEBUG_LOG
                 LOG(I, "VBUS_PRESENT_STAT = %d", ch_stat_0.VBUS_PRESENT_STAT);
@@ -608,7 +610,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 LOG(I, "BC1_2_DONE_STAT = %d", ch_stat_1.BC1_2_DONE_STAT);
                 LOG(I, "VBUS_STAT = %d", ch_stat_1.VBUS_STAT);
                 LOG(I, "CHG_STAT = %d", ch_stat_1.CHG_STAT);
-#endif                
+#endif
                 if ( ( ch_stat_1.CHG_STAT <= CHARGING_TERMINATION_DONE ) && ( result == RES_PASS ) )
                 {
                     LOG(W, "Charging Status : %s", debug_arr_ch_stat[ch_stat_1.CHG_STAT]);
@@ -621,7 +623,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 LOG(I, "DPDM_STAT = %d", ch_stat_2.DPDM_STAT);
                 LOG(I, "TREG_STAT = %d", ch_stat_2.TREG_STAT);
                 LOG(I, "ICO_STAT = %d", ch_stat_2.ICO_STAT);
-#endif                
+#endif
                 result = bq25798_read_reg(CHARGE_STATUS_4_REG1FH, &ch_stat_4.byte, 1u);
 #if CONN_PWR_DEBUG_LOG
                 LOG(I, "TS_HOT_STAT = %d", ch_stat_4.TS_HOT_STAT);
@@ -637,15 +639,15 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 data_1 = 0;
 
                 result = bq25798_read_reg(MINIMUM_SYSTEM_VOLTAGE_REG0H, &min_sys_volt_limit.byte, 1u);
+#if CONN_PWR_DEBUG_LOG
                 f_vsysmin = ( ( MINIMUM_SYS_VOLT_REG_BIT_STEP_SIZE_MV * min_sys_volt_limit.byte ) + MINIMUM_SYS_VOLT_REG_OFFSET_MV )  / 1000.0f;
-#if CONN_PWR_DEBUG_LOG                
                 LOG(I, "VSYSMIN = %f volt", f_vsysmin);
 #endif
                 result = bq25798_read_reg(CHARGE_VOLTAGE_LIMIT_REG01H, (uint8_t*)&ch_volt_lim_reg.byte2, 2u);
-                f_ch_v_lim = (float)SWAP2(ch_volt_lim_reg.byte2);
 #if CONN_PWR_DEBUG_LOG
+                f_ch_v_lim = (float)SWAP2(ch_volt_lim_reg.byte2);
                 LOG(I, "VREG = %f volt", ((f_ch_v_lim * 10.0f ) / 1000.0f));
-#endif                
+#endif
                 data_2 = 0;
 
                 result = bq25798_read_reg(CHARGE_CURRENT_LIMIT_REG03H, (uint8_t*)&ch_cur_lim_reg.byte2, 2u);
@@ -691,7 +693,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     vbat = (float)data_2 / 1000.0f;
 					battreg_currval.bat_volt = vbat * 100;
                     LOG(W, "VBAT = %f Volt",vbat);
-                   
+
                     data_2 = 0;
 
                     result = bq25798_read_reg(VAC1_ADC_REG37H, (uint8_t*)&data_2, 2u);
@@ -730,7 +732,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     LOG(W, "IBUS = %f Amp",f_ibus);
 
                     data_2 = 0;
-                    
+
                     result = bq25798_read_reg(IBAT_ADC_REG33H, (uint8_t*)&data_2, 2u);
                     LOG(I, "IBAT_ADC_REG33H 0x%x", SWAP2(data_2));
 
@@ -766,13 +768,13 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     LOG(W, "TDIE = %f degC", f_tdie);
                     result = bq25798_start_adc_conversion();
 
-                    LOG(I, "result = %d", result);                   
+                    LOG(I, "result = %d", result);
                 }
-            
+
 
 #if (EN_POOR_SOURCE_CHECK == 1)
 
-                if ( ch_stat_0.POORSRC_STAT == TRUE) 
+                if ( ch_stat_0.POORSRC_STAT == TRUE)
                 {
                     src_check_count++;
                 }
@@ -788,7 +790,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     src_check_count = 0;
                     if( ((ch_stat_0.POORSRC_STAT == 1) && (vbat < BACKUP_BATTERY_LOW_LIMIT) ) || (poor_source_count > = POOR_SOURCE_COUNT_LIMIT ) )
                     {
-                        
+
                         poor_source_flag = TRUE;
 #if CONN_PWR_DEBUG_LOG
                         LOG(W, "[poor_source_found]");
@@ -796,9 +798,9 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     }
                     else
                     {
-                    poor_source_flag = FALSE; 
+                    poor_source_flag = FALSE;
                     }
-                    
+
                     ch_stat_0.POORSRC_STAT = 0;
                     result = bq25798_read_reg(CHARGE_CONTROL_0_REG0FH, &data_1, 1u);
                     data_1 = data_1 & (~ FLAG_EN_HIZ);
@@ -816,7 +818,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 {
                     pwr_ctrl_error_code(PWR_BAT_COOL);
                 }
-                
+
                 if ( (vbat < BACKUP_BATTERY_LOW_THRESHOLD) && (inv_bkup_bat_sts != INV_BATTERY_LOW) )
                 {
                     update_and_send_value_to_broker(IV0MODE, IV0MODE_OFF);
@@ -828,7 +830,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     inv_bkup_bat_sts = INV_BATTERY_LOW;
                     pwr_ctrl_error_code(PWR_BACKUP_BAT_LOW);
                 }
-                else if ( ( vbat > BACKUP_BATTERY_HIGH_THRESHOLD) && (inv_bkup_bat_sts != INV_BATTERY_GOOD) ) 
+                else if ( ( vbat > BACKUP_BATTERY_HIGH_THRESHOLD) && (inv_bkup_bat_sts != INV_BATTERY_GOOD) )
                 {
                     inv_bkup_bat_sts = INV_BATTERY_GOOD;
                     pwr_ctrl_error_code(PWR_BACKUP_BAT_NORMAL);
@@ -838,14 +840,14 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     (BATTERY_STATUS.charging_current_exceed != true) )
                 {
                     /*Battery fully charged reguce charging current to avoid BMS IC heating*/
-                    result = bq25798_set_charging_current_limit(BQ25798_BATTERY_LIMITED_CURRENT); 
+                    result = bq25798_set_charging_current_limit(BQ25798_BATTERY_LIMITED_CURRENT);
                     BATTERY_STATUS.charging_current_exceed = true;
                 }
                 else if ( ( result == RES_PASS ) && ( ch_stat_1.CHG_STAT < CHARGING_TERMINATION_DONE ) && (BATTERY_STATUS.charging_current_exceed != false) )
                 {
-                    result = bq25798_set_charging_current_limit(CHARGE_CURRENT_LIMIT_VALUE); 
+                    result = bq25798_set_charging_current_limit(CHARGE_CURRENT_LIMIT_VALUE);
                     BATTERY_STATUS.charging_current_exceed = false;
-                } 
+                }
             }   //Display_info
         } //Solar_enable
         vTaskDelayUntil(&last_wake_time, task_frequency);
@@ -857,7 +859,7 @@ float bq_read_vbat(void)
     error_type result;
     float vbat_volt = 0.0f;
     uint16_t data_2;
-    
+
     result = bq25798_read_reg(VBAT_ADC_REG3BH, (uint8_t*)&data_2, 2u);
     LOG(I, "VBAT_ADC_REG3BH(%d) 0x%x", result, SWAP2(data_2));
 
@@ -885,7 +887,7 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
 	/* Validate the DDM parameter received */
 	db_idx = get_ddm_index_from_db(ddm_param);
- 
+
 	if ( DDMP_UNAVAILABLE != db_idx )
 	{
         if ( DDMP2_CONTROL_SET == req_type )
@@ -897,7 +899,7 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
 		param_db = &conn_pwr_ctrl_param_db[db_idx];
 
-#if CONN_PWR_DEBUG_LOG		
+#if CONN_PWR_DEBUG_LOG
 		LOG(I, "Valid DDMP parameter");
 #endif
         i32Index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_param));
@@ -913,7 +915,7 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
             {
                 i32value = i32value / i32Factor;
             }
-                
+
 #if CONN_PWR_DEBUG_LOG
             LOG(I, "After factored i32value = %d", i32value);
 #endif
@@ -974,7 +976,7 @@ static void process_subscribe_request(uint32_t ddm_param)
                 {
                     factor = 1;
                 }
-                
+
                 /* Multiply with the factor */
                 value = param_db->i32Value * factor;
 #if CONN_PWR_DEBUG_LOG
@@ -1024,7 +1026,7 @@ static void l_update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t valu
 
 		/* Update the value in db table */
 		param_db->i32Value = value;
-        
+
         index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_parameter));
 
 #if CONN_PWR_DEBUG_LOG
@@ -1034,12 +1036,12 @@ static void l_update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t valu
         if ( -1 != index )
 		{
             factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
-            
+
             if ( factor == 0 )
             {
                 factor = 1;
             }
-                
+
             /* Multiply with the factor */
             factor_value = param_db->i32Value * factor;
             /* Frame and send the publish request */
@@ -1061,13 +1063,13 @@ static void l_update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t valu
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 {
 	conn_pwr_ctrl_parameter_t* param_db;
-	uint8_t db_idx = DDMP_UNAVAILABLE; 
+	uint8_t db_idx = DDMP_UNAVAILABLE;
 	uint8_t index;
 
 	for (index = 0u;  index < conn_pwrctrl_db_elements; index ++)
  	{
 		param_db = &conn_pwr_ctrl_param_db[index];
-      	
+
 		/* Validate the DDM parameter received */
 		if (param_db->ddm_parameter == ddm_param)
 	  	{
@@ -1075,12 +1077,12 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 			break;
 		}
 	}
-	
+
 	return db_idx;
 }
 
 /**
-  * @brief  Initialize the module / hardware peripheral which control's the power 
+  * @brief  Initialize the module / hardware peripheral which control's the power
   * @param  none.
   * @retval none.
   */
@@ -1150,7 +1152,7 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
 
             //if ( ( pwr_ctrl_data_frame->data     == IV0FILST_FILTER_RESET ) &&
             //     ( pwr_ctrl_sm.filter_cur_status == FILTER_TIME_EXPIRED   ) )
-            
+
             if ( ( pwr_ctrl_data_frame->data     == IV0FILST_FILTER_RESET ) )
             {
                 int32_t filt_stat = IV0FILST_FILTER_CHANGE_NOT_REQ;
@@ -1212,7 +1214,7 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
             break;
 
         default:
-            break; 
+            break;
     }
 }
 
@@ -1249,11 +1251,11 @@ static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data)
 
         case IV0SETCHRGCRNT:
             pwr_ctrl_data_frame.data_id = INVENT_SET_CHARGING_CURRENT;
-             break; 
+             break;
 
         case IV0SETT:
             pwr_ctrl_data_frame.data_id = INVENT_EN_DIS_SOLAR;
-            break;    
+            break;
 
         case SNODE0AVL:
             break;
@@ -1274,7 +1276,7 @@ static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data)
 
 
 /**
- * @brief power control timer callback function 
+ * @brief power control timer callback function
  * @param  none.
  * @retval none.
  */
@@ -1313,12 +1315,12 @@ static void start_power_control_timer(void)
   * @param  none.
   * @retval none.
   */
-static void stop_power_control_timer(void)
+static void __attribute__((unused)) stop_power_control_timer(void)
 {
- 
+
     osal_ubase_type_t xPowerControlTimerStopped;
     xPowerControlTimerStopped = xTimerStop( xPowerControl_Timer, portMAX_DELAY );
-	
+
     if ( xPowerControlTimerStopped != pdPASS )
     {
         LOG(E, "Power control Timer stop failed");
@@ -1327,7 +1329,7 @@ static void stop_power_control_timer(void)
 }
 
 /**
- * @brief Filter timer callback function 
+ * @brief Filter timer callback function
  * @param  none.
  * @retval none.
  */
@@ -1365,7 +1367,7 @@ static void start_filter_timer(void)
 }
 
 /**
-  * @brief  Function to add the inventilate state changed request in queue 
+  * @brief  Function to add the inventilate state changed request in queue
   * @param  inv_pwr_ctrl_state State to be transfer.
   * @retval none.
   */
@@ -1405,7 +1407,7 @@ static void stop_filter_timer(PWR_CTRL_SM* ptr_ctrl_sm)
     if ( rem_time_msec < MSEC_PER_MINUTE )
     {
         filter_elap_tim = MSEC_PER_MINUTE - rem_time_msec;             // Elapsed time in millisecond
-        filter_elap_tim = filter_elap_tim / NUM_MILL_SEC_PER_SECOND;   // Elapsed time in seconds 
+        filter_elap_tim = filter_elap_tim / NUM_MILL_SEC_PER_SECOND;   // Elapsed time in seconds
         LOG(I, "The elapsed time of filter = %d", filter_elap_tim);
         ptr_ctrl_sm->filter_sec_counter += filter_elap_tim;
 
@@ -1418,7 +1420,7 @@ static void stop_filter_timer(PWR_CTRL_SM* ptr_ctrl_sm)
     }
 
     xFilterTimerStopped = xTimerStop( xFilterTimer, portMAX_DELAY );
-	
+
     if ( xFilterTimerStopped != pdPASS )
     {
         LOG(E, "Filter Timer stop failed");
@@ -1470,7 +1472,7 @@ static void update_active_power_source(void)
     LOG(W, "Charger flag status changed = 0x%x", chr_flag0_reg.byte);
     LOG(I, "UAPS_VAC1 = %f Volt  VAC2 = %f",vac1, vac2);
 
-    /* Read the STATUS REG1B to get the status of VAC1 and VAC2 */ 
+    /* Read the STATUS REG1B to get the status of VAC1 and VAC2 */
     result  = bq25798_read_reg(CHARGE_STATUS_0_REG1BH, &chr_status0_reg.byte, 1u);
     /* Read the STATUS REG1D to get the status of VBAT */
     result |= bq25798_read_reg(CHARGE_STATUS_2_REG1DH, &chr_status2_reg.byte, 1u);
@@ -1480,7 +1482,7 @@ static void update_active_power_source(void)
     {
         LOG(W, "CHARGE_STATUS_0_REG1BH 0x%x", chr_status0_reg.byte);
         LOG(W, "CHARGE_STATUS_2_REG1DH 0x%x", chr_status2_reg.byte);
-                
+
         result = bq25798_read_reg(CHARGE_CONTROL_0_REG0FH, &data_ccreg, 1u);
         //if ( data_ccreg & 0x04 )
         {
@@ -1494,8 +1496,8 @@ static void update_active_power_source(void)
        if ( ( IS_VAC2_AVAIL(chr_status0_reg.byte)                )  &&  // VAC2 car battery is avilable
                   ( curr_active_src != IV0PWRSRC_12V_CAR_BATTERY_INPUT ) )    // Current active source in not a CAR battery
         {
-            
-            
+
+
             /* VAC2 Car battery is available */
             LOG(W, "VAC2 Car battery is available ");
             if ( ( IS_VALID_BAT_PWR_AVAIL(chr_status2_reg.byte) ) )
@@ -1507,7 +1509,7 @@ static void update_active_power_source(void)
 
                 chg_ctrl_reg4.B6_EN_ACDRV1 = 0; // Disable VAC1 Solar
                 chg_ctrl_reg4.B7_EN_ACDRV2 = 1; // Select VAC2 12V
-         
+
                 result = bq25798_disable_mppt();
                 result = bq25798_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
 
@@ -1527,12 +1529,12 @@ static void update_active_power_source(void)
                     ( IS_VAC2_AVAIL(chr_status0_reg.byte) == 0                )  &&  // VAC2 car battery is not avilable
                     ( curr_active_src != IV0PWRSRC_SOLAR_POWER_INPUT ) )
         {
-            /* As per the system requirment/design solarpower(VAC1) will be primary source 
-               So whenever the valid solar power is available having the capable of driving the system 
+            /* As per the system requirment/design solarpower(VAC1) will be primary source
+               So whenever the valid solar power is available having the capable of driving the system
                Source shall be switch from the CAR battery source (VAC2) to solar power (VAC1) */
-			
+
 			LOG(W, "VAC1 solar power is available");
-            
+
             if  ( IS_VALID_BAT_PWR_AVAIL(chr_status2_reg.byte) )                      //Chk the solar power for good range
             {
                 /* Source switching should be done only when the battery power is avilable..
@@ -1542,7 +1544,7 @@ static void update_active_power_source(void)
 
                 chg_ctrl_reg4.B6_EN_ACDRV1 = 1; // Select VAC1  Solar
                 chg_ctrl_reg4.B7_EN_ACDRV2 = 0; // Disable  VAC2 12V CAR Battery
-         
+
                 result = bq25798_enable_mppt();
                 result = bq25798_write_reg(CHARGE_CONTROL_4_REG13H, &chg_ctrl_reg4.byte, ONE_BYTE);
 
@@ -1552,10 +1554,10 @@ static void update_active_power_source(void)
                     /* Update the current active source as VAC1 solar */
                     curr_active_src = IV0PWRSRC_SOLAR_POWER_INPUT;
                     LOG(W, "Active power source is VAC1 solar");
-                    
+
                 }
 
-                
+
             }
             else
             {
@@ -1601,7 +1603,7 @@ void battery_ic_interrupt_cb(int device, int port, int pin)
     switch (batt_ch_intr_stat)
     {
         case BATT_CH_STATE_IC_INIT:
-            
+
             if ( BQ25798_PART_NUMBER == bq25798_get_chip_id() )
             {
                 /* Update the active power source detected at startup */
@@ -1647,7 +1649,7 @@ void battery_ic_interrupt_cb(int device, int port, int pin)
                 if ( ( result != RES_FAIL ) && ( chr_flag1_reg.byte != 0 ) )
                 {
                     update_interrupt_event = 1;
-                    /* CHARGER_FLAG_1_REG23H */                   
+                    /* CHARGER_FLAG_1_REG23H */
                 }
                 result  = bq25798_read_reg(CHARGE_STATUS_0_REG1BH, &chr_status0_reg.byte, 1u);
             }
@@ -1759,4 +1761,4 @@ int16_t power_consumption(void)
 
     return isys;
 }
-#endif /*CONNECTOR_POWER_CONTROL_SERVICE*/ 
+#endif /*CONNECTOR_POWER_CONTROL_SERVICE*/

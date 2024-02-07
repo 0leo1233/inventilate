@@ -53,13 +53,15 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #define FIRMWARE_STRING				"DICM Inventilate"
 #define HARDWARE_STRING				"Dometic Inventilate Rev 4.3"
 #define DEFAULT_DEVICE_NAME_PREFIX	"INV_"
-#define INVENT_HARWARE_VERSION      HW_VERSION_4_3
+#define INVENT_HARWARE_VERSION      HW_VERSION_4_1
 
 #endif
 
 // Disable switching to external crystal due to hardware bug (missing resistor)
 #define CONFIG_RTC_CLK_SWITCH_TO_EXT_XTAL 0
 #define LINDEV_GENERIC_VERBOSE_LOG	0
+
+#define CONNECTOR_LOG_SERVICE_RINGBUFFER_SIZE  (20*1024)
 
 #define CHIP_TYPE_INTERNAL_BME688  0
 #define BME68X_CHIP_TYPE           CHIP_TYPE_INTERNAL_BME688
@@ -93,6 +95,9 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #if defined(CONNECTOR_WIFI)
 #define WIFI_NETWORK_STA
 #define WIFI_NETWORK_AP
+#define BUILD_STATION_SSID            "Dometic_Guestzone"
+#define BUILD_STATION_PASSWORD        "Mobileliving"
+
 #endif
 
 #if defined (CONNECTOR_BLE)
@@ -149,9 +154,9 @@ EN_IONIZER_FLAG - Defined
 //#define EN_IONIZER_FLAG
 #ifndef INVENT_EOL_TESTING
 #define DICM_APPLICATION_CONNECTOR_EXTERN()\
+        extern CONNECTOR connector_onboard_hmi;\
         extern CONNECTOR connector_diffpress_sensor;\
         extern CONNECTOR connector_voc_sensor;\
-        extern CONNECTOR connector_onboard_hmi;\
         extern CONNECTOR connector_pwr_ctrl_service;\
         extern CONNECTOR connector_pwm_fan_motor;
 
@@ -183,22 +188,22 @@ EN_IONIZER_FLAG - Defined
 
 #endif
 
-#define CONNECTOR_EOL_CTRL_TASK_PRIORITY				((unsigned short)    5u)
-#define CONNECTOR_EOL_PROCESS_TASK_PRIORITY				((unsigned short)    6u)
-#define CONNECTOR_FAN_MOTOR_PROCESS_TASK_PRIORITY		((unsigned short)    7u)
-#define CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_PRIORITY	((unsigned short)    8u)
-#define CONNECTOR_LIGHT_PROCESS_TASK_PRIORITY			((unsigned short)   10u)
-#define CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY			((unsigned short)   11u)
-#define CONNECTOR_VOC_PROCESS_TASK_PRIO					((unsigned short)   12u)
-#define CONNECTOR_PWR_CTRL_SERV_TASK_PRIORITY			((unsigned short)   13u)
-#define CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY			((unsigned short)   14u)
-#define CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY			((unsigned short)   15u)
-#define CONNECTOR_ONBOARD_HMI_CTRL_TASK_PRIORITY		((unsigned short)   16u)
-#define CONNECTOR_DIFFPRESS_PROCESS_TASK_PRIORITY		((unsigned short)   17u)
-#define CONNECTOR_DIFFPRESS_READ_TASK_PRIORITY			((unsigned short)   18u)
-#define CONNECTOR_FAN_MOTOR_CTRL_TASK_PRIORITY			((unsigned short)   19u)
-#define CONNECTOR_VOC_I2C_RD_SERVICE_TASK_PRIO			((unsigned short)   20u)
-#define CONNECTOR_OBHMI_BTN_TASK_TASK_PRIORITY			((unsigned short)   8u)
+#define CONNECTOR_EOL_CTRL_TASK_PRIORITY				((unsigned short)    3u)    // xTASK_PRIORITY_NORMAL
+#define CONNECTOR_EOL_PROCESS_TASK_PRIORITY				((unsigned short)    3u)    // xTASK_PRIORITY_NORMAL
+#define CONNECTOR_FAN_MOTOR_PROCESS_TASK_PRIORITY		((unsigned short)    3u)    // xTASK_PRIORITY_NORMAL
+#define CONNECTOR_FAN_MOTOR_TACHO_READ_TASK_PRIORITY	((unsigned short)    4u)    // xTASK_PRIORITY_ABOVE_NORMAL
+#define CONNECTOR_LIGHT_PROCESS_TASK_PRIORITY			((unsigned short)    3u)    // xTASK_PRIORITY_NORMAL
+#define CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY			((unsigned short)    4u)    // xTASK_PRIORITY_ABOVE_NORMAL
+#define CONNECTOR_VOC_PROCESS_TASK_PRIO					((unsigned short)    3u)    // xTASK_PRIORITY_NORMAL
+#define CONNECTOR_PWR_CTRL_SERV_TASK_PRIORITY			((unsigned short)    3u)    // xTASK_PRIORITY_NORMAL
+#define CONNECTOR_PWR_CTRL_MNGR_TASK_PRIORITY			((unsigned short)    4u)    // xTASK_PRIORITY_ABOVE_NORMAL
+#define CONNECTOR_PWR_CTRL_BMS_TASK_PRIORITY			((unsigned short)    5u)    // xTASK_PRIORITY_HIGH
+#define CONNECTOR_ONBOARD_HMI_CTRL_TASK_PRIORITY		((unsigned short)    4u)    // xTASK_PRIORITY_ABOVE_NORMAL
+#define CONNECTOR_DIFFPRESS_PROCESS_TASK_PRIORITY		((unsigned short)    3u)    // xTASK_PRIORITY_NORMAL
+#define CONNECTOR_DIFFPRESS_READ_TASK_PRIORITY			((unsigned short)    4u)    // xTASK_PRIORITY_ABOVE_NORMAL
+#define CONNECTOR_FAN_MOTOR_CTRL_TASK_PRIORITY			((unsigned short)    5u)    // xTASK_PRIORITY_HIGH
+#define CONNECTOR_VOC_I2C_RD_SERVICE_TASK_PRIO			((unsigned short)    5u)    // xTASK_PRIORITY_HIGH
+#define CONNECTOR_OBHMI_BTN_TASK_TASK_PRIORITY			((unsigned short)    6u)    // xTASK_PRIORITY_HIGH + 1
 
 #define CONNECTOR_ONBOARDHMI_PROCESS_TASK_NAME			((const char* const) "con_ohmi_pro_tk")
 #define CONNECTOR_ONBOARDHMI_PWR_CTRL_TASK_NAME			((const char* const) "con_ohmi_pwc_tk")

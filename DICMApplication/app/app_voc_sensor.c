@@ -17,7 +17,7 @@
 #include "hal_cpu.h"
 #include <string.h>
 
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
+#if (CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1)
 
 #include "bsec_interface.h"
 #include "bsec_integration_2_x.h"
@@ -25,9 +25,9 @@
 
 #include "bsec_serialized_configurations_selectivity.h"
 
-#if ( BME68X_CHIP_TYPE == CHIP_TYPE_INTERNAL_BME688 )
+#if (BME68X_CHIP_TYPE == CHIP_TYPE_INTERNAL_BME688)
 #define BME68X_I2C_ADDR BME68X_I2C_ADDR_LOW
-#elif ( BME68X_CHIP_TYPE == CHIP_TYPE_EXTERNAL_BME688 )
+#elif (BME68X_CHIP_TYPE == CHIP_TYPE_EXTERNAL_BME688)
 #define BME68X_I2C_ADDR BME68X_I2C_ADDR_HIGH
 #else
 #define BME68X_I2C_ADDR BME68X_I2C_ADDR_LOW
@@ -36,7 +36,7 @@
 #endif
 
 #define APP_VOC_DEBUG_LOG 0
-#define APP_VOC_LOG         0
+#define APP_VOC_LOG 0
 #define BSEC_FLASH_KEY (const char *)"bsec"
 
 /* Struct instance for read_service */
@@ -50,7 +50,7 @@ static uint32_t config_load_func(uint8_t *config_buffer, uint32_t n_buffer);
 static int64_t get_timestamp_us(void);
 static void state_save_func(const uint8_t *state_buffer, uint32_t length);
 
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
+#if (CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1)
 static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out);
 static BME68X_INTF_RET_TYPE bme68x_write_i2c(uint8_t reg_addr, const uint8_t *data, uint32_t len, void *intf_ptr);
 static BME68X_INTF_RET_TYPE bme68x_read_i2c(uint8_t reg_addr, uint8_t *data, uint32_t len, void *intf_ptr);
@@ -58,7 +58,7 @@ static void bsec_delay_us(uint32_t period, void *intf_ptr);
 static void update_voc_sens_to_broker(bme68x_bsec_output *bsec_out);
 #endif
 
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
+#if (CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1)
 
 /*! \brief  This function provides write functionality to the BME688 sensor.
  *
@@ -74,11 +74,11 @@ static BME68X_INTF_RET_TYPE bme68x_write_i2c(uint8_t reg_addr, const uint8_t *da
 {
     uint8_t txbuf[20] = { 0 };
 
-    if ( len > ( sizeof(txbuf) / sizeof( txbuf[0] ) - 1 ) )
+    if (len > (sizeof(txbuf) / sizeof(txbuf[0]) - 1))
     {
         return true;   // Data to long for transfer buffer.
     }
-    
+
     txbuf[0] = reg_addr;
     memcpy(&txbuf[1], data, len);
 
@@ -96,7 +96,7 @@ static BME68X_INTF_RET_TYPE bme68x_write_i2c(uint8_t reg_addr, const uint8_t *da
  *  \return 0 if successful. Any other value otherwise.
  */
 static BME68X_INTF_RET_TYPE bme68x_read_i2c(uint8_t reg_addr, uint8_t *data, uint32_t len, void *intf_ptr)
-{   
+{
     return hal_i2c_master_writeread(I2C_NUM_0, BME68X_I2C_ADDR, &reg_addr, 1, data, (size_t)len);
 }
 
@@ -120,14 +120,14 @@ static void bsec_delay_us(uint32_t period, void *intf_ptr)
   */
 static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
 {
-    if ( bsec_out != NULL )
-    { 
-        
+    if (bsec_out != NULL)
+    {
+
 #if APP_VOC_DEBUG_LOG
 
 #ifndef CONFIG_DICM_SUPPORT_INVENT_SERIAL_BME68X_BSEC_LOGS
 
-    #ifdef BME68X_USE_FPU
+#ifdef BME68X_USE_FPU
         LOG(I, "IAQ:[%f]", bsec_out->iaq.data);
         LOG(I, "Temperature:[%f]", bsec_out->raw_temperature.data);
         LOG(I, "Pressure:[%f]", bsec_out->raw_pressure.data);
@@ -138,21 +138,19 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
         LOG(I, "Accuracy:[%d]", bsec_out->iaq.accuracy);
         LOG(I, "Stabilization_status:[%f]", bsec_out->stabilization_status.data);
         LOG(I, "run_in_status:[%f]", bsec_out->run_in_status.data);
-#else   //BME68X_USE_FPU       
-        LOG(I, "IAQ:[%d]",                  bsec_out->iaq.data);
-        LOG(I, "Temperature:[%d]",          bsec_out->raw_temperature.data);
-        LOG(I, "Pressure:[%d]",             bsec_out->raw_pressure.data);
-        LOG(I, "Humidity:[%d]",             bsec_out->raw_humidity.data);
-        LOG(I, "GasResistance:[%d]",        bsec_out->raw_gas.data);
-        LOG(I, "CO2_equivalent:[%d]",       bsec_out->co2_equivalent.data);
-        LOG(I, "Breath_voc_eq:[%d]",        bsec_out->breath_voc_eq.data);
-        LOG(I, "Accuracy:[%d]",             bsec_out->iaq.accuracy);
+#else   //BME68X_USE_FPU
+        LOG(I, "IAQ:[%d]", bsec_out->iaq.data);
+        LOG(I, "Temperature:[%d]", bsec_out->raw_temperature.data);
+        LOG(I, "Pressure:[%d]", bsec_out->raw_pressure.data);
+        LOG(I, "Humidity:[%d]", bsec_out->raw_humidity.data);
+        LOG(I, "GasResistance:[%d]", bsec_out->raw_gas.data);
+        LOG(I, "CO2_equivalent:[%d]", bsec_out->co2_equivalent.data);
+        LOG(I, "Breath_voc_eq:[%d]", bsec_out->breath_voc_eq.data);
+        LOG(I, "Accuracy:[%d]", bsec_out->iaq.accuracy);
         LOG(I, "Stabilization_status:[%d]", bsec_out->stabilization_status.data);
-        LOG(I, "run_in_status:[%d]",        bsec_out->run_in_status.data);
+        LOG(I, "run_in_status:[%d]", bsec_out->run_in_status.data);
 #endif  //BME68X_USE_FPU
-
 #else   // CONFIG_DICM_SUPPORT_INVENT_SERIAL_BME68X_BSEC_LOGS
-            
         LOG_TEST(I, "IAQ:[%d]", bsec_out->iaq.data);
         LOG_TEST(I, "Temperature:[%d]", bsec_out->raw_temperature.data);
         LOG_TEST(I, "Pressure:[%d]", bsec_out->raw_pressure.data);
@@ -163,13 +161,11 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
         LOG_TEST(I, "Accuracy:[%d]", bsec_out->iaq.accuracy);
         LOG_TEST(I, "Stabilization_status:[%d]", bsec_out->stabilization_status.data);
         LOG_TEST(I, "run_in_status:[%d]", bsec_out->run_in_status.data);
-            
 #endif  // CONFIG_DICM_SUPPORT_INVENT_SERIAL_BME68X_BSEC_LOGS
-
 #endif  //APP_VOC_DEBUG_LOG
 
         /*Send IAQ data to broker whenever data changes*/
-        if ( inst_read_service.iaq_index != bsec_out->iaq.data )
+        if (inst_read_service.iaq_index != bsec_out->iaq.data)
         {
             /* store the new IAQ index value */
             inst_read_service.iaq_index = bsec_out->iaq.data;
@@ -188,7 +184,7 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
     }
     else
     {
-        LOG(I,"[Bme68x_output_ready_error]");
+        LOG(I, "[Bme68x_output_ready_error]");
     }
 }
 
@@ -200,16 +196,16 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
 void update_voc_sens_to_broker(bme68x_bsec_output *bsec_out)
 {
 	/* Update the newly calculated value of IAQ index in data base and publish to broker */
-	update_and_publish_to_broker(  SBMEB0IAQ, bsec_out->iaq.data);
-	update_and_publish_to_broker( SBMEB0TEMP, bsec_out->raw_temperature.data);
-	update_and_publish_to_broker(  SBMEB0PRS, bsec_out->raw_pressure.data);
-	update_and_publish_to_broker(  SBMEB0HUM, bsec_out->raw_humidity.data);
-	update_and_publish_to_broker(  SBMEB0GAS, bsec_out->raw_gas.data);
-	update_and_publish_to_broker(  SBMEB0CO2, bsec_out->co2_equivalent.data);
-	update_and_publish_to_broker(  SBMEB0VOC, bsec_out->breath_voc_eq.data);
-	update_and_publish_to_broker(  SBMEB0SST, bsec_out->stabilization_status.data);
-	update_and_publish_to_broker(  SBMEB0RIS, bsec_out->run_in_status.data);
-	update_and_publish_to_broker(  SBMEB0AQR, bsec_out->iaq.accuracy);       // DDMP need to be update after changed in Master DDMP
+	update_and_publish_to_broker(SBMEB0IAQ, bsec_out->iaq.data);
+	update_and_publish_to_broker(SBMEB0TEMP, bsec_out->raw_temperature.data);
+	update_and_publish_to_broker(SBMEB0PRS, bsec_out->raw_pressure.data);
+	update_and_publish_to_broker(SBMEB0HUM, bsec_out->raw_humidity.data);
+	update_and_publish_to_broker(SBMEB0GAS, bsec_out->raw_gas.data);
+	update_and_publish_to_broker(SBMEB0CO2, bsec_out->co2_equivalent.data);
+	update_and_publish_to_broker(SBMEB0VOC, bsec_out->breath_voc_eq.data);
+	update_and_publish_to_broker(SBMEB0SST, bsec_out->stabilization_status.data);
+	update_and_publish_to_broker(SBMEB0RIS, bsec_out->run_in_status.data);
+	update_and_publish_to_broker(SBMEB0AQR, bsec_out->iaq.accuracy);       // DDMP need to be update after changed in Master DDMP
 }
 
 /**
@@ -222,7 +218,7 @@ static uint32_t config_load_func(uint8_t *config_buffer, uint32_t n_buffer)
 {
     uint32_t buffer_size = sizeof(bsec_config_selectivity);
 
-	if ( config_buffer != NULL )
+	if (config_buffer != NULL)
 	{
 		// ...
 		// Load a library config from non-volatile memory, if available.
@@ -239,18 +235,18 @@ static uint32_t config_load_func(uint8_t *config_buffer, uint32_t n_buffer)
 /**
   * @brief  Const structure initilazed for bme688 sensor
   */
-const BME6X_BSEC_LIB_INTERFACE g_bsec_lib_intf = 
+const BME6X_BSEC_LIB_INTERFACE g_bsec_lib_intf =
 {
-    .bus_read           = bme68x_read_i2c,
-    .bus_write          = bme68x_write_i2c,
-    .delay_us           = bsec_delay_us,
-    .get_time_stamp_us  = get_timestamp_us,
-    .output_ready       = bme68x_output_ready_cb,
-    .config_load        = config_load_func,
-    .state_load         = state_load_func,
-    .state_save         = state_save_func,
+    .bus_read = bme68x_read_i2c,
+    .bus_write = bme68x_write_i2c,
+    .delay_us = bsec_delay_us,
+    .get_time_stamp_us = get_timestamp_us,
+    .output_ready = bme68x_output_ready_cb,
+    .config_load = config_load_func,
+    .state_load = state_load_func,
+    .state_save = state_save_func,
     .temperature_offset = BME68X_TEMPERATURE_OFFSET,
-    .sample_rate        = BSEC_SAMPLE_RATE_LP,
+    .sample_rate = BSEC_SAMPLE_RATE_LP,
 };
 
 #endif
@@ -263,7 +259,7 @@ const BME6X_BSEC_LIB_INTERFACE g_bsec_lib_intf =
   */
 static void state_save_func(const uint8_t *state_buffer, uint32_t length)
 {
-    if ( state_buffer != NULL )
+    if (state_buffer != NULL)
     {
         hal_nvs_write(BSEC_FLASH_KEY, HAL_NVS_DATA_TYPE_BLOB, (const void *)state_buffer, length);
     }
@@ -278,13 +274,13 @@ static void state_save_func(const uint8_t *state_buffer, uint32_t length)
 static uint32_t state_load_func(uint8_t *state_buffer, uint32_t n_buffer)
 {
 	uint32_t size = 0;
-    
-    if ( state_buffer != NULL )
+
+    if (state_buffer != NULL)
     {
-        hal_nvs_read(BSEC_FLASH_KEY, HAL_NVS_DATA_TYPE_BLOB, (void*)state_buffer, n_buffer);      
+        hal_nvs_read(BSEC_FLASH_KEY, HAL_NVS_DATA_TYPE_BLOB, (void*)state_buffer, n_buffer);
         size = n_buffer;
     }
-    
+
     return size;
 }
 
@@ -294,15 +290,15 @@ static uint32_t state_load_func(uint8_t *state_buffer, uint32_t n_buffer)
   * @retval time stamp in nano second.
   */
 int64_t get_timestamp_us(void)
-{ 
+{
    volatile int64_t time_stamp_us;
    volatile TickType_t time_ms;
    volatile TickType_t cur_tick = xTaskGetTickCount();
 
    time_ms = pdTICKS_TO_MS(cur_tick);
 
-   time_stamp_us =  (int64_t)((int64_t)time_ms * (int64_t)1000);
-   
+   time_stamp_us = (int64_t)((int64_t)time_ms * (int64_t)1000);
+
    return time_stamp_us;
 }
 

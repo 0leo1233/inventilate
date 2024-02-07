@@ -32,7 +32,6 @@ extern const BME6X_BSEC_LIB_INTERFACE g_bsec_lib_intf;
 
 /* Static function declarations */
 static int initialize_connector_voc_sensor(void);
-static int add_subscription(DDMP2_FRAME *pframe);
 static void conn_voc_process_task(void *pvParameter);
 static void conn_voc_read_task(void *pvParameter);
 static void handle_subscribe(uint32_t ddm_param);
@@ -72,14 +71,12 @@ static conn_voc_sensor_param_t conn_voc_sensor_param_db[] =
    {     SBMEB0SST, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
    {     SBMEB0RIS, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
    {     SBMEB0AQR, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
-   {       IV0AQST, 	DDM2_TYPE_INT32_T,   1,   0,      IV0AQST_AIR_QUALITY_UNKNOWN,         			 NULL},
+   {       IV0AQST, 	DDM2_TYPE_INT32_T,   0,   1,      IV0AQST_AIR_QUALITY_UNKNOWN,         			 NULL},
    {  IVPMGR0STATE, 	DDM2_TYPE_INT32_T,   0,   1,							    0,     pwr_state_callback},
    {    IV0STORAGE,     DDM2_TYPE_INT32_T, 	 0,   1, 	                            0,                   NULL},
    {       IV0STGT,     DDM2_TYPE_INT32_T, 	 0,   1, 	                            0,        storage_mode_cb},
    {      IV0ERRST,     DDM2_TYPE_INT32_T, 	 0,   1, 	                            0,  inv_err_stat_callback},
 };
-
-DECLARE_SORTED_LIST_EXTRAM(conn_voc_sens_table, CONN_VOC_SENS_SUB_DEPTH);       //!< \~ Subscription table storage
 
 /* Calculate the connector voc database table num elements */
 static const uint32_t conn_voc_db_elements = ELEMENTS(conn_voc_sensor_param_db);
@@ -93,21 +90,21 @@ static int initialize_connector_voc_sensor(void)
 {
     /* Initialize the BSEC library interface with all the required function callbacks */
     init_bsec_lib_interface();
-    
+
     /* Create queue for invent control task */
     voc_sens_queue = osal_queue_create(VOC_SENSOR_QUEUE_LENGTH, VOC_SENSOR_QUEUE_ITEM_SIZE);
 
-    if ( NULL != voc_sens_queue )
+    if (NULL != voc_sens_queue)
     {
         LOG(I, "Queue creation done for voc sensor");
     }
+    install_parameters();
+    start_subscribe();
+    start_publish();
 
 	TRUE_CHECK(osal_task_create(conn_voc_process_task, CONNECTOR_VOC_SENSOR_PROCESS_TASK_NAME, CONNECTOR_VOC_PROCESS_TASK_STACK_DEPTH, NULL, CONNECTOR_VOC_PROCESS_TASK_PRIO, NULL));
 	TRUE_CHECK(osal_task_create(conn_voc_read_task, CONNECTOR_VOC_SENSOR_CONTROL_TASK_NAME, CONNECTOR_VOC_I2C_RD_SERVICE_TASK_DEPTH, NULL, CONNECTOR_VOC_I2C_RD_SERVICE_TASK_PRIO, NULL));
 
-	install_parameters();
-    start_subscribe();
-    start_publish();
 
 	return 1;
 }
@@ -136,7 +133,6 @@ static void conn_voc_process_task(void *pvParameter)
 			break;
 
 		case DDMP2_CONTROL_SUBSCRIBE:/*Send the request for the data*/
-			add_subscription(pframe);//Check if this can be done during initializtion
 			handle_subscribe(pframe->frame.subscribe.parameter);
 			break;
 
@@ -144,7 +140,7 @@ static void conn_voc_process_task(void *pvParameter)
 #if CONN_PWM_DEBUG_LOG
             LOG(I, "Received DDMP2_CONTROL_REG device_class = 0x%x", pframe->frame.reg.device_class);
 #endif
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, pframe->frame.reg.device_class, &available, 
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, pframe->frame.reg.device_class, &available,
                         sizeof(int32_t), connector_voc_sensor.connector_id, portMAX_DELAY));
             break;
 
@@ -165,12 +161,12 @@ static void conn_voc_process_task(void *pvParameter)
 static void conn_voc_read_task(void *pvParameter)
 {
     while (1)
-	{      
+	{
         /* State macine to read VOC sensor */
-#if ( CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1 )
+#if (CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1)
         /* Continous loop function to read and process the sensor data and calc IAQ */
         bsec_processing_loop(voc_sens_queue);
-#endif 
+#endif
     }
 }
 
@@ -196,12 +192,12 @@ static void start_subscribe(void)
 	conn_voc_sensor_param_t *ptr_param_db;
 	uint8_t db_idx;
 
-	for ( db_idx = 0; db_idx < conn_voc_db_elements; db_idx++ )
+	for (db_idx = 0; db_idx < conn_voc_db_elements; db_idx++)
 	{
 		ptr_param_db = &conn_voc_sensor_param_db[db_idx];
-        
+
         /* Check the DDM parameter need subscribtion */
-		if ( ptr_param_db->sub )
+		if (ptr_param_db->sub)
 		{
             LOG(I, "Subscribed DDMP for %s is 0x%x", connector_voc_sensor.name, ptr_param_db->ddm_parameter);
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_voc_sensor.connector_id, portMAX_DELAY));
@@ -218,13 +214,13 @@ static void start_publish(void)
 {
     conn_voc_sensor_param_t *ptr_param_db;
     uint16_t db_idx;
-    
-    for ( db_idx = 0; db_idx < conn_voc_db_elements; db_idx++ )
+
+    for (db_idx = 0; db_idx < conn_voc_db_elements; db_idx++)
     {
         ptr_param_db = &conn_voc_sensor_param_db[db_idx];
 
         /* Check the DDM parameter need to publish */
-        if ( ptr_param_db->pub ) 
+        if (ptr_param_db->pub)
         {
             uint32_t param = ptr_param_db->ddm_parameter;
             if (DDM2_PARAMETER_CLASS(ptr_param_db->ddm_parameter) == SBMEB0)
@@ -234,19 +230,6 @@ static void start_publish(void)
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, param, &ptr_param_db->i32Value, sizeof(int32_t), connector_voc_sensor.connector_id, portMAX_DELAY));
         }
     }
-}
-
-/**
-  * @brief  Add device to inventory if it does not already exists
-  * @param  DDMP Frame.
-  * @retval result 0 - Succesfully added to list / 1 - Fail.
-  */
-static int add_subscription(DDMP2_FRAME *pframe)
-{
-    SORTED_LIST_KEY_TYPE     key = pframe->frame.subscribe.parameter;
-    SORTED_LIST_VALUE_TYPE value = 1;
-
-    return sorted_list_single_add(&conn_voc_sens_table, key, value);
 }
 
 /**
@@ -262,44 +245,38 @@ static void handle_subscribe(uint32_t ddm_parameter)
     bool sent = false;
     int32_t value = 0;
 	conn_voc_sensor_param_t* param_db;
-    uint32_t list_value = 0;
-    SORTED_LIST_RETURN_VALUE ret = sorted_list_unique_get(&list_value, &conn_voc_sens_table, ddm_parameter, 0);
+    for (db_idx = 0; db_idx < ELEMENTS(conn_voc_sensor_param_db) && (sent == false); db_idx++)
+    {
+        param_db = &conn_voc_sensor_param_db[db_idx];
 
-    if ( SORTED_LIST_FAIL != ret )
-	{
-		for ( db_idx = 0; ( db_idx < ELEMENTS(conn_voc_sensor_param_db) && ( sent == false ) ); db_idx++ )
- 		{
-			param_db = &conn_voc_sensor_param_db[db_idx];
+        /* validate the DDM parameter received */
+        if (param_db->ddm_parameter == ddm_parameter)
+        {
+            index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_parameter));
 
-		 	/* validate the DDM parameter received */
-		 	if ( param_db->ddm_parameter == ddm_parameter )
-	  	 	{
-				index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_parameter));
+            if (-1 != index)
+            {
+                /* Get the factor form list corresponding to the DDM Parameter */
+                factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
 
-                if ( -1 != index )
-	            {
-                    /* Get the factor form list corresponding to the DDM Parameter */
-                    factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
-
-                    if ( factor == 0 )
-                    {
-                        factor = 1;
-                    }
-      
-                    /* Multiply with the factor */
-                    value = param_db->i32Value * factor;
-                    /* Frame and send the publish request */
-		            publish_data_to_broker(ddm_parameter, value);
-                    /* Update flag */
-                    sent = true;
-                }
-                else
+                if (factor == 0)
                 {
-                    LOG(E, "DDMP 0x%x not found in ddm2_parameter_list_lookup", ddm_parameter);
+                    factor = 1;
                 }
-			}
-	    }
-	}
+
+                /* Multiply with the factor */
+                value = param_db->i32Value * factor;
+                /* Frame and send the publish request */
+                publish_data_to_broker(ddm_parameter, value);
+                /* Update flag */
+                sent = true;
+            }
+            else
+            {
+                LOG(E, "DDMP 0x%x not found in ddm2_parameter_list_lookup", ddm_parameter);
+            }
+        }
+    }
 }
 
 /**
@@ -321,10 +298,10 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
 	/* Validate the DDM parameter received */
 	db_idx = get_ddm_index_from_db(ddm_param);
- 
-	if ( DDMP_UNAVAILABLE != db_idx )
+
+	if (DDMP_UNAVAILABLE != db_idx)
 	{
-        if ( req_type == DDMP2_CONTROL_SET )
+        if (req_type == DDMP2_CONTROL_SET)
         {
             /* Frame and send the publish request */
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &pub_value, sizeof(int32_t), connector_voc_sensor.connector_id, portMAX_DELAY));
@@ -332,28 +309,32 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
 		param_db = &conn_voc_sensor_param_db[db_idx];
 
-#if CONN_PWM_DEBUG_LOG		
+#if CONN_PWM_DEBUG_LOG
 		LOG(I, "Valid DDMP parameter");
 #endif
         i32Index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_param));
 
-        if ( -1 != i32Index )
+        if (-1 != i32Index)
         {
-            if (  i32Index < DDM2_PARAMETER_COUNT )
+            if (i32Index < DDM2_PARAMETER_COUNT)
+            {
                 i32Factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[i32Index].in_unit];
+            }
             else
+            {
                 i32Factor = 1;
+            }
 
-            if ( i32Factor > 0 )
+            if (i32Factor > 0)
             {
                 i32value = i32value / i32Factor;
             }
-            if ( i32value != param_db->i32Value )
+            if (i32value != param_db->i32Value)
             {
                 /* Update the received value in the database table*/
 	  	        param_db->i32Value = i32value;
 		        /* Check callback function registered for this DDM parameter */
-		        if  ( NULL != param_db->cb_func )
+		        if  (NULL != param_db->cb_func)
 		        {
                     /* Execute the callback function */
                     param_db->cb_func(ddm_param, i32value);
@@ -388,26 +369,26 @@ bool update_and_publish_to_broker(uint32_t ddm_parameter, int32_t i32Value)
     bool updated = false;
     int factor = 0;
     conn_voc_sensor_param_t* param_db = &conn_voc_sensor_param_db[0u];
-    
-    for ( db_idx = 0u; ( ( db_idx < ELEMENTS(conn_voc_sensor_param_db ) ) && ( updated == false ) ); db_idx++ )
+
+    for (db_idx = 0u; ((db_idx < ELEMENTS(conn_voc_sensor_param_db)) && (updated == false)); db_idx++)
     {
-        if ( param_db->ddm_parameter == ddm_parameter )
+        if (param_db->ddm_parameter == ddm_parameter)
         {
             index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_parameter));
 
-            if ( -1 != index )
+            if (-1 != index)
 	        {
                 /* Get the factor form list corresponding to the DDM Parameter */
                 factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
 
-                if ( factor == 0 )
+                if (factor == 0)
                 {
                     factor = 1;
                 }
 
                 /* Update the value in database */
                 param_db->i32Value = i32Value;
-        
+
                 /* Multiply with the factor */
                 value = param_db->i32Value * factor;
                 /* Frame and send the publish request */
@@ -425,7 +406,7 @@ bool update_and_publish_to_broker(uint32_t ddm_parameter, int32_t i32Value)
         /* Increment the pointer */
         param_db++;
     }
-    
+
     return updated;
 }
 
@@ -437,14 +418,14 @@ bool update_and_publish_to_broker(uint32_t ddm_parameter, int32_t i32Value)
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 {
 	conn_voc_sensor_param_t* param_db;
-	uint8_t db_idx = DDMP_UNAVAILABLE; 
+	uint8_t db_idx = DDMP_UNAVAILABLE;
 	uint8_t index;
 	bool avail = false;
 
 	for ( index = 0u; ( ( index < conn_voc_db_elements ) && ( avail == false ) ); index++ )
  	{
 		param_db = &conn_voc_sensor_param_db[index];
-      	
+
 		/* Validate the DDM parameter received */
 		if ( param_db->ddm_parameter == ddm_param )
 	  	{
@@ -452,7 +433,7 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 			avail = true;
 		}
 	}
-	
+
 	return db_idx;
 }
 
@@ -543,18 +524,18 @@ void bme68x_error_code(const BME68X_ERROR error)
     switch (error)
     {
         case BME68X_COMM_ERROR:
-            err_frame |=  1 << VOC_SENSOR_COMMUNICATION_ERROR;
+            err_frame |=  (1 << VOC_SENSOR_COMMUNICATION_ERROR);
             LOG(I,"voc Err 0");
             break;
 
         case BME68X_DATA_PLAUSIBLE_ERROR:
-            err_frame |=  1 << VOC_SENSOR_DATA_PLAUSIBLE_ERROR;
+            err_frame |=  (1 << VOC_SENSOR_DATA_PLAUSIBLE_ERROR);
             LOG(I,"voc Err 1");
             break;
 
         case BME68X_NO_ERROR:
-            err_frame &= ~( 1 << VOC_SENSOR_COMMUNICATION_ERROR);
-            err_frame &= ~( 1 << VOC_SENSOR_DATA_PLAUSIBLE_ERROR);
+            err_frame &= ~(1 << VOC_SENSOR_COMMUNICATION_ERROR);
+            err_frame &= ~(1 << VOC_SENSOR_DATA_PLAUSIBLE_ERROR);
             LOG(I,"voc Err 3");
             break;
 
@@ -563,11 +544,11 @@ void bme68x_error_code(const BME68X_ERROR error)
             break;
     }
 
-    if ( err_frame != invent_error_stat )
+    if (err_frame != invent_error_stat)
     {
         connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(err_frame), connector_voc_sensor.connector_id, (TickType_t)portMAX_DELAY);
     }
 }
 
-#endif /* CONNECTOR_VOC_SENSOR */ 
+#endif /* CONNECTOR_VOC_SENSOR */
 

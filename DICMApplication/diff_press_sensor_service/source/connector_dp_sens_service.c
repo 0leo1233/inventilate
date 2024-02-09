@@ -47,13 +47,13 @@ typedef struct
 } conn_diff_press_sensor_param_t;
 
 
-#define CONN_DP_SENS_SERV_LOGS  1
+#define CONN_DP_SENS_SERV_LOGS  0
 #define DP_ERR_DEBUG            1
 
 #define DDMP_UNAVAILABLE                        ((uint8_t) 0xFFu)
 #define DP_SENS_QUE_LEN                         ((osal_base_type_t)10)                  //DP sensor Queue length
 #define DP_SENS_QUE_ITEM_SIZE                   ((osal_base_type_t) sizeof(QUE_DATA))   //DPsensor Queue size
-#define BLE_SENSOR_POLL_TIME_TICKS              pdMS_TO_TICKS(60*1000)                  //BLE sensor poll time, 60 s
+#define BLE_SENSOR_POLL_TIME_TICKS              pdMS_TO_TICKS(2*60*1000)                  //BLE sensor poll time, 2*60 s
 #define BLE_SCAN_MAX_RETRY_COUNT                3u                                      //BLE scan retry count
 #define ENABLE_SEND_SDP_SENSOR_DATA             1                                       //Send pressure data enable bit
 #define DISABLE_SEND_SDP_SENSOR_DATA            0                                       //send pressure data disable bit
@@ -686,7 +686,7 @@ static void handle_dpsens_data(uint32_t ddm_param, int32_t data)
 
         case SDP0DP:
             iv_data.data_id = DP_SENS_DATA;
-#ifdef DP_ERR_DEBUG
+#ifdef CONN_DP_SENS_SERV_LOGS
             LOG(I, "DP DATA = %d", iv_data.data);
 #endif
             dpsens_plausible_errchk(iv_data.data);
@@ -838,23 +838,32 @@ static void dpsens_plausible_errchk(int32_t dp_data)
 
     if ((dp_data > DPSENS_PLAUSIBLE_UPRANGE) && (dp_data > 0))
     {
-        err_frame |= 1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR;
+        err_frame |= (1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR);
 #ifdef DP_ERR_DEBUG
-        LOG(I, "DP PLAUSIBLE ERRSET OVER");
+        if ((invent_dp_error_stat & (1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR)) == 0)
+        {
+            LOG(W, "DP PLAUSIBLE ERRSET OVER");
+        }
 #endif
     }
     else if ((dp_data < DPSENS_PLAUSIBLE_DOWNRANGE) && (dp_data < 0))
     {
         err_frame |= (1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR);
 #ifdef DP_ERR_DEBUG
-        LOG(I, "DP PLAUSIBLE ERRSET UNDER");
+        if ((invent_dp_error_stat & (1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR)) == 0)
+        {
+            LOG(W, "DP PLAUSIBLE ERRSET UNDER");
+        }
 #endif
     }
     else if (((dp_data > 0) && (dp_data < DPSENS_PLAUSIBLE_UPRANGE)) || ((dp_data < 0) && (dp_data > DPSENS_PLAUSIBLE_DOWNRANGE)))
     {
-        err_frame &= ~ (1 <<  DP_SENSOR_DATA_PLAUSIBLE_ERROR);
+        err_frame &= ~(1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR);
 #ifdef DP_ERR_DEBUG
-        LOG(I, "No DP PLAUSIBLE ERR");
+        if (invent_dp_error_stat & (1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR))
+        {
+            LOG(I, "No DP PLAUSIBLE ERR");
+        }
 #endif
     }
 
@@ -913,7 +922,6 @@ static void dpsens_connect_errchk(DPSENS_ERROR dpconnect_err)
 
     if (err_frame != invent_dp_error_stat)
     {
-        LOG(D, "err_frame: %x", err_frame);
         TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &err_frame, sizeof(int32_t),
                 connector_diffpress_sensor.connector_id, portMAX_DELAY));
     }

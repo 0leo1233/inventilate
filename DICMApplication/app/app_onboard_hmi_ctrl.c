@@ -23,7 +23,7 @@
 //extern int ble_peri_status; // Tobe defined in BLE_peripheral.c
 int ble_peri_status = 0;
 extern void error_check_ack(void);
-extern void update_blink_info(const uint32_t error_code);
+extern void update_blink_info(const uint32_t error_code, bool update);
 
 void set_err_ackstate(uint8_t errack_l);
 static const hmi_domain_to_ddm_system_t hmi_btn_power_to_ddmp[] =
@@ -218,7 +218,7 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
     if ((BTN_MODE == hmi_btn_evt) && (BUTTON_EVT_SHORT_PRESS == event_type) && (errack != 0))
     {
         error_check_ack();
-        update_blink_info(0);
+        update_blink_info(0, false);
         for (seg = 0; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++)
         {
             uc1510c_set_segment(seg, seg_stat[seg]);

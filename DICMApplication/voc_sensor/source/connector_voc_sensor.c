@@ -71,7 +71,6 @@ static conn_voc_sensor_param_t conn_voc_sensor_param_db[] =
    {     SBMEB0SST, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
    {     SBMEB0RIS, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
    {     SBMEB0AQR, 	DDM2_TYPE_INT32_T,   1,   0,								0,         			 NULL},
-   {       IV0AQST, 	DDM2_TYPE_INT32_T,   0,   1,      IV0AQST_AIR_QUALITY_UNKNOWN,         			 NULL},
    {  IVPMGR0STATE, 	DDM2_TYPE_INT32_T,   0,   1,							    0,     pwr_state_callback},
    {    IV0STORAGE,     DDM2_TYPE_INT32_T, 	 0,   1, 	                            0,                   NULL},
    {       IV0STGT,     DDM2_TYPE_INT32_T, 	 0,   1, 	                            0,        storage_mode_cb},
@@ -290,7 +289,7 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
     int32_t i32Factor;
     int32_t pub_value = i32value;
 	uint16_t db_idx;
-	conn_voc_sensor_param_t* param_db;
+	conn_voc_sensor_param_t *param_db;
 
 #if CONN_PWM_DEBUG_LOG
     LOG(I, "Received ddm_param = 0x%x i32value = %d", ddm_param, i32value);

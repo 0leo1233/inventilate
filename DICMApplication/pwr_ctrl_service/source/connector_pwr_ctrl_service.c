@@ -36,50 +36,48 @@ typedef enum
 #define CONN_PWR_DEBUG_LOG      0
 #define EN_POOR_SOURCE_CHECK    0
 
-#define CONN_PWR_CTRL_SUB_DEPTH           ((uint8_t)   20u)
-#define DDMP_UNAVAILABLE                  ((uint8_t) 0xFFu)
-#define INV_PWR_CTRL_TASK_QUE_LEN	      ((osal_base_type_t) 10)
-#define INV_PWR_CTRL_TASK_QUE_ITEM_SIZE   ((osal_base_type_t) sizeof(PWR_CTRL_DATA))
+#define INV_PWR_CTRL_TASK_QUE_LEN	    ((osal_base_type_t)10)
+#define INV_PWR_CTRL_TASK_QUE_ITEM_SIZE ((osal_base_type_t)sizeof(PWR_CTRL_DATA))
 
 #ifdef FILTER_TEST
 /*Filter Test*/
 #warning "Filter in Testing mode"
-#define FILTER_LIFE_TIME_MIN              ((uint32_t)   3) // 3 minutes
+#define FILTER_LIFE_TIME_MIN            ((uint32_t)3) // 3 minutes
 
 #else
 /*filter for application*/
-#define FILTER_LIFE_TIME_MIN              ((uint32_t)   30000) // 500 hours = 500 * 60 = 30000 minutes
+#define FILTER_LIFE_TIME_MIN            ((uint32_t)30000) // 500 hours = 500 * 60 = 30000 minutes
 
 #endif // FILTER_TEST
 
-#define FILTER_NVS_WRITE_INTERVAL         ((uint8_t)     60)
-#define SECONDS_PER_MINUTE                ((uint32_t)    60)
-#define MSEC_PER_MINUTE                   ((uint32_t) 60000)
-#define FILTER_TIMER_PERIOD_MIN           ((uint32_t)     1)
-#define POWER_CONTROL_SEC                 ((uint16_t)      5000)        //5 seconds
+#define FILTER_NVS_WRITE_INTERVAL       ((uint8_t)60)
+#define SECONDS_PER_MINUTE              ((uint32_t)60)
+#define MSEC_PER_MINUTE                 ((uint32_t)60000)
+#define FILTER_TIMER_PERIOD_MIN         ((uint32_t)1)
+#define POWER_CONTROL_SEC               ((uint16_t)5000)        //5 seconds
 
-#define FILTER_TIMER_TICKS                pdMS_TO_TICKS(MIN_TO_MSEC(FILTER_TIMER_PERIOD_MIN))
-#define POWER_CONTROL_TIMER_TICKS         pdMS_TO_TICKS(POWER_CONTROL_SEC)
+#define FILTER_TIMER_TICKS              pdMS_TO_TICKS(MIN_TO_MSEC(FILTER_TIMER_PERIOD_MIN))
+#define POWER_CONTROL_TIMER_TICKS       pdMS_TO_TICKS(POWER_CONTROL_SEC)
 
-#define BACKUP_BATTERY_LOW_THRESHOLD       11.8
-#define BACKUP_BATTERY_HIGH_THRESHOLD      12.3
-#define VAC_MIN_VOLT                       ((uint8_t) 8)
-#define EN_VAC_ERR_CODE                     0
-#define POOR_SOURCE_TIMER                   3
-#define POOR_SOURCE_MAX_COUNT               5
-#define POOR_SOURCE_COUNT_LIMIT             (POOR_SOURCE_MAX_COUNT - 2)
-#define BACKUP_BATTERY_LOW_LIMIT            12.0
-#define FLAG_EN_HIZ                         ((uint8_t) 4)
+#define BACKUP_BATTERY_LOW_THRESHOLD    11.8
+#define BACKUP_BATTERY_HIGH_THRESHOLD   12.3
+#define VAC_MIN_VOLT                    ((uint8_t)8)
+#define EN_VAC_ERR_CODE                 0
+#define POOR_SOURCE_TIMER               3
+#define POOR_SOURCE_MAX_COUNT           5
+#define POOR_SOURCE_COUNT_LIMIT         (POOR_SOURCE_MAX_COUNT - 2)
+#define BACKUP_BATTERY_LOW_LIMIT        12.0
+#define FLAG_EN_HIZ                     ((uint8_t)4)
 
-#define  STATUS_BIT_SOLAR       0
-#define  STATUS_BIT_IONIZER     1
+#define STATUS_BIT_SOLAR                0
+#define STATUS_BIT_IONIZER              1
 
 typedef enum _bat_sts_
 {
-    INV_BATTERY_GOOD  = 0,
-    INV_BATTERY_LOW   = 1
+    INV_BATTERY_GOOD = 0,
+    INV_BATTERY_LOW = 1
 
-}INV_BAT_STS;
+} INV_BAT_STS;
 
 #if (EN_POOR_SOURCE_CHECK == 1)
 static uint8_t poor_source_flag = 0;
@@ -95,11 +93,8 @@ static void process_subscribe_request(uint32_t ddm_param);
 static void l_update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t value);
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param);
 static void conn_pwr_ctrl_manager_task(void *pvParameter);
-
 static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter);
-
 float bq_read_vbat(void);
-
 static void init_pwr_ctrl_sm(PWR_CTRL_SM* pwr_ctrl_sm);
 static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data);
 static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame);
@@ -113,7 +108,6 @@ static void stop_filter_timer(PWR_CTRL_SM* ptr_pwr_ctrl_sm);
 static void change_ivpmgr_state(IVPMGR0STATE_ENUM  inv_pwr_ctrl_state);
 static FILTER_RESET_STATUS validate_filter_time(PWR_CTRL_SM* ptr_pwr_ctrl_sm);
 static void update_active_power_source(void);
-
 static void push_pwrsrc_status_in_queue(IV0PWRSRC_ENUM curr_active_source);
 static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error);
 
@@ -129,7 +123,7 @@ static REG23_CHARGER_FLAG_1_REG chr_flag1_reg = {0};
 static REG13_CHARGER_CTRL_4 chg_ctrl_reg4;
 static REG1E_CHARGER_STATUS_3_REG ch_stat_3;
 
-static REG1E_CHARGER_STATUS_3_REG   bms_interrupt_reg1e;
+static REG1E_CHARGER_STATUS_3_REG bms_interrupt_reg1e;
 
 static float vac1 = 0.0f;
 static float vac2 = 0.0f;
@@ -160,13 +154,13 @@ CONNECTOR connector_pwr_ctrl_service =
 /* DDM Parameter table for connector pwr control service */
 static conn_pwr_ctrl_parameter_t conn_pwr_ctrl_param_db[] =
 {
-	{.ddm_parameter = IV0PWRON     ,  .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0                     ,  .cb_func = handle_pwr_ctrl_sub_data},
-    {.ddm_parameter = IVPMGR0STATE ,  .type = DDM2_TYPE_INT32_T, .pub = 1, .sub = 0, .i32Value = IVPMGR0STATE_STANDBY  ,  .cb_func =                     NULL},
-    {.ddm_parameter = IV0FILST     ,  .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0                     ,  .cb_func = handle_pwr_ctrl_sub_data},
-    {.ddm_parameter = IV0STORAGE   ,  .type = DDM2_TYPE_INT32_T, .pub =	0, .sub = 1, .i32Value = IV0STORAGE_DEACTIVATE ,  .cb_func = handle_pwr_ctrl_sub_data},
-    {.ddm_parameter = IV0SETCHRGCRNT ,.type = DDM2_TYPE_INT32_T, .pub =	0, .sub = 1, .i32Value = 0                      , .cb_func = handle_pwr_ctrl_sub_data},
-    {.ddm_parameter = IV0SETT ,.type = DDM2_TYPE_INT32_T, .pub =	0, .sub = 1, .i32Value = 0                          , .cb_func = handle_pwr_ctrl_sub_data},
-    {.ddm_parameter = IV0ERRST     ,  .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0                     ,  .cb_func = handle_pwr_ctrl_sub_data}
+	{ .ddm_parameter = IV0PWRON,        .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
+    { .ddm_parameter = IVPMGR0STATE,    .type = DDM2_TYPE_INT32_T, .pub = 1, .sub = 0, .i32Value = IVPMGR0STATE_STANDBY,            .cb_func = NULL },
+    { .ddm_parameter = IV0FILST,        .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = IV0FILST_FILTER_CHANGE_NOT_REQ,  .cb_func = handle_pwr_ctrl_sub_data },
+    { .ddm_parameter = IV0STORAGE,      .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = IV0STORAGE_DEACTIVATE,           .cb_func = handle_pwr_ctrl_sub_data },
+    { .ddm_parameter = IV0SETCHRGCRNT,  .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
+    { .ddm_parameter = IV0SETT,         .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
+    { .ddm_parameter = IV0ERRST,        .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data }
 };
 
 /* Calculate the connector power control database table num elements */
@@ -987,7 +981,7 @@ static void process_subscribe_request(uint32_t ddm_param)
   */
 static void l_update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t value)
 {
-	conn_pwr_ctrl_parameter_t* param_db;
+	conn_pwr_ctrl_parameter_t *param_db;
     uint8_t db_idx = get_ddm_index_from_db(ddm_parameter);
 	int index;
     int32_t factor_value = 0;
@@ -1043,7 +1037,7 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 	uint8_t db_idx = DDMP_UNAVAILABLE;
 	uint8_t index;
 
-	for (index = 0u;  index < conn_pwrctrl_db_elements; index ++)
+	for (index = 0u; index < conn_pwrctrl_db_elements; index++)
  	{
 		param_db = &conn_pwr_ctrl_param_db[index];
 

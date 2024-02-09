@@ -78,14 +78,13 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 static void process_subscribe_request(uint32_t ddm_param);
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param);
 static void handle_invsub_data(uint32_t ddm_param, int32_t data);
-static void iv_periodic_tmr_cb( TimerHandle_t xTimer );
-static void iv_one_shot_tmr_cb( TimerHandle_t xTimer );
+static void iv_periodic_tmr_cb(TimerHandle_t xTimer);
+static void iv_one_shot_tmr_cb(TimerHandle_t xTimer);
 static void change_storage_timer_period(uint32_t time_period_msec);
 static void start_storage_timer(void);
 static void stop_storage_timer(void);
-static void storage_cb_func( TimerHandle_t xTimer );
+static void storage_cb_func(TimerHandle_t xTimer);
 static void storage_humid_chk_cb_func(TimerHandle_t xTimer);
-static void sensor_timer_cb(TimerHandle_t xTimer);
 static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value);
 
 //! Quene handle definition
@@ -95,12 +94,11 @@ static TimerHandle_t peridic_tmr_hdle;
 static TimerHandle_t one_shot_tmr_hdle;
 static TimerHandle_t xStorageTimer;
 static TimerHandle_t xStorageHumid_chk_Timer;
-static TimerHandle_t dp_sensor_timer;
 INVENTILATE_CONTROL_ALGO* ptr_ctrl_algo = &iv_ctrl_algo;
 static uint8_t storage_humid_timer = 0;
 
 static uint32_t tmr_period = 0;
-static uint8_t  iaq_run_state = 0;
+static uint8_t iaq_run_state = 0;
 static uint32_t iaqprev_30min= 0;
 
 static volatile TickType_t time_now[MAX_NUM_DEVICE];
@@ -120,9 +118,6 @@ DECLARE_SORTED_LIST_EXTRAM(inv_storage, 3);
 
 
 extern EXT_RAM_ATTR fan_motor_control_info_db_t fan_motor_control_db[DEV_RPM_DB_TABLE_SIZE];
-
-//#define TACHO_READ_QUEUE_LENGTH 				  ((osal_base_type_t) MAX_NUM_DEVICE)
-//#define TACHO_READ_QUEUE_SIZE   				  ((osal_base_type_t) (MAX_NUM_DEVICE * sizeof(capture_info_t)))
 
 #define IV_CONTROL_TASK_QUEUE_LENGTH			  ((osal_base_type_t) 200)
 #define IV_CONTROL_TASK_QUEUE_ITEM_SIZE   		  ((osal_base_type_t) sizeof(IV_DATA))
@@ -277,8 +272,6 @@ static int initialize_connector_fan_motor(void)
     xStorageTimer = xTimerCreate("xStorageTimer", ptr_ctrl_algo->storage_tmr_val_ticks[ptr_ctrl_algo->storage_timer_config], pdFALSE, 0, storage_cb_func);
 
     xStorageHumid_chk_Timer = xTimerCreate("xStorage_HumChkTmr", STORAGE_HUM_CHK_TMR_TICKS, pdTRUE, 0, storage_humid_chk_cb_func);
-    // Sensor timer used to request DP DATA after a timeout, 10 s
-    dp_sensor_timer = xTimerCreate(NULL, pdMS_TO_TICKS(10000), pdFALSE, 0, sensor_timer_cb);
 
     /* Install parameters in the Inventory of broker */
     install_parameters();
@@ -297,7 +290,6 @@ static int initialize_connector_fan_motor(void)
 
     /* Task for control the RPM of Fan and Motor by an algorithm designed based on IAQ and Differential pressure sensor data */
     TRUE_CHECK(osal_task_create(conn_fan_mtr_ctrl_task, CONNECTOR_FAN_MOTOR_CONTROL_TASK_NAME, CONNECTOR_FAN_MOTOR_TACHO_READ_STACK_DEPTH, iv_ctrl_que_handle, CONNECTOR_FAN_MOTOR_CTRL_TASK_PRIORITY, NULL));
-
 
 	return 1;
 }
@@ -354,7 +346,6 @@ static void start_subscribe(void)
 		{
             if (DDM2_PARAMETER_GROUP(ptr_param_db->ddm_parameter) != DDM2_PARAMETER_GROUP(SNODE0))
             {
-                LOG(I, "Subscribed DDMP for %s is 0x%x", connector_pwm_fan_motor.name, ptr_param_db->ddm_parameter);
                 TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_pwm_fan_motor.connector_id, portMAX_DELAY));
             }
             else
@@ -397,8 +388,7 @@ void update_iaq_status_to_broker(const IV0AQST_ENUM iaq_status)
 {
     int32_t i32Value = iaq_status;
 
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0AQST, &i32Value,
-                sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0AQST, &i32Value, sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
 }
 
 /**
@@ -410,8 +400,7 @@ void update_dp_status_to_broker(const IV0PRST_ENUM press_status)
 {
     int32_t i32Value = press_status;
 
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0PRST, &i32Value,
-                sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0PRST, &i32Value, sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
 }
 
 /**
@@ -424,8 +413,7 @@ void update_set_rpm_to_broker(const invent_device_id_t dev_id, const uint32_t rp
 {
     int32_t i32Value = rpm;
 
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, MTR0SETSPD|DDM2_PARAMETER_INSTANCE(dev_id), &i32Value,
-                sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, MTR0SETSPD|DDM2_PARAMETER_INSTANCE(dev_id), &i32Value, sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
 }
 
 /**
@@ -1171,9 +1159,9 @@ void parse_received_data(void)
             break;
 
         case DP_DATA:
-            //Check if the value is within valid range -25 to +25 (-25000 to +25000)
+            // Check if the value is within valid range -25 to +25 (-25000 to +25000)
             if (((ptr_ctrl_algo->iv_data.data < DPSENS_PLAUSIBLE_UPRANGE) && (ptr_ctrl_algo->iv_data.data > 0)) ||
-                 ((ptr_ctrl_algo->iv_data.data > DPSENS_PLAUSIBLE_DOWNRANGE) && (ptr_ctrl_algo->iv_data.data < 0)))
+                ((ptr_ctrl_algo->iv_data.data > DPSENS_PLAUSIBLE_DOWNRANGE) && (ptr_ctrl_algo->iv_data.data < 0)))
             {
                 ptr_ctrl_algo->iv_data.data = ( ptr_ctrl_algo->iv_data.data != 0 ) ? (ptr_ctrl_algo->iv_data.data / ptr_ctrl_algo->dp_resol_factor) : 0;
                 ptr_ctrl_algo->curr_avg_dp_value += ptr_ctrl_algo->iv_data.data;        /* Add the new value with previous value */
@@ -1459,9 +1447,8 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 	conn_fan_motor_parameter_t* param_db;
 	uint8_t db_idx = DDMP_UNAVAILABLE;
 	uint8_t index;
-	bool avail = false;
 
-	for (index = 0u; ((index < conn_fanmot_db_elements) && (avail == false)); index++)
+	for (index = 0u; index < conn_fanmot_db_elements; index++)
  	{
 		param_db = &conn_fan_motor_param_db[index];
 
@@ -1469,7 +1456,7 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 		if (param_db->ddm_parameter == ddm_param)
 	  	{
 			db_idx = index;
-			avail = true;
+			break;
 		}
 	}
 
@@ -1486,7 +1473,6 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 static void handle_invsub_data(uint32_t ddm_param, int32_t data)
 {
     IV_DATA iv_data;
-    //uint32_t dp_plausible_errst = 0;
 
     /* set the data */
     iv_data.data = data;
@@ -1501,63 +1487,10 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
             iv_data.data_id = IV_HUMIDITY_DATA;
             bme68x_humid_value = iv_data.data;
             break;
-#if 0
-        case SDP0AVL:
 
-            if (DP_SENSOR_AVAILABLE == iv_data.data)   /* Check the DP sensor avalabity status */
-            {
-                LOG(W, "Subscribe request for DDMP SDP0DP");
-                // Whenever the availability of sensor node received then the subscribtion should be done again
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0DP, NULL, 0, connector_pwm_fan_motor.connector_id, portMAX_DELAY));
-            }
-            else if (DP_SENSOR_NOT_AVAILABLE == iv_data.data)
-            {
-                LOG(W, "Subscribe request for DDMP SDP0AVL");
-                // Whenever the availability of sensor node received then the subscribtion should be done again
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0, connector_pwm_fan_motor.connector_id, portMAX_DELAY));
-            }
-            else
-            {
-
-            }
-
-            //iv_data.data_id = DP_SENSOR_STATUS;
-            iv_data.data_id = INVALID_DATA_RECEIVED;
-            break;
-#endif
         case SDP0DP:
-
             iv_data.data_id = DP_DATA;
-#if 0
-            if ((iv_data.data > DPSENS_PLAUSIBLE_UPRANGE) && (iv_data.data > 0))
-            {
-                dp_plausible_errst |= 1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR;
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &dp_plausible_errst, sizeof(int32_t), \
-                connector_pwm_fan_motor.connector_id, portMAX_DELAY));
-#ifdef DP_ERR_DEBUG
-                LOG(I, "DP PLAUSIBLE ERRSET OVER= %d", iv_data.data);
-#endif
-            }
-            else if ((iv_data.data < DPSENS_PLAUSIBLE_DOWNRANGE) && (iv_data.data < 0))
-            {
-                dp_plausible_errst |= 1 << DP_SENSOR_DATA_PLAUSIBLE_ERROR;
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &dp_plausible_errst, sizeof(int32_t), \
-                connector_pwm_fan_motor.connector_id, portMAX_DELAY));
-#ifdef DP_ERR_DEBUG
-                LOG(I, "DP PLAUSIBLE ERRSET UNDER= %d", iv_data.data);
-#endif
-            }
-            else if (((iv_data.data > 0) && (iv_data.data < DPSENS_PLAUSIBLE_UPRANGE)) || ((iv_data.data < 0) && (iv_data.data > DPSENS_PLAUSIBLE_DOWNRANGE)))
-            {
-                dp_plausible_errst &= ~ ( 1 <<  DP_SENSOR_DATA_PLAUSIBLE_ERROR );
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0ERRST, &dp_plausible_errst, sizeof(int32_t), \
-                connector_pwm_fan_motor.connector_id, portMAX_DELAY));
-#ifdef DP_ERR_DEBUG
-                LOG(I, "DP PLAUSIBLE VALID = %d", iv_data.data);
-#endif
-            }
-#endif
-#ifdef DP_ERR_DEBUG
+#ifdef CONN_PWM_DEBUG_LOG
             LOG(I, "DP DATA = %d", iv_data.data);
 #endif
             break;
@@ -1573,107 +1506,80 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
             iv_data.data_id = IV_PWR_STATE;
             break;
 
-        case MTR0SETSPD|DDM2_PARAMETER_INSTANCE(0):
+        case MTR0SETSPD | DDM2_PARAMETER_INSTANCE(0):
             iv_data.data_id = IV_FAN1_SET_RPM;
             break;
 
-        case MTR0SETSPD|DDM2_PARAMETER_INSTANCE(1):
+        case MTR0SETSPD | DDM2_PARAMETER_INSTANCE(1):
             iv_data.data_id = IV_FAN2_SET_RPM;
             break;
 
-        case MTR0SETSPD|DDM2_PARAMETER_INSTANCE(2):
+        case MTR0SETSPD | DDM2_PARAMETER_INSTANCE(2):
             iv_data.data_id = IV_MTR_SET_RPM;
             break;
 
-        case MTR0MINSPD|DDM2_PARAMETER_INSTANCE(0):
+        case MTR0MINSPD | DDM2_PARAMETER_INSTANCE(0):
             iv_data.data_id = IV_FAN1_RPM_MIN;
             break;
 
-        case MTR0MINSPD|DDM2_PARAMETER_INSTANCE(1):
+        case MTR0MINSPD | DDM2_PARAMETER_INSTANCE(1):
             iv_data.data_id = IV_FAN2_RPM_MIN;
             break;
 
-        case MTR0MINSPD|DDM2_PARAMETER_INSTANCE(2):
+        case MTR0MINSPD | DDM2_PARAMETER_INSTANCE(2):
             iv_data.data_id = IV_MTR_RPM_MIN;
             break;
 
-        case MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(0):
+        case MTR0MAXSPD | DDM2_PARAMETER_INSTANCE(0):
             iv_data.data_id = IV_FAN1_RPM_MAX;
             break;
 
-        case MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(1):
+        case MTR0MAXSPD | DDM2_PARAMETER_INSTANCE(1):
             iv_data.data_id = IV_FAN2_RPM_MAX;
             break;
 
-        case MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(2):
+        case MTR0MAXSPD | DDM2_PARAMETER_INSTANCE(2):
             iv_data.data_id = IV_MTR_RPM_MAX;
             break;
 
-        case MTR0TACHO|DDM2_PARAMETER_INSTANCE(0):
+        case MTR0TACHO | DDM2_PARAMETER_INSTANCE(0):
             iv_data.data_id = IV_FAN1_TACHO;
             break;
 
-        case MTR0TACHO|DDM2_PARAMETER_INSTANCE(1):
+        case MTR0TACHO | DDM2_PARAMETER_INSTANCE(1):
             iv_data.data_id = IV_FAN2_TACHO;
             break;
 
-        case MTR0TACHO|DDM2_PARAMETER_INSTANCE(2):
+        case MTR0TACHO | DDM2_PARAMETER_INSTANCE(2):
             iv_data.data_id = IV_MTR_TACHO;
             break;
 
-        case IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0):
+        case IVAQR0MIN | DDM2_PARAMETER_INSTANCE(0):
             iv_data.data_id = IV_IAQ_GOOD_MIN;
             break;
 
-        case IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1):
+        case IVAQR0MIN | DDM2_PARAMETER_INSTANCE(1):
             iv_data.data_id = IV_IAQ_FAIR_MIN;
             break;
 
-        case IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2):
+        case IVAQR0MIN | DDM2_PARAMETER_INSTANCE(2):
             iv_data.data_id = IV_IAQ_BAD_MIN;
             break;
 
-        case IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0):
+        case IVAQR0MAX | DDM2_PARAMETER_INSTANCE(0):
             iv_data.data_id = IV_IAQ_GOOD_MAX;
             break;
 
-        case IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1):
+        case IVAQR0MAX | DDM2_PARAMETER_INSTANCE(1):
             iv_data.data_id = IV_IAQ_FAIR_MAX;
             break;
 
-        case IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2):
+        case IVAQR0MAX | DDM2_PARAMETER_INSTANCE(2):
             iv_data.data_id = IV_IAQ_BAD_MAX;
             break;
 
         case IV0ERRST:
             iv_data.data_id = IV_ERROR_STATUS;
-            //LOG(D, "IV0ERRST: 0x%x : 0x%x", iv_data.data, ptr_ctrl_algo->invent_error_status);
-//            if (iv_data.data & (1 << DP_SENSOR_BOARD_DISCONNECTED))
-//            {
-//                if ((ptr_ctrl_algo->invent_error_status & (1 << DP_SENSOR_BOARD_DISCONNECTED)) == 0)
-//                {
-//                    LOG(D, "Stop DP sensor timer");
-//                    // Previous was connected, stop timer
-//                    if (xTimerStop(dp_sensor_timer, portMAX_DELAY) != pdPASS)
-//                    {
-//                        LOG(E, "dp_sensor_timer start failed");
-//                    }
-//                }
-//            }
-//            else
-//            {
-//                // Board is not disconnected
-//                // Have we started timer yet?
-//                if (ptr_ctrl_algo->invent_error_status & (1 << DP_SENSOR_BOARD_DISCONNECTED))
-//                {
-//                    LOG(D, "Start DP sensor timer");
-//                    // Previous was disconnected, start timer
-//                    if (xTimerStart(dp_sensor_timer, portMAX_DELAY) != pdPASS)
-//                    {
-//                        LOG(E, "dp_sensor_timer start failed");
-//                    }
-//                }
-//            }
             break;
 
         case IV0SETT:
@@ -1722,7 +1628,7 @@ void initialize_fan_motor(void)
   * @param  none.
   * @retval none.
   */
-void iv_periodic_tmr_cb( TimerHandle_t xTimer )
+void iv_periodic_tmr_cb(TimerHandle_t xTimer)
 {
     push_data_in_queue(0, IV_PER_TMR_EXP);
 }
@@ -1732,7 +1638,7 @@ void iv_periodic_tmr_cb( TimerHandle_t xTimer )
   * @param  none.
   * @retval none.
   */
-void iv_one_shot_tmr_cb( TimerHandle_t xTimer )
+void iv_one_shot_tmr_cb(TimerHandle_t xTimer)
 {
     push_data_in_queue(0, IV_ONE_SHOT_TMR_EXP);
 }
@@ -1745,13 +1651,13 @@ void iv_one_shot_tmr_cb( TimerHandle_t xTimer )
 void change_state(INVENT_CONTROL_STATE iv_ctrl_state)
 {
     IV_DATA iv_data;
-    iv_data.data    = iv_ctrl_state;
+    iv_data.data = iv_ctrl_state;
     iv_data.data_id = IV_STATE_CHANGE;
 
     // Append the data in the queue
-    osal_base_type_t ret = xQueueSendToFront (iv_ctrl_que_handle, &iv_data, portMAX_DELAY);
+    osal_base_type_t ret = xQueueSendToFront(iv_ctrl_que_handle, &iv_data, portMAX_DELAY);
 
-    if ( osal_success != ret )
+    if (osal_success != ret)
     {
         LOG(E, "Queue error ret = %d", ret);
     }
@@ -1765,13 +1671,13 @@ void change_state(INVENT_CONTROL_STATE iv_ctrl_state)
 void push_data_in_queue(int32_t data, DATA_ID data_id)
 {
     IV_DATA iv_data;
-    iv_data.data    = data;
+    iv_data.data = data;
     iv_data.data_id = data_id;
 
     // Append the data in the queue
-    osal_base_type_t ret = osal_queue_send (iv_ctrl_que_handle, &iv_data, portMAX_DELAY);
+    osal_base_type_t ret = osal_queue_send(iv_ctrl_que_handle, &iv_data, portMAX_DELAY);
 
-    if ( osal_success != ret )
+    if (osal_success != ret)
     {
         LOG(E, "Queue error ret = %d", ret);
     }
@@ -1784,9 +1690,9 @@ void push_data_in_queue(int32_t data, DATA_ID data_id)
   */
 void start_periodic_timer(void)
 {
-    osal_ubase_type_t peridic_tmr = xTimerStart( peridic_tmr_hdle, portMAX_DELAY );
+    osal_ubase_type_t peridic_tmr = xTimerStart(peridic_tmr_hdle, portMAX_DELAY);
 
-    if ( peridic_tmr != pdPASS )
+    if (peridic_tmr != pdPASS)
     {
 		LOG(E, "peridic_tmr failed to start");
     }
@@ -1863,12 +1769,12 @@ void stop_wait_tmr(void)
   */
 static void change_storage_timer_period(TickType_t time_period_ticks)
 {
-    osal_ubase_type_t xStorageTimerChange;
+    osal_ubase_type_t timerstatus;
     int32_t i32_ddmp_value = 0;
 
-    xStorageTimerChange = xTimerChangePeriod(xStorageTimer, time_period_ticks, portMAX_DELAY);
+    timerstatus = xTimerChangePeriod(xStorageTimer, time_period_ticks, portMAX_DELAY);
 
-    if (xStorageTimerChange != pdPASS)
+    if (timerstatus != pdPASS)
     {
 		LOG(E, "Storage Timer period change failed");
     }
@@ -1878,9 +1784,9 @@ static void change_storage_timer_period(TickType_t time_period_ticks)
         TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0STGT, &i32_ddmp_value, sizeof(int32_t),
                 connector_pwm_fan_motor.connector_id, portMAX_DELAY));
         storage_humid_timer = 0;
-        xStorageTimerChange = xTimerStart(xStorageHumid_chk_Timer, portMAX_DELAY);
+        timerstatus = xTimerStart(xStorageHumid_chk_Timer, portMAX_DELAY);
 
-        if (xStorageTimerChange != pdPASS)
+        if (timerstatus != pdPASS)
         {
             LOG(E, "Storage humid chk Timer start failed");
         }
@@ -1894,11 +1800,11 @@ static void change_storage_timer_period(TickType_t time_period_ticks)
   */
 static void start_storage_timer(void)
 {
-    osal_ubase_type_t  xStorageTimerStarted;
+    osal_ubase_type_t timerstatus;
 
-    xStorageTimerStarted = xTimerStart(xStorageTimer, portMAX_DELAY);
+    timerstatus = xTimerStart(xStorageTimer, portMAX_DELAY);
 
-    if (xStorageTimerStarted != pdPASS)
+    if (timerstatus != pdPASS)
     {
 		LOG(E, "Storage Timer start failed");
     }
@@ -1911,27 +1817,25 @@ static void start_storage_timer(void)
   */
 static void stop_storage_timer(void)
 {
-    osal_ubase_type_t xStorageTimerStopped;
+    osal_ubase_type_t timerstatus;
     int32_t i32_ddmp_value = 0;
 
-    xStorageTimerStopped = xTimerStop(xStorageTimer, portMAX_DELAY);
+    timerstatus = xTimerStop(xStorageTimer, portMAX_DELAY);
 
-    if (xStorageTimerStopped != pdPASS)
+    if (timerstatus != pdPASS)
     {
 		LOG(E, "Storage Timer stop failed");
     }
 
-    xStorageTimerStopped = xTimerStop(xStorageHumid_chk_Timer, portMAX_DELAY );
+    timerstatus = xTimerStop(xStorageHumid_chk_Timer, portMAX_DELAY);
 
-    if (xStorageTimerStopped != pdPASS)
+    if (timerstatus != pdPASS)
     {
 		LOG(E, "Storage humid check Timer stop failed");
     }
 
     i32_ddmp_value = IV0STGT_IDLE_21HRS;
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0STGT, &i32_ddmp_value,
-                        sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
-
+    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0STGT, &i32_ddmp_value, sizeof(int32_t), connector_pwm_fan_motor.connector_id, portMAX_DELAY));
 }
 
 /**
@@ -2002,17 +1906,6 @@ static void storage_humid_chk_cb_func(TimerHandle_t xTimer)
 #if CONN_PWM_DEBUG_LOG
     LOG(I, "[Storage_chk_ tmr %d humid present %d initial_humid %d, curr %d]", storage_humid_timer, bme68x_humid_value, bm_humid_prev, bm_humid_curr);
 #endif
-}
-
-
-static void sensor_timer_cb(TimerHandle_t xTimer)
-{
-    // Is the error still not active, then subscribe to data
-    if ((ptr_ctrl_algo->invent_error_status & (1 << DP_SENSOR_BOARD_DISCONNECTED)) == 0)
-    {
-        // Whenever the availability of sensor node received then the subscribtion should be done again
-        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0DP, NULL, 0, connector_pwm_fan_motor.connector_id, portMAX_DELAY));
-    }
 }
 
 static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)

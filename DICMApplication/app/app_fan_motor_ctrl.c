@@ -27,10 +27,10 @@ EXT_RAM_ATTR fan_motor_control_info_db_t fan_motor_control_db[DEV_RPM_DB_TABLE_S
 /* IAQ Range */
 static IAQ_RANGE iaq_range_level[IAQ_RANGE_LEVELS] =
 {
-    //          min                  max                Air Quality Status
-    {   {  IAQ_DEF_GOOD_MIN,    IAQ_DEF_GOOD_MAX },   IV0AQST_AIR_QUALITY_GOOD  },
-    {   {  IAQ_DEF_FAIR_MIN,    IAQ_DEF_FAIR_MAX },  IV0AQST_AIR_QUALITY_FAIR   },
-    {   {   IAQ_DEF_BAD_MIN,     IAQ_DEF_BAD_MAX },     IV0AQST_AIR_QUALITY_BAD }
+    //          min                  max         Air Quality Status
+    { { IAQ_DEF_GOOD_MIN, IAQ_DEF_GOOD_MAX }, IV0AQST_AIR_QUALITY_GOOD },
+    { { IAQ_DEF_FAIR_MIN, IAQ_DEF_FAIR_MAX }, IV0AQST_AIR_QUALITY_FAIR },
+    { { IAQ_DEF_BAD_MIN,  IAQ_DEF_BAD_MAX },  IV0AQST_AIR_QUALITY_BAD }
 };
 
 EXT_RAM_ATTR IV0_SETTINGS   ivsett_config;
@@ -38,11 +38,11 @@ EXT_RAM_ATTR FILTER_INFO filter_data;
 /* Table for RPM Min and Max Percentage for modes */
 static percent_range_t percent_range[NUM_OPERATING_MODES] =
 {
-	{ .min_percent =  OFF_MODE_RPM_MIN_PERCENT     ,   .max_percent = OFF_MODE_RPM_MAX_PERCENT     }, /* OFF Mode     */
-	{ .min_percent =  AUTO_MODE_RPM_MIN_PERCENT    ,   .max_percent = AUTO_MODE_RPM_MAX_PERCENT    }, /* Auto Mode    */
-	{ .min_percent =  TURBO_MODE_RPM_MIN_PERCENT   ,   .max_percent = TURBO_MODE_RPM_MAX_PERCENT   }, /* Turbo Mode   */
-	{ .min_percent =  SLEEP_MODE_RPM_MIN_PERCENT   ,   .max_percent = SLEEP_MODE_RPM_MAX_PERCENT   }, /* Sleep Mode   */
-    { .min_percent =  STORAGE_MODE_RPM_MIN_PERCENT ,   .max_percent = STORAGE_MODE_RPM_MAX_PERCENT }  /* Storage Mode */
+	{ .min_percent = OFF_MODE_RPM_MIN_PERCENT,      .max_percent = OFF_MODE_RPM_MAX_PERCENT },      /* OFF Mode     */
+	{ .min_percent = AUTO_MODE_RPM_MIN_PERCENT,     .max_percent = AUTO_MODE_RPM_MAX_PERCENT },     /* Auto Mode    */
+	{ .min_percent = TURBO_MODE_RPM_MIN_PERCENT,    .max_percent = TURBO_MODE_RPM_MAX_PERCENT },    /* Turbo Mode   */
+	{ .min_percent = SLEEP_MODE_RPM_MIN_PERCENT,    .max_percent = SLEEP_MODE_RPM_MAX_PERCENT },    /* Sleep Mode   */
+    { .min_percent = STORAGE_MODE_RPM_MIN_PERCENT,  .max_percent = STORAGE_MODE_RPM_MAX_PERCENT }   /* Storage Mode */
 };
 
 /* Structure instance for inventilate control algorithm */
@@ -51,22 +51,22 @@ INVENTILATE_CONTROL_ALGO iv_ctrl_algo;
 /* NVS Table for connecor fan motor */
 static nvs_config_conn_fan_mtr nvs_db[NVS_DB_SIZE] =
 {
-    //   data_id               data_type               data_size             min_val                max_val            default_val           ddmp                           data_ptr                                                          nvs_key
-    {IV_FAN1_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(0),   (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.min_rpm,  "mn_rpm_f1"},
-    {IV_FAN2_RPM_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.min_rpm,  "mn_rpm_f2"},
-    {IV_MTR_RPM_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MIN_RPM,  MTR0MINSPD|DDM2_PARAMETER_INSTANCE(2),         (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.min_rpm,  "mn_rpm_mt"},
-    {IV_FAN1_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN1_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(0),   (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.max_rpm,  "mx_rpm_f1"},
-    {IV_FAN2_RPM_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,    DEV_FAN2_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(1),  (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.max_rpm,  "mx_rpm_f2"},
-    {IV_MTR_RPM_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),    MOTOR_FAN_MIN_RPM,     MOTOR_FAN_MAX_RPM,   DEV_MOTOR_MAX_RPM,  MTR0MAXSPD|DDM2_PARAMETER_INSTANCE(2),         (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.max_rpm,  "mx_rpm_mt"},
-    {IV_IAQ_GOOD_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,    IAQ_DEF_GOOD_MIN,   IVAQR0MIN|DDM2_PARAMETER_INSTANCE(0),         (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.min,  "mn_gd_aq" },
-    {IV_IAQ_FAIR_MIN  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_FAIR_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(1),         (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.min,  "mn_bd_aq" },
-    {IV_IAQ_BAD_MIN   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,      IAQ_DEF_BAD_MIN,  IVAQR0MIN|DDM2_PARAMETER_INSTANCE(2),          (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.min,  "mn_wr_aq" },
-    {IV_IAQ_GOOD_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_GOOD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(0),         (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.max,  "mx_gd_aq" },
-    {IV_IAQ_FAIR_MAX  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,     IAQ_DEF_FAIR_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(1),         (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.max,  "mx_bd_aq" },
-    {IV_IAQ_BAD_MAX   ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IAQ_CONFIG_MIN,        IAQ_CONFIG_MAX,      IAQ_DEF_BAD_MAX,  IVAQR0MAX|DDM2_PARAMETER_INSTANCE(2),          (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.max,  "mx_wr_aq" },
-    {IV_IVSETT        ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_IVSETT_MIN,         IV_IVSETT_MAX,     IV_IVSETT_DEFAULT,    IV0SETT|DDM2_PARAMETER_INSTANCE(0),                                              (void*)&ivsett_config.byte,  "iv_ivsett" },
-    {IV_FILTER_TIMER  ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX, IV_FILTER_MIN_MIN,                              IV0FILST,                                          (void*)&filter_data.filter_min,  "iv_filter_min" },
-    {IV_FILTER_STATUS ,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t),       IV_FILTER_MIN_MIN,     IV_FILTER_MIN_MAX, IV_FILTER_MIN_MIN,                              IV0FILST,                                       (void*)&filter_data.filter_status,  "iv_filter_sts" },
+    //   data_id               data_type               data_size       min_val             max_val            default_val           ddmp                                        data_ptr                                                            nvs_key
+    {IV_FAN1_RPM_MIN,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), MOTOR_FAN_MIN_RPM,  MOTOR_FAN_MAX_RPM,  DEV_FAN1_MIN_RPM,   MTR0MINSPD | DDM2_PARAMETER_INSTANCE(0),    (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.min_rpm,  "mn_rpm_f1" },
+    {IV_FAN2_RPM_MIN,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), MOTOR_FAN_MIN_RPM,  MOTOR_FAN_MAX_RPM,  DEV_FAN2_MIN_RPM,   MTR0MINSPD | DDM2_PARAMETER_INSTANCE(1),    (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.min_rpm, "mn_rpm_f2" },
+    {IV_MTR_RPM_MIN,    HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), MOTOR_FAN_MIN_RPM,  MOTOR_FAN_MAX_RPM,  DEV_MOTOR_MIN_RPM,  MTR0MINSPD | DDM2_PARAMETER_INSTANCE(2),    (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.min_rpm,        "mn_rpm_mt" },
+    {IV_FAN1_RPM_MAX,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), MOTOR_FAN_MIN_RPM,  MOTOR_FAN_MAX_RPM,  DEV_FAN1_MAX_RPM,   MTR0MAXSPD | DDM2_PARAMETER_INSTANCE(0),    (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.max_rpm,  "mx_rpm_f1" },
+    {IV_FAN2_RPM_MAX,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), MOTOR_FAN_MIN_RPM,  MOTOR_FAN_MAX_RPM,  DEV_FAN2_MAX_RPM,   MTR0MAXSPD | DDM2_PARAMETER_INSTANCE(1),    (void*)&fan_motor_control_db[DEV_FAN2_AIR_OUT].whole_rpm_range.max_rpm, "mx_rpm_f2" },
+    {IV_MTR_RPM_MAX,    HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), MOTOR_FAN_MIN_RPM,  MOTOR_FAN_MAX_RPM,  DEV_MOTOR_MAX_RPM,  MTR0MAXSPD | DDM2_PARAMETER_INSTANCE(2),    (void*)&fan_motor_control_db[DEV_MOTOR].whole_rpm_range.max_rpm,        "mx_rpm_mt" },
+    {IV_IAQ_GOOD_MIN,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), IAQ_CONFIG_MIN,     IAQ_CONFIG_MAX,     IAQ_DEF_GOOD_MIN,   IVAQR0MIN | DDM2_PARAMETER_INSTANCE(0),     (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.min,        "mn_gd_aq" },
+    {IV_IAQ_FAIR_MIN,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), IAQ_CONFIG_MIN,     IAQ_CONFIG_MAX,     IAQ_DEF_FAIR_MIN,   IVAQR0MIN | DDM2_PARAMETER_INSTANCE(1),     (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.min,        "mn_bd_aq" },
+    {IV_IAQ_BAD_MIN,    HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), IAQ_CONFIG_MIN,     IAQ_CONFIG_MAX,     IAQ_DEF_BAD_MIN,    IVAQR0MIN | DDM2_PARAMETER_INSTANCE(2),     (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.min,         "mn_wr_aq" },
+    {IV_IAQ_GOOD_MAX,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), IAQ_CONFIG_MIN,     IAQ_CONFIG_MAX,     IAQ_DEF_GOOD_MAX,   IVAQR0MAX | DDM2_PARAMETER_INSTANCE(0),     (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_GOOD].iaq_range.max,        "mx_gd_aq" },
+    {IV_IAQ_FAIR_MAX,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), IAQ_CONFIG_MIN,     IAQ_CONFIG_MAX,     IAQ_DEF_FAIR_MAX,   IVAQR0MAX | DDM2_PARAMETER_INSTANCE(1),     (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_FAIR].iaq_range.max,        "mx_bd_aq" },
+    {IV_IAQ_BAD_MAX,    HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), IAQ_CONFIG_MIN,     IAQ_CONFIG_MAX,     IAQ_DEF_BAD_MAX,    IVAQR0MAX | DDM2_PARAMETER_INSTANCE(2),     (void*)&iaq_range_level[IV0AQST_AIR_QUALITY_BAD].iaq_range.max,         "mx_wr_aq" },
+    {IV_IVSETT,         HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), IV_IVSETT_MIN,      IV_IVSETT_MAX,      IV_IVSETT_DEFAULT,  IV0SETT | DDM2_PARAMETER_INSTANCE(0),       (void*)&ivsett_config.byte,                                             "iv_ivsett" },
+    {IV_FILTER_TIMER,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), IV_FILTER_MIN_MIN,  IV_FILTER_MIN_MAX,  IV_FILTER_MIN_MIN,  IV0FILST,                                   (void*)&filter_data.filter_min,                                         "iv_filter_min" },
+    {IV_FILTER_STATUS,  HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), IV_FILTER_MIN_MIN,  IV_FILTER_MIN_MAX,  IV_FILTER_MIN_MIN,  IV0FILST,                                   (void*)&filter_data.filter_status,                                      "iv_filter_sts" }
 };
 
 /**
@@ -183,7 +183,7 @@ void update_data_in_nvm(DATA_ID data_id, uint32_t data)
     }
     else
     {
-        LOG(I, "Invalid data_id = %d", data_id);
+        LOG(W, "Invalid data_id = %d", data_id);
     }
 }
 
@@ -262,7 +262,7 @@ void set_iv_rpm_step_level(RPM_STEP_LEVEL step_level, uint32_t rpm_step)
   * @param  pointer to struct instance type INVENTILATE_CONTROL_ALGO.
   * @retval none.
   */
-void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* ptr_iv)
+void init_iv_control_algo(INVENTILATE_CONTROL_ALGO *ptr_iv)
 {
     /* Initialize all variables */
     ptr_iv->prev_avg_dp_value = 0;
@@ -299,7 +299,7 @@ void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* ptr_iv)
     ptr_iv->ptr_prev_data = &ptr_iv->prev_avg_iaq_value;
 
     ptr_iv->roc_max_val = INVENT_IAQ_INDEX_MAX;
-
+#if INV_ALGO_DEBUG
     LOG(W, "dp_resolution = %d", ptr_iv->dp_resolution);
     LOG(W, "dp_resol_factor = %d", ptr_iv->dp_resol_factor);
     LOG(W, "dp_range_min = %d", ptr_iv->dp_range_min);
@@ -307,7 +307,7 @@ void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* ptr_iv)
     LOG(W, "dp_neg_acceptable_lim = %d", ptr_iv->dp_neg_acceptable_lim);
     LOG(W, "dp_pos_acceptable_lim = %d", ptr_iv->dp_pos_acceptable_lim);
     LOG(W, "dp_max_roc = %d", ptr_iv->dp_max_roc);
-
+#endif
     /*
        Based on the rate of change of IAQ.
        This step table shall be used to increase RPM of FAN1 and FAN2 to maintain the IAQ in acceptable range 0 to 50
@@ -345,7 +345,7 @@ void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* ptr_iv)
   * @param  pointer to struct instance type INVENTILATE_CONTROL_ALGO.
   * @retval none.
   */
-void reset_accumulated_data(INVENTILATE_CONTROL_ALGO* ptr_iv)
+void reset_accumulated_data(INVENTILATE_CONTROL_ALGO *ptr_iv)
 {
     ptr_iv->prev_avg_dp_value = 0;
     ptr_iv->prev_avg_iaq_value = 0;
@@ -360,7 +360,7 @@ void reset_accumulated_data(INVENTILATE_CONTROL_ALGO* ptr_iv)
   * @param  pointer to struct instance type INVENTILATE_CONTROL_ALGO.
   * @retval void .
   */
-void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
+void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO *ptr_iv)
 {
     if (ptr_iv->iaq_data_count > 0)
     {
@@ -402,7 +402,7 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv)
   * @param  pointer to struct instance type INVENTILATE_CONTROL_ALGO.
   * @retval Presure compensation state refer enum PRESS_COMP_STATES.
   */
-IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv)
+IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO *ptr_iv)
 {
     IV0PRST_ENUM pressure_stat = IV0PRST_PRESS_STATUS_UNKNOWN;
 

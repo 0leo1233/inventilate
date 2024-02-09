@@ -1,2 +1,2 @@
 # Version string
-set (VERSION_STRING "1.1.0-rc.2")
+set (VERSION_STRING "2.1.0-rc.1")

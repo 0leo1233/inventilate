@@ -10,6 +10,7 @@
 #include "iGeneralDefinitions.h"
 
 #include "connector_onboardhmi.h"
+#include "inventory_handler.h"
 #include "broker.h"
 #include "app_api.h"
 
@@ -39,7 +40,7 @@ typedef struct
 } conn_onboardhmi_param_t;
 
 /******************************** Defines ************************************/
-#define CONN_ONBHMI_DEBUG_LOG               0
+#define CONN_ONBHMI_DEBUG_LOG               1
 #define CONN_ONBHMI_CRITICAL_LOG            0
 
 #define CONN_OBHMI_SUB_DEPTH		        ((uint8_t) 20u)
@@ -79,17 +80,17 @@ typedef struct
 Time_base/Divider = freq in Hz
 time_base = 80MHz (ESP32 Clock)
 selected divider = 4096
-interrupt generated at an interval of 4ms         
+interrupt generated at an interval of 4ms
 */
 #define HW_TIME_INTERVAL      4       //in_ms
-#define LONG_PRESS_THRESHOLD    (3000/HW_TIME_INTERVAL)      
-#define SHORT_PRESS_THRESHOLD   (2200/HW_TIME_INTERVAL)      
-#define LONG_PRESS_COUNT_VALUE  (2000/HW_TIME_INTERVAL)  
-#define BUTTON_EXPIRED_COUNT    (800/HW_TIME_INTERVAL) 
-#define KEY_DEBOUNCE_COUNT      (500/HW_TIME_INTERVAL) 
-#define BTN_REL_WAIT_TIME       (1000/HW_TIME_INTERVAL)     
+#define LONG_PRESS_THRESHOLD    (3000/HW_TIME_INTERVAL)
+#define SHORT_PRESS_THRESHOLD   (2200/HW_TIME_INTERVAL)
+#define LONG_PRESS_COUNT_VALUE  (2000/HW_TIME_INTERVAL)
+#define BUTTON_EXPIRED_COUNT    (800/HW_TIME_INTERVAL)
+#define KEY_DEBOUNCE_COUNT      (500/HW_TIME_INTERVAL)
+#define BTN_REL_WAIT_TIME       (1000/HW_TIME_INTERVAL)
 #define BTN_SCAN_TIME           (200/HW_TIME_INTERVAL)
-#define TOUCH_MONITER_TIME      (800/HW_TIME_INTERVAL) 
+#define TOUCH_MONITER_TIME      (800/HW_TIME_INTERVAL)
 
 #define TIME_60MS               (60/HW_TIME_INTERVAL)
 #define TIME_68MS               (68/HW_TIME_INTERVAL)
@@ -109,12 +110,12 @@ interrupt generated at an interval of 4ms
 #define TIME_6000MS             (6000/HW_TIME_INTERVAL)
 #define TIME_60SEC             (60000/HW_TIME_INTERVAL)
 
-#endif 
+#endif
 
 #define LONG_PRESS_OCCURED      2
 #define PRESS_ZERO_VALUE        0
 #define PRESS_START_VALUE       1
-     
+
 #endif
 
 #define  USER_ERRACK_MAX        ((uint8_t)  5u)
@@ -135,19 +136,19 @@ int32_t  inv_acqrc_level = 0;
 uint8_t ble_dp_con_sts = 0;
 
 /** Static Function declarations ********************************************/
+static void inventory_handler_cb(void *arg, uint32_t device_class_instance, bool is_available);
 static int initialize_connector_onboardhmi(void);
 static void install_parameters(void);
-static void initialize_dev_onboardhmi();
+static void initialize_dev_onboardhmi(void);
 static void conn_onboardhmi_process_task(void *pvParameter);
 static void conn_onboardhmi_ctrl_task(void *pvParameter);
 static void conn_obdhmi_btn_task(void *pvParameter);
 static void blink_led_bk_light(uint8_t sel_blink);
-static int add_subscription(DDMP2_FRAME *pframe);
 static void process_subscribe_request(uint32_t ddm_param);
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param);
 static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value, DDMP2_CONTROL_ENUM req_type);
 static void handle_hmi_ctrl_sub_data(uint32_t ddm_param, int32_t data);
-static void onboard_hmi_timer_cb_func( TimerHandle_t xTimer );
+static void onboard_hmi_timer_cb_func(TimerHandle_t xTimer);
 static void inv_timer_cb(BaseType_t *data_in);                                 /*Timer call back function for button event called by timer isr*/
 static void start_publish(void);
 static void start_subscribe(void);
@@ -160,10 +161,10 @@ static void long_press_rel_tmr_cb( TimerHandle_t xTimer );
 #endif
 void update_and_send_value_to_broker(uint32_t ddm_parameter, int32_t value);
 static void update_hmi_btn_ctrl_variables(uint32_t ddmp, int32_t data);
-static void obhmi_blink_tmr_cb( TimerHandle_t xTimer );
+static void obhmi_blink_tmr_cb(TimerHandle_t xTimer);
 static void start_obhmi_blink_timer(void);
 static void stop_obhmi_blink_timer(void);
-void update_blink_info(const uint32_t error_code);
+void update_blink_info(const uint32_t error_code, bool update);
 void error_check_ack(void);
 
 /* Handles for the tasks create by main(). */
@@ -175,34 +176,34 @@ TimerHandle_t long_press_rel_tmr_hdle;
 TimerHandle_t short_press_tmr_hdle;
 TimerHandle_t blink_ctrl_timer_hdle;
 
-ONBRD_HMI_CTRL_SM onbrd_hmi_ctrl_sm; 
+ONBRD_HMI_CTRL_SM onbrd_hmi_ctrl_sm;
 static uint32_t configured_time_ms = 0;
 static uint16_t lcd_btn_press_evt  = BTN_NO_EVENTS;
 static uint16_t prev_btn_press_evt = BTN_NO_EVENTS;
 static button_state lcd_btn_state  = BTN_RELEASED;
-static uint8_t button_press_expired         = 0;
-static uint8_t  button_press_flag           = 0;
-static uint8_t button_first_press           = 0;
-static uint8_t pbutton_first_press           = 0;
-static uint8_t button_released              = 0;
-static uint8_t  btn_dbnc_delay              = 0;
-static uint16_t btn_press_wait              = 0;
-static uint16_t btn_dbnc_count              = 0;  
+static uint8_t button_press_expired = 0;
+static uint8_t  button_press_flag = 0;
+static uint8_t button_first_press = 0;
+static uint8_t pbutton_first_press = 0;
+static uint8_t button_released = 0;
+static uint8_t  btn_dbnc_delay = 0;
+static uint16_t btn_press_wait = 0;
+static uint16_t btn_dbnc_count = 0;
 
-static uint16_t tch_timer_cnt               = 0;
-static uint8_t tch_btn_event                = 0;
-static uint8_t blink_event                  = 0;
-static uint8_t button_event                 = 0;
-static uint8_t int_touch                    = 0 ; 
+static uint16_t tch_timer_cnt = 0;
+static uint8_t tch_btn_event = 0;
+static uint8_t blink_event = 0;
+static uint8_t button_event = 0;
+static uint8_t int_touch = 0 ;
 
 static INV_PWR_STATE inv_pwr_state = PWR_STATE_OFF;
-static uint32_t blink_timer_counter         = 0;
-static uint8_t  blink_flag                  = 0;
-static uint32_t g_blink_segment_status      = 0;
-static uint32_t g_error_ack                 = 0;
-static uint32_t g_error_code                = 0;
+static uint32_t blink_timer_counter = 0;
+static uint8_t  blink_flag = 0;
+static uint32_t g_blink_segment_status = 0;
+static uint32_t g_error_ack = 0;
+static uint32_t g_error_code = 0;
 static ONBRD_HMI_CTRL_SM* ptr_hmi_ctrl_sm = &onbrd_hmi_ctrl_sm;
-uint8_t hmi_stanby_mode = 0;
+uint8_t hmi_standby_mode = 0;
 
 extern LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT];
 extern LCDSEG_STATUS prev_seg_stat[ONBOARD_HMI_MAX_SEGEMENT];
@@ -214,40 +215,67 @@ CONNECTOR connector_onboard_hmi =
 	.initialize = initialize_connector_onboardhmi
 };
 
+// Inventory handler structures
+static EXT_RAM_ATTR inventory_handler_t l_ih;
+DECLARE_SORTED_LIST_EXTRAM(inv_storage, 3);
+
+
 /* DDM Parameter table for connector OnboardHMI */
 static conn_onboardhmi_param_t conn_onboardhmi_param_db[] =
 {
-    //.ddm_parameter        .type            .pub      .sub             .i32Value   			             .cb_func
-    {IV0AQST     ,       DDM2_TYPE_INT32_T,    1,        0,       IV0AQST_AIR_QUALITY_UNKNOWN,   handle_hmi_ctrl_sub_data},     //Seg S0
-    {IV0FILST    ,       DDM2_TYPE_INT32_T,    1,        0,    IV0FILST_FILTER_CHANGE_NOT_REQ,   handle_hmi_ctrl_sub_data},     //Seg S1
-    {IV0WARN     ,       DDM2_TYPE_INT32_T,    1,        0,                IV0WARN_NO_WARNING,   handle_hmi_ctrl_sub_data},     //Seg S2
-	{IV0MODE     ,       DDM2_TYPE_INT32_T,    1,        0,                      IV0MODE_AUTO,   handle_hmi_ctrl_sub_data},     //Seg S3, S4, S5, S6  
-	{IV0STORAGE  ,       DDM2_TYPE_INT32_T,    1,        0,             IV0STORAGE_DEACTIVATE,   handle_hmi_ctrl_sub_data},     //Seg S7
-    {IV0PWRSRC   ,       DDM2_TYPE_INT32_T,    1,        0,   IV0PWRSRC_12V_CAR_BATTERY_INPUT,   handle_hmi_ctrl_sub_data},     //Seg S8
-    {WIFI0STS    ,       DDM2_TYPE_INT32_T,    0,        1,                  WIFI0STS_UNKNOWN,   handle_hmi_ctrl_sub_data},     //Seg S9
-	{IV0PWRON    ,       DDM2_TYPE_INT32_T,    1,        0,                      IV0PWRON_OFF,   handle_hmi_ctrl_sub_data},     //Seg S12
-    {IV0IONST    ,       DDM2_TYPE_INT32_T,    1,        0,                      IV0IONST_OFF,   handle_hmi_ctrl_sub_data},
-    {IV0ERRST    ,       DDM2_TYPE_INT32_T,    0,        1,                 IV0ERRST_NO_ERROR,   handle_hmi_ctrl_sub_data},
-    {IV0BLREQ    ,       DDM2_TYPE_INT32_T,    1,        0,                     IV0BLREQ_IDLE,   handle_hmi_ctrl_sub_data},
-    {IV0HMITST   ,       DDM2_TYPE_INT32_T,    1,        0,                                 0,   handle_hmi_ctrl_sub_data},
-    {IVPMGR0STATE,       DDM2_TYPE_INT32_T,    0,        1,              IVPMGR0STATE_STANDBY,   handle_hmi_ctrl_sub_data},   
-    {DIM0LVL     ,       DDM2_TYPE_INT32_T,    0,        1,              DIM_LVL_DUTY_CYCLE_0, 	 handle_hmi_ctrl_sub_data},
-    {BT0PAIR     ,       DDM2_TYPE_INT32_T,    0,        1, BT0PAIR_OUT_PAIRING_MODE_INACTIVE, 	 handle_hmi_ctrl_sub_data},
-    {SDP0AVL     ,       DDM2_TYPE_INT32_T,    0,        1,           DP_SENSOR_NOT_AVAILABLE,   handle_hmi_ctrl_sub_data},
-    {SDP0DP      ,       DDM2_TYPE_INT32_T,    0, 	     1, 	                            0,   handle_hmi_ctrl_sub_data},
-    {IV0PRST     ,       DDM2_TYPE_INT32_T,    1,        0,      IV0PRST_PRESS_STATUS_UNKNOWN,                       NULL},
-    {IV0SETCHRGCRNT,     DDM2_TYPE_INT32_T,    1,        0,                                 0,   handle_hmi_ctrl_sub_data},
-    {IV0SETT       ,     DDM2_TYPE_INT32_T,    1,        0,                                 0,   handle_hmi_ctrl_sub_data},
-    {SNODE0BATTLVL ,     DDM2_TYPE_INT32_T,    1,        0,                                 0,   handle_hmi_ctrl_sub_data},
-    {SNODE0AVL     ,     DDM2_TYPE_INT32_T,    1,        0,                                 0,   handle_hmi_ctrl_sub_data},
-    {IV0STGT        ,   DDM2_TYPE_INT32_T,    1,        0,                                 0,   handle_hmi_ctrl_sub_data},     //
-    {SBMEB0AQR      ,   DDM2_TYPE_INT32_T,    0,        1,                                 0,   handle_hmi_ctrl_sub_data},    //
-
+    //.ddm_parameter        .type           .pub    .sub     .i32Value   			        .cb_func
+    { IV0AQST,          DDM2_TYPE_INT32_T,  1,      0,  IV0AQST_AIR_QUALITY_UNKNOWN,        handle_hmi_ctrl_sub_data },     //Seg S0
+    { IV0FILST,         DDM2_TYPE_INT32_T,  1,      0,  IV0FILST_FILTER_CHANGE_NOT_REQ,     handle_hmi_ctrl_sub_data },     //Seg S1
+    { IV0WARN,          DDM2_TYPE_INT32_T,  1,      0,  IV0WARN_NO_WARNING,                 handle_hmi_ctrl_sub_data },     //Seg S2
+	{ IV0MODE,          DDM2_TYPE_INT32_T,  1,      0,  IV0MODE_AUTO,                       handle_hmi_ctrl_sub_data },     //Seg S3, S4, S5, S6
+	{ IV0STORAGE,       DDM2_TYPE_INT32_T,  1,      0,  IV0STORAGE_DEACTIVATE,              handle_hmi_ctrl_sub_data },     //Seg S7
+    { IV0PWRSRC,        DDM2_TYPE_INT32_T,  1,      0,  IV0PWRSRC_12V_CAR_BATTERY_INPUT,    handle_hmi_ctrl_sub_data },     //Seg S8
+    { WIFI0STS,         DDM2_TYPE_INT32_T,  0,      1,  WIFI0STS_UNKNOWN,                   handle_hmi_ctrl_sub_data },     //Seg S9
+	{ IV0PWRON,         DDM2_TYPE_INT32_T,  1,      0,  IV0PWRON_OFF,                       handle_hmi_ctrl_sub_data },     //Seg S12
+    { IV0IONST,         DDM2_TYPE_INT32_T,  1,      0,  IV0IONST_ON,                        handle_hmi_ctrl_sub_data },
+    { IV0ERRST,         DDM2_TYPE_INT32_T,  1,      0,  IV0ERRST_NO_ERROR,                  handle_hmi_ctrl_sub_data },
+    { IV0BLREQ,         DDM2_TYPE_INT32_T,  1,      0,  IV0BLREQ_IDLE,                      handle_hmi_ctrl_sub_data },
+    { IV0HMITST,        DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
+    { IVPMGR0STATE,     DDM2_TYPE_INT32_T,  0,      1,  IVPMGR0STATE_STANDBY,               handle_hmi_ctrl_sub_data },
+    { DIM0LVL,          DDM2_TYPE_INT32_T,  0,      1,  DIM_LVL_DUTY_CYCLE_0, 	            handle_hmi_ctrl_sub_data },
+    { BT0PAIR,          DDM2_TYPE_INT32_T,  0,      1,  BT0PAIR_OUT_PAIRING_MODE_INACTIVE,  handle_hmi_ctrl_sub_data },
+    { SDP0DP,           DDM2_TYPE_INT32_T,  0, 	    1, 	0,                                  handle_hmi_ctrl_sub_data },
+    { IV0PRST,          DDM2_TYPE_INT32_T,  1,      0,  IV0PRST_PRESS_STATUS_UNKNOWN,       NULL },
+    { IV0SETCHRGCRNT,   DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
+    { IV0SETT,          DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
+    { IV0STGT,          DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
+    { SBMEB0AQR,        DDM2_TYPE_INT32_T,  0,      1,  0,                                  handle_hmi_ctrl_sub_data }
 };
 
 static const uint32_t conn_onbhmi_db_elements = ELEMENTS(conn_onboardhmi_param_db);
 
-DECLARE_SORTED_LIST_EXTRAM(conn_obhmi_table, CONN_OBHMI_SUB_DEPTH);       //!< \~ Subscription table storage
+static void inventory_handler_cb(void *arg, uint32_t device_class_instance, bool is_available)
+{
+    if (SDP0 == DDMP2_INVENTORY_CLASS(device_class_instance))
+    {
+        //data_id = UPDATE_SEG_DP_SENS_STAT;
+        ble_dp_con_sts = (uint8_t)(is_available ? 1 : 0);
+        push_data_to_the_queue(ble_dp_con_sts, UPDATE_SEG_DP_SENS_STAT);
+    }
+    if (is_available)
+    {
+        conn_onboardhmi_param_t *ptr_param_db;
+
+        for (uint8_t db_idx = 0; db_idx < conn_onbhmi_db_elements; db_idx++)
+        {
+            ptr_param_db = &conn_onboardhmi_param_db[db_idx];
+
+            /* Check the DDM parameter need subscription */
+            if (ptr_param_db->sub)
+            {
+                if (DDM2_PARAMETER_CLASS_INSTANCE(ptr_param_db->ddm_parameter) == DDM2_PARAMETER_CLASS_INSTANCE(device_class_instance))
+                {
+                    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_onboard_hmi.connector_id, portMAX_DELAY));
+                }
+            }
+        }
+    }
+}
 
 /**
   * @brief  Initialize the connector for Onboard HMI
@@ -260,16 +288,14 @@ static int initialize_connector_onboardhmi(void)
 
     /* Initialize the onboard hmi state machine structure variables */
     onbrd_hmi_ctrl_sm.onbrd_hmi_ctrl_state = ONBOARD_HMI_STATE_IDLE;
-    onbrd_hmi_ctrl_sm.seg_state            = ENABLE_ALL_SEGEMENT;
+    onbrd_hmi_ctrl_sm.seg_state = ENABLE_ALL_SEGEMENT;
 
     /* Create queue for invent control task */
     obhmi_pwr_ctrl_que_hdl = osal_queue_create(OBHMI_PWR_CTRL_TASK_QUE_LEN, OBHMI_PWR_CTRL_TASK_QUE_ITEM_SIZE);
 
-    if ( NULL == obhmi_pwr_ctrl_que_hdl )
+    if (NULL == obhmi_pwr_ctrl_que_hdl)
     {
-#if CONN_ONBHMI_DEBUG_LOG        
-        LOG(W, "Queue creation failed for inventilate onboard hmi conrol task");
-#endif        
+        LOG(E, "Queue creation failed for inventilate onboard hmi control task");
     }
 
     /* Create the one shot timer software timer for onboard HMI events handling */
@@ -284,9 +310,9 @@ static int initialize_connector_onboardhmi(void)
     long_press_rel_tmr_hdle = xTimerCreate("long_pr_rel_tmr", LONG_PRESS_REL_TIMER_TICKS, pdFALSE, 0, long_press_rel_tmr_cb);
 
     /* Create the one shot timer software timer for onboard HMI events handling */
-    short_press_tmr_hdle = xTimerCreate("short_pr_tmr", SHORT_PRESS_TIMER_TICKS, pdFALSE, 0, short_press_tmr_cb);    
+    short_press_tmr_hdle = xTimerCreate("short_pr_tmr", SHORT_PRESS_TIMER_TICKS, pdFALSE, 0, short_press_tmr_cb);
 #endif
-    
+
 
     /* Create the periodic software timer for blinking HMI segments */
     blink_ctrl_timer_hdle = xTimerCreate("blink_tmr", BLINK_TIMER_TICKS, pdTRUE, 0, obhmi_blink_tmr_cb);
@@ -309,24 +335,27 @@ static int initialize_connector_onboardhmi(void)
     hal_init_timer(&timer_config_parameter);
 
     timer_queue = xQueueCreate(10, sizeof(hal_timer_event_t));
-  
-    /* Create Task for connector OnboardHMI to handle/process all the ddmp related activities */
-    TRUE_CHECK(osal_task_create(conn_onboardhmi_process_task, CONNECTOR_ONBOARDHMI_PROCESS_TASK_NAME, CONNECTOR_ONBOARD_HMI_PROCESS_STACK_DEPTH, NULL, CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY, NULL));
-	TRUE_CHECK(osal_task_create(conn_onboardhmi_ctrl_task,    CONNECTOR_ONBOARDHMI_PWR_CTRL_TASK_NAME, CONNECTOR_ONBOARD_HMI_CTRL_TASK_STACK_DEPTH, obhmi_pwr_ctrl_que_hdl, CONNECTOR_ONBOARD_HMI_CTRL_TASK_PRIORITY, NULL));
-    
-    TRUE_CHECK(osal_task_create(conn_obdhmi_btn_task,    CONNECTOR_OBHMI_BTN_TASK_NAME, CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH, timer_queue, CONNECTOR_OBHMI_BTN_TASK_TASK_PRIORITY, NULL));
-    
-    /* Publish the class availbility to the broker */
+
+    /* Publish the class availability to the broker */
     install_parameters();
 
-    /* Subsribe the all the needed DDMP parameters to the broker */
+    // Instantiate, initialize and start inventory handler object
+    inventory_handler_init(&l_ih, &inv_storage, inventory_handler_cb, NULL);
+
+    /* Subscribe the all the needed DDMP parameters to the broker */
     start_subscribe();
     start_publish();
 
+    /* Create Task for connector OnboardHMI to handle/process all the ddmp related activities */
+    TRUE_CHECK(osal_task_create(conn_onboardhmi_process_task, CONNECTOR_ONBOARDHMI_PROCESS_TASK_NAME, CONNECTOR_ONBOARD_HMI_PROCESS_STACK_DEPTH, NULL, CONNECTOR_ONBOARD_HMI_PROCESS_PRIORITY, NULL));
+	TRUE_CHECK(osal_task_create(conn_onboardhmi_ctrl_task, CONNECTOR_ONBOARDHMI_PWR_CTRL_TASK_NAME, CONNECTOR_ONBOARD_HMI_CTRL_TASK_STACK_DEPTH, obhmi_pwr_ctrl_que_hdl, CONNECTOR_ONBOARD_HMI_CTRL_TASK_PRIORITY, NULL));
+
+    TRUE_CHECK(osal_task_create(conn_obdhmi_btn_task, CONNECTOR_OBHMI_BTN_TASK_NAME, CONNECTOR_OBHMI_BTN_TASK_STACK_DEPTH, timer_queue, CONNECTOR_OBHMI_BTN_TASK_TASK_PRIORITY, NULL));
+
     /* At board startup set the max duty cycle for HMI backlight */
     hmi_backlight_set_duty(ONBOARD_HMI_MAX_DUTY_CYCLE);
-    /* Change the state */ 
-    change_onhmi_ctrl_state(onbrd_hmi_ctrl_sm.onbrd_hmi_ctrl_state); 
+    /* Change the state */
+    change_onhmi_ctrl_state(onbrd_hmi_ctrl_sm.onbrd_hmi_ctrl_state);
 
     return 1;
 }
@@ -341,15 +370,23 @@ static void start_subscribe(void)
     conn_onboardhmi_param_t *ptr_param_db;
     uint16_t db_idx;
     uint8_t num_elements = ELEMENTS(conn_onboardhmi_param_db);
-    
-    for ( db_idx = 0; db_idx < num_elements; db_idx++ )
+
+    for (db_idx = 0; db_idx < num_elements; db_idx++)
     {
         ptr_param_db = &conn_onboardhmi_param_db[db_idx];
 
-        /* Check the DDM parameter need subscribtion */
-        if ( ptr_param_db->sub )
+        /* Check the DDM parameter need subscription */
+        if (ptr_param_db->sub)
         {
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_onboard_hmi.connector_id, (TickType_t)portMAX_DELAY));
+            if (DDM2_PARAMETER_GROUP(ptr_param_db->ddm_parameter) != DDM2_PARAMETER_GROUP(SNODE0))
+            {
+                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, ptr_param_db->ddm_parameter, NULL, 0, connector_onboard_hmi.connector_id, (TickType_t)portMAX_DELAY));
+            }
+            else
+            {
+                // Add to inventory handler
+                inventory_handler_add(&l_ih, DDM2_PARAMETER_CLASS_INSTANCE(ptr_param_db->ddm_parameter));
+            }
         }
     }
 }
@@ -364,30 +401,17 @@ static void start_publish(void)
     conn_onboardhmi_param_t *ptr_param_db;
     uint16_t db_idx;
     uint8_t num_elements = ELEMENTS(conn_onboardhmi_param_db);
-    
-    for ( db_idx = 0; db_idx < num_elements; db_idx++ )
+
+    for (db_idx = 0; db_idx < num_elements; db_idx++)
     {
         ptr_param_db = &conn_onboardhmi_param_db[db_idx];
 
-        /* Check the DDM parameter need to publish */
-        if ( ptr_param_db->pub ) 
+        /* Check the DDM parameter need to publish, owned parameters */
+        if (ptr_param_db->pub)
         {
             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ptr_param_db->ddm_parameter, &ptr_param_db->i32Value, sizeof(int32_t), connector_onboard_hmi.connector_id, portMAX_DELAY));
         }
     }
-}
-
-/**
-  * @brief  Add device to inventory if it does not already exists
-  * @param  DDMP Frame.
-  * @retval result 0 - Succesfully added to list / 1 - Fail.
-  */
-static int add_subscription(DDMP2_FRAME *pframe)
-{
-    SORTED_LIST_KEY_TYPE     key = pframe->frame.subscribe.parameter;
-    SORTED_LIST_VALUE_TYPE value = 1;
-
-    return sorted_list_single_add(&conn_obhmi_table, key, value);
 }
 
 /**
@@ -407,38 +431,41 @@ static void process_set_and_publish_request(uint32_t ddm_param, int32_t i32value
 
 	/* Validate the DDM parameter received */
 	db_idx = get_ddm_index_from_db(ddm_param);
- 
-	if ( DDMP_UNAVAILABLE != db_idx )
+
+	if (DDMP_UNAVAILABLE != db_idx)
 	{
-        if ( req_type == DDMP2_CONTROL_SET )
+        if (req_type == DDMP2_CONTROL_SET)
         {
             /* Frame and send the publish request */
-            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &pub_value, sizeof(int32_t), \
-                       connector_onboard_hmi.connector_id, portMAX_DELAY));
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &pub_value, sizeof(int32_t),
+                   connector_onboard_hmi.connector_id, portMAX_DELAY));
         }
-        
+
 		param_db = &conn_onboardhmi_param_db[db_idx];
 
         i32Index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_param));
 
-        if ( -1 != i32Index )
+        if (-1 != i32Index)
         {
-            if (  i32Index < DDM2_PARAMETER_COUNT )
+            if (i32Index < DDM2_PARAMETER_COUNT)
+            {
                 i32Factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[i32Index].in_unit];
+            }
             else
+            {
                 i32Factor = 1;
-
-            if ( i32Factor > 0 )
+            }
+            if (i32Factor > 0)
             {
                 i32value = i32value / i32Factor;
             }
-                
-            if ( i32value != param_db->i32Value )
+
+            if (i32value != param_db->i32Value)
             {
                 /* Update the received value in the database table*/
 	  	        param_db->i32Value = i32value;
 		        /* Check callback function registered for this DDM parameter */
-		        if  ( NULL != param_db->cb_func )
+		        if (NULL != param_db->cb_func)
 		        {
                     /* Execute the callback function */
                     param_db->cb_func(ddm_param, i32value);
@@ -458,39 +485,41 @@ static void conn_onboardhmi_process_task(void *pvParameter)
     DDMP2_FRAME *pframe;
 	size_t frame_size;
 
+	inventory_handler_start(&l_ih, &connector_onboard_hmi);
+
 	while (1)
 	{
-        TRUE_CHECK ( pframe = xRingbufferReceive(connector_onboard_hmi.to_connector, &frame_size, portMAX_DELAY) );
-        
-        switch (pframe->frame.control)
+        TRUE_CHECK(pframe = xRingbufferReceive(connector_onboard_hmi.to_connector, &frame_size, portMAX_DELAY));
+        if (!inventory_handler_update(&l_ih, pframe))
         {
-            case DDMP2_CONTROL_PUBLISH:
-                process_set_and_publish_request(pframe->frame.publish.parameter, pframe->frame.publish.value.int32, pframe->frame.control);
-                break;
-                
-            case DDMP2_CONTROL_SET:
-                if  (   ( ( IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state ) && (pframe->frame.set.parameter == IV0PWRON ) )  
-                || ( ( IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state ) && (pframe->frame.set.parameter == IV0MODE ) )            
-                )
-                {
-                    /* power button functionalites and short press for mode button is not required in storage mode */              
-                }
-                else
-                {
-                    process_set_and_publish_request(pframe->frame.set.parameter, pframe->frame.set.value.int32, pframe->frame.control);
-                }
-    	        break;
-                
-            case DDMP2_CONTROL_SUBSCRIBE:
-                add_subscription(pframe);
-                process_subscribe_request(pframe->frame.subscribe.parameter);
-			    break;
-                
-            default:
-#if CONN_ONBHMI_DEBUG_LOG            
-				LOG(W, "UNHANDLED frame %02x from broker!",pframe->frame.control);
-#endif                
-			    break;
+            switch (pframe->frame.control)
+            {
+                case DDMP2_CONTROL_PUBLISH:
+                    process_set_and_publish_request(pframe->frame.publish.parameter, pframe->frame.publish.value.int32, pframe->frame.control);
+                    break;
+
+                case DDMP2_CONTROL_SET:
+                    if (((IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state) && (pframe->frame.set.parameter == IV0PWRON)) ||
+                            ((IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state) && (pframe->frame.set.parameter == IV0MODE)))
+                    {
+                        /* power button functionalities and short press for mode button is not required in storage mode */
+                    }
+                    else
+                    {
+                        process_set_and_publish_request(pframe->frame.set.parameter, pframe->frame.set.value.int32, pframe->frame.control);
+                    }
+                    break;
+
+                case DDMP2_CONTROL_SUBSCRIBE:
+                    process_subscribe_request(pframe->frame.subscribe.parameter);
+                    break;
+
+                default:
+#if CONN_ONBHMI_DEBUG_LOG
+                    LOG(W, "UNHANDLED frame %02x from broker!", pframe->frame.control);
+#endif
+                    break;
+            }
         }
 
         vRingbufferReturnItem(connector_onboard_hmi.to_connector, pframe);
@@ -506,149 +535,153 @@ static void handle_hmi_blink_segment(void)
 {
     blink_timer_counter += OBHMI_BLINK_CTRL_TASK_DELAY_MSEC;
 
-    if ( blink_timer_counter >= FAST_BLINK_TIME_INTERVAL )
+    if (blink_timer_counter >= FAST_BLINK_TIME_INTERVAL)
     {
         blink_timer_counter = 0;
-        
-        for ( uint8_t seg = 0; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++ )
+
+        for (uint8_t seg = 0; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++)
         {
-            if ( g_blink_segment_status & ( 1 << seg ) )
+            if (g_blink_segment_status & (1 << seg))
             {
                 uc1510c_set_segment(seg, blink_flag);
             }
-            else 
+            else
             {
                 /* Restore the segment to its previous status */
-                if ( prev_seg_stat[seg] != seg_stat[seg] )
+                if (prev_seg_stat[seg] != seg_stat[seg])
                 {
                     uc1510c_set_segment(seg, seg_stat[seg]);
                     prev_seg_stat[seg] = seg_stat[seg];
                 }
             }
         }
-
         blink_flag = !blink_flag;
     }
 }
 
 static void restore_seg(void)
 {
-    
-    for ( uint8_t seg = 0; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++ )
+
+    for (uint8_t seg = 0; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++)
     {
         uc1510c_set_segment(seg, seg_stat[seg]);
         prev_seg_stat[seg] = seg_stat[seg];
     }
-
 }
+
 /**
   * @brief  Function to update the blink segment status based on received error code
-  * 
+  *
   * @param  error_code.
   * @retval none.
   */
-void update_blink_info(const uint32_t error_code)
+void update_blink_info(const uint32_t error_code, bool update)
 {
     uint8_t index;
     uint32_t blink_seg_curr_status = g_blink_segment_status;
 
-    g_error_code = g_error_code | error_code;
-    for ( index = 0; index < MAX_NUM_ERROR_CODES; index++ )
+    if (update)
     {
-        if ( ( error_code & ( 1 << index ) ) == 0)
+        // New errorcode
+        g_error_code = error_code;
+    }
+    for (index = 0; index < MAX_NUM_ERROR_CODES; index++)
+    {
+        if ((g_error_code & (1 << index)) == 0)
         {
-           g_error_ack &= ~(1 << index); 
+            // Clear acknowledged errors when error is resolved
+            g_error_ack &= ~(1 << index);
         }
-        
-        if ( ( error_code & ( 1 << index ) ) == 0  || ((g_error_ack & (1 << index)) >0 ) ) 
+
+        if (((g_error_code & (1 << index)) == 0) || ((g_error_ack & (1 << index)) > 0))
         {
             switch (index)
             {
                 //Errors acknowledged by USER
                 case DP_SENSOR_BOARD_BATTERY_LOW:
-                    blink_seg_curr_status &= ~( 1 << SEG_WARNING_STATUS );
-                    blink_seg_curr_status &= ~( 1 << SEG_SOLAR_BATTERY_STATUS );
+                    blink_seg_curr_status &= ~(1 << SEG_WARNING_STATUS);
+                    blink_seg_curr_status &= ~(1 << SEG_SOLAR_BATTERY_STATUS);
                     break;
 
                 //Errors acknowledged by USER and SERVICE
                 case DP_SENSOR_BOARD_DISCONNECTED:
-                    
-                    if(user_errack < USER_ERRACK_MAX)
+
+                    if (user_errack < USER_ERRACK_MAX)
                     {
-                        blink_seg_curr_status &= ~( 1 << SEG_BLE_STATUS );
-                        blink_seg_curr_status &= ~( 1 << SEG_WARNING_STATUS );
+                        blink_seg_curr_status &= ~(1 << SEG_BLE_STATUS);
+                        blink_seg_curr_status &= ~(1 << SEG_WARNING_STATUS);
                     }
                     else
                     {
-                        blink_seg_curr_status &= ~( 1 << SEG_BLE_STATUS );
-                        blink_seg_curr_status &= ~( 1 << SEG_MODE_BUTTON );
-                        blink_seg_curr_status &= ~( 1 << SEG_WARNING_STATUS );
+                        blink_seg_curr_status &= ~(1 << SEG_BLE_STATUS);
+                        blink_seg_curr_status &= ~(1 << SEG_MODE_BUTTON);
+                        blink_seg_curr_status &= ~(1 << SEG_WARNING_STATUS);
                     }
-                    restore_seg(); 
+                    restore_seg();
                     break;
-                
+
                 //Errors acknowledged by SERVICE
-                case VOC_SENSOR_COMMUNICATION_ERROR:                    
+                case VOC_SENSOR_COMMUNICATION_ERROR:
                     //Hanlde VOC sensor communication error
                     //fallthrough
-                case VOC_SENSOR_DATA_PLAUSIBLE_ERROR:                   
+                case VOC_SENSOR_DATA_PLAUSIBLE_ERROR:
                     //Hanlde VOC sensor Data error
                     //fallthrough
-                case DP_SENSOR_DATA_PLAUSIBLE_ERROR:                    
+                case DP_SENSOR_DATA_PLAUSIBLE_ERROR:
                     //Handle DP sensor data error
                     //fallthrough
-                case FAN1_RPM_MISMATCH:                                 
+                case FAN1_RPM_MISMATCH:
                     //process FAN1 RPM error
                     //fallthrough
-                case FAN1_TACHO_READ_DEVICE_INACTIVE:                   
+                case FAN1_TACHO_READ_DEVICE_INACTIVE:
                     //process FAN1 Tacho reading error when device is in in-active state
                     //fallthrough
-                case FAN1_NO_TACHO_DEVICE_ACTIVE:                       
+                case FAN1_NO_TACHO_DEVICE_ACTIVE:
                     //process FAN1 Tacho when device is in active state
                     //fallthrough
-                case FAN2_RPM_MISMATCH:                                 
+                case FAN2_RPM_MISMATCH:
                     //process FAN2 RPM error
                     //fallthrough
-                case FAN2_TACHO_READ_DEVICE_INACTIVE:                   
+                case FAN2_TACHO_READ_DEVICE_INACTIVE:
                     //process FAN2 Tacho reading error when device is in in-active state
                     //fallthrough
-                case FAN2_NO_TACHO_DEVICE_ACTIVE:                       
+                case FAN2_NO_TACHO_DEVICE_ACTIVE:
                     //process FAN2 Tacho reading error when device is in active state
                     //fallthrough
-                case MOTOR_RPM_MISMATCH:                                
+                case MOTOR_RPM_MISMATCH:
                     //process Motor RPM error
                     //fallthrough
-                case MOTOR_TACHO_READ_DEVICE_INACTIVE:                  
+                case MOTOR_TACHO_READ_DEVICE_INACTIVE:
                     //process Motor Tacho reading error when device is in in-active state
                     //fallthrough
-                case MOTOR_NO_TACHO_DEVICE_ACTIVE:                      
+                case MOTOR_NO_TACHO_DEVICE_ACTIVE:
                     //process Motor Tacho reading error when device is in active state
                     //fallthrough
-                case BACKUP_BATTERY_LOW:                                
+                case BACKUP_BATTERY_LOW:
                     //Process backup Battery low condition
                     //fallthrough
-                case COMM_ERROR_WITH_BATTERY_IC:                        
+                case COMM_ERROR_WITH_BATTERY_IC:
                     //Handle Battery ic communication error
                     //fallthrough
-                case BATTERY_OVER_HEATING:                              
+                case BATTERY_OVER_HEATING:
                     //Handle Battery IC temperature status
                     //fallthrough
-                case BATTERY_EXPIRED:                                   
+                case BATTERY_EXPIRED:
                     //Handle back up battery voltage status
                     //fallthrough
-                case COMM_ERROR_WITH_LCD_DRIVER_IC:                     
-                    //Handle LCD driver communication 
+                case COMM_ERROR_WITH_LCD_DRIVER_IC:
+                    //Handle LCD driver communication
                     //fallthrough
-                case TOUCH_BUTTON_EVENT_PROCESS_ERROR:                  
+                case TOUCH_BUTTON_EVENT_PROCESS_ERROR:
                     //Handle Touch error events
                     //fallthrough
-                case CAN_COMMUNICATION_ERROR:                           
+                case CAN_COMMUNICATION_ERROR:
                     //Handle CAN communication error
                     //fallthrough
-                case LIN_COMMUNICATION_ERROR:                           
+                case LIN_COMMUNICATION_ERROR:
                     //Handle LIN communication error
-                    blink_seg_curr_status &= ~( 1 << SEG_MODE_BUTTON );
-                    blink_seg_curr_status &= ~( 1 << SEG_WARNING_STATUS );
+                    blink_seg_curr_status &= ~(1 << SEG_MODE_BUTTON);
+                    blink_seg_curr_status &= ~(1 << SEG_WARNING_STATUS);
                     break;
                 case  UNUSED_3:
                 //fallthrough
@@ -661,110 +694,110 @@ void update_blink_info(const uint32_t error_code)
                     break;
                 default:
                     /*Do Nothing*/
-#if CONN_ONBHMI_DEBUG_LOG                
+#if CONN_ONBHMI_DEBUG_LOG
                     LOG(W, "Clear: Unhandled error code %d", index);
-#endif                    
+#endif
                     break;
             }
         }
     }
 
-    for ( index = 0; index < MAX_NUM_ERROR_CODES; index++ )
+    for (index = 0; index < MAX_NUM_ERROR_CODES; index++)
     {
-        if ( ( error_code & ( 1 << index ) ) && ( (g_error_ack & ( 1 << index ) ) == 0 ) )
+        if ((g_error_code & (1 << index)) && ((g_error_ack & (1 << index)) == 0))
         {
             switch (index)
             {
                 case DP_SENSOR_BOARD_BATTERY_LOW:
-                    blink_seg_curr_status |= ( 1 << SEG_WARNING_STATUS );
-                    blink_seg_curr_status |= ( 1 << SEG_SOLAR_BATTERY_STATUS );
+                    blink_seg_curr_status |= (1 << SEG_WARNING_STATUS);
+                    blink_seg_curr_status |= (1 << SEG_SOLAR_BATTERY_STATUS);
                     break;
 
                 case DP_SENSOR_BOARD_DISCONNECTED:
-                    if(user_errack < USER_ERRACK_MAX)
+                    if (user_errack < USER_ERRACK_MAX)
                     {
-                        blink_seg_curr_status |= ( 1 << SEG_BLE_STATUS );
-                        blink_seg_curr_status |= ( 1 << SEG_WARNING_STATUS );
+                        blink_seg_curr_status |= (1 << SEG_BLE_STATUS);
+                        blink_seg_curr_status |= (1 << SEG_WARNING_STATUS);
                         user_errack++;
                         restore_seg();              //Restore LCD segments
                     }
                     else
                     {
-                        blink_seg_curr_status &= ~( 1 << SEG_BLE_STATUS );
-                        blink_seg_curr_status |= ( 1 << SEG_MODE_BUTTON );
-                        blink_seg_curr_status |= ( 1 << SEG_WARNING_STATUS );
+                        blink_seg_curr_status &= ~(1 << SEG_BLE_STATUS);
+                        blink_seg_curr_status |= (1 << SEG_MODE_BUTTON);
+                        blink_seg_curr_status |= (1 << SEG_WARNING_STATUS);
                         restore_seg();          //Restore LCD segments
                     }
                     break;
 
-                case VOC_SENSOR_COMMUNICATION_ERROR:                            
-                    //Hanlde VOC sensor communication error
+                case VOC_SENSOR_COMMUNICATION_ERROR:
+                    //Handle VOC sensor communication error
                     //fallthrough
-                case VOC_SENSOR_DATA_PLAUSIBLE_ERROR:                           
-                    //Hanlde VOC sensor Data error
+                case VOC_SENSOR_DATA_PLAUSIBLE_ERROR:
+                    //Handle VOC sensor Data error
                     //fallthrough
-                case DP_SENSOR_DATA_PLAUSIBLE_ERROR:                            
+                case DP_SENSOR_DATA_PLAUSIBLE_ERROR:
                     //process FAN1 RPM error
                     //fallthrough
-                case FAN1_RPM_MISMATCH:                                         
+                case FAN1_RPM_MISMATCH:
                     //process FAN1 RPM error
                     //fallthrough
-                case FAN1_TACHO_READ_DEVICE_INACTIVE:                           
+                case FAN1_TACHO_READ_DEVICE_INACTIVE:
                     //process FAN1 Tacho reading error when device is in in-active state
                     //fallthrough
-                case FAN1_NO_TACHO_DEVICE_ACTIVE:                               
+                case FAN1_NO_TACHO_DEVICE_ACTIVE:
                     //process FAN1 Tacho when device is in active state
                     //fallthrough
-                case FAN2_RPM_MISMATCH:                                         
+                case FAN2_RPM_MISMATCH:
                     //process FAN2 RPM error
                     //fallthrough
-                case FAN2_TACHO_READ_DEVICE_INACTIVE:                           
+                case FAN2_TACHO_READ_DEVICE_INACTIVE:
                     //process FAN2 Tacho reading error when device is in in-active state
                     //fallthrough
-                case FAN2_NO_TACHO_DEVICE_ACTIVE:                               
+                case FAN2_NO_TACHO_DEVICE_ACTIVE:
                     //process FAN2 Tacho reading error when device is in active state
                     //fallthrough
-                case MOTOR_RPM_MISMATCH:                                        
+                case MOTOR_RPM_MISMATCH:
                     //process Motor RPM error
                     //fallthrough
-                case MOTOR_TACHO_READ_DEVICE_INACTIVE:                          
+                case MOTOR_TACHO_READ_DEVICE_INACTIVE:
                     //process Motor Tacho reading error when device is in in-active state
                     //fallthrough
-                case MOTOR_NO_TACHO_DEVICE_ACTIVE:                              
+                case MOTOR_NO_TACHO_DEVICE_ACTIVE:
                     //process Motor Tacho reading error when device is in active state
                     //fallthrough
-                case BACKUP_BATTERY_LOW:                                        
+                case BACKUP_BATTERY_LOW:
                     //Process backup Battery low condition
                     //fallthrough
-                case COMM_ERROR_WITH_BATTERY_IC:                                
+                case COMM_ERROR_WITH_BATTERY_IC:
                     //Handle Battery ic communication error
                     //fallthrough
-                case BATTERY_OVER_HEATING:                                      
+                case BATTERY_OVER_HEATING:
                     //Handle Battery IC temperature status
                     //fallthrough
-                case BATTERY_EXPIRED:                                           
+                case BATTERY_EXPIRED:
                     //Handle back up battery voltage status
                     //fallthrough
-                case COMM_ERROR_WITH_LCD_DRIVER_IC:                             
-                    //Handle LCD driver communication 
+                case COMM_ERROR_WITH_LCD_DRIVER_IC:
+                    //Handle LCD driver communication
                     //fallthrough
-                case TOUCH_BUTTON_EVENT_PROCESS_ERROR:                          
+                case TOUCH_BUTTON_EVENT_PROCESS_ERROR:
                 //Handle Touch error events
                 //fallthrough
-                case CAN_COMMUNICATION_ERROR:                                   
+                case CAN_COMMUNICATION_ERROR:
                     //Handle CAN communication error
                     //fallthrough
                 case LIN_COMMUNICATION_ERROR:                                   //Handle LIN communication error
-                    blink_seg_curr_status |= ( 1 << SEG_MODE_BUTTON );
-                    blink_seg_curr_status |= ( 1 << SEG_WARNING_STATUS );
-                    restore_seg();          
+                    blink_seg_curr_status |= (1 << SEG_MODE_BUTTON);
+                    blink_seg_curr_status |= (1 << SEG_WARNING_STATUS);
+                    restore_seg();
                     break;
 
                 default:
                     /*Do Nothing*/
-#if CONN_ONBHMI_DEBUG_LOG                    
+#if CONN_ONBHMI_DEBUG_LOG
                     LOG(W, "Set: Unhandled error code %d", index);
-#endif                    
+#endif
                     break;
             }
         }
@@ -779,15 +812,8 @@ void update_blink_info(const uint32_t error_code)
  */
 void error_check_ack(void)
 {
-    uint8_t index;
-
-    for ( index = 0; index < MAX_NUM_ERROR_CODES; index++ )
-    {
-         if ( ( g_error_code & ( 1 << index ) ) > 0 )
-         {
-            g_error_ack = g_error_ack | 1 << index;
-         }
-    }
+    // All active errors are to be acknowledged
+    g_error_ack = g_error_code;
 }
 
 /**
@@ -797,18 +823,18 @@ void error_check_ack(void)
   */
 static void conn_onboardhmi_ctrl_task(void *pvParameter)
 {
-    uint8_t update_seg       = 0;
+    uint8_t update_seg = 0;
     uint8_t check_timer_stat = 0;
-    uint32_t calc_resol      = 0;
-    int32_t ble_on_off_value       = 0;
+    uint32_t calc_resol = 0;
+    int32_t ble_on_off_value = 0;
 
     while (1)
     {
         /* Queue will be in blocked state untill data recevied */
-        if ( osal_success == osal_queue_receive((osal_queue_handle_t)pvParameter, (void *)&ptr_hmi_ctrl_sm->data_frame, portMAX_DELAY) )
+        if (osal_success == osal_queue_receive((osal_queue_handle_t)pvParameter, (void *)&ptr_hmi_ctrl_sm->data_frame, portMAX_DELAY))
         {
             /* Parse the data received from queue */
-            switch ( ptr_hmi_ctrl_sm->data_frame.data_id )
+            switch (ptr_hmi_ctrl_sm->data_frame.data_id)
             {
                 case INV_STATE:
                     ptr_hmi_ctrl_sm->inv_state = ptr_hmi_ctrl_sm->data_frame.data;
@@ -822,13 +848,13 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                 case BTN_PRESSED_EVENT:
                     hmi_backlight_set_duty(ONBOARD_HMI_MAX_DUTY_CYCLE);
                     reset_hmi_wait_timer();
-                    if(hmi_stanby_mode == 1)
+                    if (hmi_standby_mode == 1)
                     {
-                        hmi_stanby_mode = 0;
+                        hmi_standby_mode = 0;
                     }
                     else
                     {
-                        if ( ONBOARD_HMI_STATE_STARTUP != ptr_hmi_ctrl_sm->onbrd_hmi_ctrl_state )
+                        if (ONBOARD_HMI_STATE_STARTUP != ptr_hmi_ctrl_sm->onbrd_hmi_ctrl_state)
                         {
                             /* Handle button events */
                             handle_onboard_hmi_button_event((uint16_t)ptr_hmi_ctrl_sm->data_frame.data, ptr_hmi_ctrl_sm->inv_state, ptr_hmi_ctrl_sm->invent_error_status);
@@ -837,11 +863,11 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                     break;
 
                 case HMI_BACK_LIGHT_TEST:
-                    if ( ptr_hmi_ctrl_sm->data_frame.data < HMI_BACKLIGHT_MIN_DUTY_CYCLE )
+                    if (ptr_hmi_ctrl_sm->data_frame.data < HMI_BACKLIGHT_MIN_DUTY_CYCLE)
                     {
                         ptr_hmi_ctrl_sm->data_frame.data = HMI_BACKLIGHT_MIN_DUTY_CYCLE;
                     }
-                    else if ( ptr_hmi_ctrl_sm->data_frame.data > HMI_BACKLIGHT_MAX_DUTY_CYCLE )
+                    else if (ptr_hmi_ctrl_sm->data_frame.data > HMI_BACKLIGHT_MAX_DUTY_CYCLE)
                     {
                         ptr_hmi_ctrl_sm->data_frame.data = HMI_BACKLIGHT_MAX_DUTY_CYCLE;
                     }
@@ -851,33 +877,33 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                     }
 
                     calc_resol = calc_linear_interpolation(HMI_BACKLIGHT_MIN_DUTY_CYCLE, HMI_BACKLIGHT_MAX_DUTY_CYCLE, LEDC_PWM_MIN_DUTY_CYCLE, LEDC_PWM_MAX_DUTY_CYCLE, ptr_hmi_ctrl_sm->data_frame.data);
-#if CONN_ONBHMI_DEBUG_LOG 
+#if CONN_ONBHMI_DEBUG_LOG
                     LOG(I, "calc_resol = %d", calc_resol);
-#endif                    
+#endif
                     /* Set the backlight in the onboard HMI */
                     hmi_backlight_set_duty(calc_resol);
                     break;
 
                 /*30 seconds timer when no button is pressed has expired*/
                 case HMI_TIMER_EXPIRED:
-                    if ( ONBOARD_HMI_STATE_STARTUP != ptr_hmi_ctrl_sm->onbrd_hmi_ctrl_state )
+                    if (ONBOARD_HMI_STATE_STARTUP != ptr_hmi_ctrl_sm->onbrd_hmi_ctrl_state)
                     {
 #if CONN_ONBHMI_DEBUG_LOG
                         LOG(W, "HMI_TIMER_EXPIRED mode ");
 #endif
-                        if(ptr_hmi_ctrl_sm->selected_mode == INV_SLEEP)
+                        if (ptr_hmi_ctrl_sm->selected_mode == INV_SLEEP)
                         {
-                                hmi_backlight_set_duty(ONBOARD_HMI_5_DUTY_CYCLE);
+                            hmi_backlight_set_duty(ONBOARD_HMI_5_DUTY_CYCLE);
                         }
-                        else if(ptr_hmi_ctrl_sm->selected_mode == INV_STORAGE)
+                        else if (ptr_hmi_ctrl_sm->selected_mode == INV_STORAGE)
                         {
-                                hmi_backlight_set_duty(ONBOARD_HMI_5_DUTY_CYCLE);
+                            hmi_backlight_set_duty(ONBOARD_HMI_5_DUTY_CYCLE);
                         }
                         else
                         {
                             hmi_backlight_set_duty(ONBOARD_HMI_MIN_DUTY_CYCLE);
                         }
-                        hmi_stanby_mode = 1;
+                        hmi_standby_mode = 1;
                         /* Closing the window for mobile App pairing */
                     }
                     break;
@@ -885,28 +911,26 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                 case INV_ERROR_STATUS:
                     ptr_hmi_ctrl_sm->invent_error_status = ptr_hmi_ctrl_sm->data_frame.data;
 
-                    if ( ptr_hmi_ctrl_sm->invent_error_status != ptr_hmi_ctrl_sm->invent_prev_err_status )
+                    if (ptr_hmi_ctrl_sm->invent_error_status != ptr_hmi_ctrl_sm->invent_prev_err_status)
                     {
                         ptr_hmi_ctrl_sm->invent_prev_err_status = ptr_hmi_ctrl_sm->invent_error_status;
-                        
-                        update_blink_info(ptr_hmi_ctrl_sm->invent_error_status);
-
+                        update_blink_info(ptr_hmi_ctrl_sm->invent_error_status, true);
                         check_timer_stat = 1;
                     }
                     break;
 
                 default:
-                    break; 
+                    break;
             }
 
-            if ( ptr_hmi_ctrl_sm->onbrd_hmi_ctrl_state != ONBOARD_HMI_STATE_ACTIVE )
+            if (ptr_hmi_ctrl_sm->onbrd_hmi_ctrl_state != ONBOARD_HMI_STATE_ACTIVE)
             {
                 /* Store the status of HMI segments without updating in HMI */
                 obhmi_update_var(ptr_hmi_ctrl_sm->data_frame.data_id, ptr_hmi_ctrl_sm->data_frame.data);
             }
 
             /* Process the received data */
-            switch ( ptr_hmi_ctrl_sm->onbrd_hmi_ctrl_state )
+            switch (ptr_hmi_ctrl_sm->onbrd_hmi_ctrl_state)
             {
                 case ONBOARD_HMI_STATE_IDLE:
                     stop_obhmi_blink_timer();
@@ -919,20 +943,19 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                     update_and_send_value_to_broker(IV0PWRON, IV0PWRON_OFF);
                     /* Update segments */
                     onboard_hmi_update_segments(POWERED_OFF_STATE_SEG);
-                    /* Change the state */ 
+                    /* Change the state */
                     change_onhmi_ctrl_state(ONBOARD_HMI_STATE_OFF);
                     break;
 
                 case ONBOARD_HMI_STATE_OFF:
-#if CONN_ONBHMI_DEBUG_LOG                    
-                    LOG(I, "ONBOARD_HMI_STATE_OFF inv_state = %d seg_state = %d", \
-                            ptr_hmi_ctrl_sm->inv_state, ptr_hmi_ctrl_sm->seg_state);
+#if CONN_ONBHMI_DEBUG_LOG
+                    LOG(I, "ONBOARD_HMI_STATE_OFF inv_state = %d seg_state = %d", ptr_hmi_ctrl_sm->inv_state, ptr_hmi_ctrl_sm->seg_state);
 #endif
-                    if ( IVPMGR0STATE_ACTIVE == ptr_hmi_ctrl_sm->inv_state )
+                    if (IVPMGR0STATE_ACTIVE == ptr_hmi_ctrl_sm->inv_state)
                     {
                         /* Set the segement state */
                         ptr_hmi_ctrl_sm->seg_state = ENABLE_ALL_SEGEMENT;
-                        /* Change the state */ 
+                        /* Change the state */
                         change_onhmi_ctrl_state(ONBOARD_HMI_STATE_STARTUP);
                     }
                     break;
@@ -944,7 +967,7 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                     // Step 3 : Disable all segments in Onboard HMI
                     // Step 4 : Wait for 2 seconds
                     // Step 5 : Enable the segments as per the status
-                    switch ( ptr_hmi_ctrl_sm->seg_state )
+                    switch (ptr_hmi_ctrl_sm->seg_state)
                     {
                         case ENABLE_ALL_SEGEMENT:
                             /* Update segments */
@@ -954,12 +977,12 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                             /* set the segment state */
                             ptr_hmi_ctrl_sm->seg_state = DISABLE_ALL_SEGEMENT;
                             ble_on_off_value = BT0PAIR_IN_PAIRING_MODE_OFF;
-                            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, BT0PAIR, &ble_on_off_value, sizeof(int32_t), \
+                            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, BT0PAIR, &ble_on_off_value, sizeof(int32_t),
                                             connector_onboard_hmi.connector_id, portMAX_DELAY));
                             break;
 
                         case DISABLE_ALL_SEGEMENT:
-                            if ( HMI_TIMER_EXPIRED == ptr_hmi_ctrl_sm->data_frame.data_id )
+                            if (HMI_TIMER_EXPIRED == ptr_hmi_ctrl_sm->data_frame.data_id)
                             {
                                 /* Set LCD backight duty cycle */
                                 hmi_backlight_set_duty(ONBOARD_HMI_OFF_DUTY_CYCLE);
@@ -973,7 +996,7 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                             break;
 
                         case POWERED_ON_STATE_SEG:
-                            if ( HMI_TIMER_EXPIRED == ptr_hmi_ctrl_sm->data_frame.data_id )
+                            if (HMI_TIMER_EXPIRED == ptr_hmi_ctrl_sm->data_frame.data_id)
                             {
                                 /* Set LCD backight duty cycle */
                                 hmi_backlight_set_duty(ONBOARD_HMI_MAX_DUTY_CYCLE);
@@ -983,7 +1006,7 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                                 update_and_send_value_to_broker(IV0MODE, IV0MODE_AUTO);
                                 /* Start timer */
                                 start_hmi_wait_timer(OBHMI_NO_HMI_ACTION_WAIT_TIME_MSEC);
-                                /* Change the state */ 
+                                /* Change the state */
                                 change_onhmi_ctrl_state(ONBOARD_HMI_STATE_ACTIVE);
                             }
                             break;
@@ -994,49 +1017,51 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                     break;
 
                 case ONBOARD_HMI_STATE_ACTIVE:
-#if CONN_ONBHMI_DEBUG_LOG                    
-                    LOG(I, "ONBOARD_HMI_STATE_ACTIVE inv_state = %d", ptr_hmi_ctrl_sm->inv_state);
-#endif                    
+#if CONN_ONBHMI_DEBUG_LOG
+                    //LOG(I, "ONBOARD_HMI_STATE_ACTIVE inv_state = %d", ptr_hmi_ctrl_sm->inv_state);
+#endif
                     /* Process received data frame from queue */
-                    switch ( ptr_hmi_ctrl_sm->data_frame.data_id )
+                    switch (ptr_hmi_ctrl_sm->data_frame.data_id)
                     {
-                        case BLINK_SEG_BLE_STAT:        
+                        case BLINK_SEG_BLE_STAT:
                             //Blink BLE icon on Bluetooth Communication Error
                             check_timer_stat = 1;
                             break;
 
-                        case BLINK_SEG_FILT_STAT:       
+                        case BLINK_SEG_FILT_STAT:
                             /*Handle filter status*/
                             check_timer_stat = 1;
                             break;
 
-                        case UPDATE_SEG_BLE:            //Show / hide BLE icon on connect/disconnect events 
+                        case UPDATE_SEG_BLE:            //Show / hide BLE icon on connect/disconnect events
                         case UPDATE_SEG_DP_SENS_STAT:
-                            LOG(W, "DP Sensor connectivity changed..Update BLE Status id %d data %d",ptr_hmi_ctrl_sm->data_frame.data_id,ptr_hmi_ctrl_sm->data_frame.data );
+#if CONN_ONBHMI_DEBUG_LOG
+                            LOG(I, "DP Sensor connectivity changed..Update BLE Status id %d data %d", ptr_hmi_ctrl_sm->data_frame.data_id, ptr_hmi_ctrl_sm->data_frame.data );
+#endif
                             update_seg = 1;
                             break;
- 
+
                         case UPDATE_SEG_AQ:               //Show / Hide IAQ segments when air quality changes
                             //fallthrough
                         case UPDATE_SEG_FILT_STAT:        //Show filter icon on Expiry of filter timing(500hours)
-                        //fallthrough
-                        case UPDATE_SEG_WARN:             //Blink warning icon for error coded.    
                             //fallthrough
-                        case UPDATE_SEG_PWRSRC:           //Show / Hide Solar/Battery icon              
+                        case UPDATE_SEG_WARN:             //Blink warning icon for error coded.
                             //fallthrough
-                        case UPDATE_SEG_WIFI:             //Show / Hide Wifi icon depending on the availablity of WIFI 
+                        case UPDATE_SEG_PWRSRC:           //Show / Hide Solar/Battery icon
+                            //fallthrough
+                        case UPDATE_SEG_WIFI:             //Show / Hide Wifi icon depending on the availablity of WIFI
                             //fallthrough
                         case UPDATE_SEG_IONIZER:          //Show / Hide Inonizer icon when ever necessary
                             //fallthrough
-                        case UPDATE_SEG_MODE:           
+                        case UPDATE_SEG_MODE:
                             // "Update Seg " pointed by ptr_hmi_ctrl_sm->data_frame.data_id)
-                            if(ptr_hmi_ctrl_sm->data_frame.data_id == UPDATE_SEG_PWRSRC)
+                            if (ptr_hmi_ctrl_sm->data_frame.data_id == UPDATE_SEG_PWRSRC)
                             {
-                                ptr_hmi_ctrl_sm->selected_pwr_src =ptr_hmi_ctrl_sm->data_frame.data_id; 
+                                ptr_hmi_ctrl_sm->selected_pwr_src = ptr_hmi_ctrl_sm->data_frame.data_id;
                             }
-#if CONN_ONBHMI_DEBUG_LOG                             
+#if CONN_ONBHMI_DEBUG_LOG
                             LOG(W, "Update SEG Status AQ,Filter,warn,Pwrsrc,wifi,Ionizer");
-#endif                            
+#endif
                             update_seg = 1;
                             break;
 
@@ -1045,9 +1070,9 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                                 /* Handle the segement blink based on periodic timer expire event */
                                 handle_hmi_blink_segment();
 
-                                if ( g_blink_segment_status == 0 )
+                                if (g_blink_segment_status == 0)
                                 {
-                                    if(blink_flag == 0)
+                                    if (blink_flag == 0)
                                     {
                                         restore_seg();
                                         ptr_hmi_ctrl_sm->blink_tmr_status = false;
@@ -1058,14 +1083,14 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                             break;
 
                         case INV_STATE:
-                            switch ( ptr_hmi_ctrl_sm->data_frame.data )
+                            switch (ptr_hmi_ctrl_sm->data_frame.data)
                             {
-                                case IVPMGR0STATE_STORAGE:                                    
+                                case IVPMGR0STATE_STORAGE:
                                     ptr_hmi_ctrl_sm->selected_mode = INV_STORAGE;
                                     obhmi_set_segment(UPDATE_SEG_VEHMOD, IV0STORAGE_ACTIVATE);
                                     obhmi_set_segment(UPDATE_SEG_MODE, IV0MODE_OFF);
-                                    obhmi_set_segment(UPDATE_SEG_AQ_OFF,IV0AQST_AIR_QUALITY_UNKNOWN);
-                                    
+                                    obhmi_set_segment(UPDATE_SEG_AQ_OFF, IV0AQST_AIR_QUALITY_UNKNOWN);
+
                                     update_and_send_value_to_broker(IV0MODE, IV0MODE_OFF);
                                     update_and_send_value_to_broker(IV0AQST, IV0AQST_AIR_QUALITY_UNKNOWN);
                                     update_and_send_value_to_broker(DIM0LVL, DIM_LVL_DUTY_CYCLE_0);                             /*Turn off LED*/
@@ -1075,10 +1100,10 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                                 case IVPMGR0STATE_ACTIVE:
                                     obhmi_set_segment(UPDATE_SEG_VEHMOD, IV0STORAGE_DEACTIVATE);
                                     obhmi_set_segment(UPDATE_SEG_MODE, IV0MODE_AUTO);
-                                    obhmi_set_segment(UPDATE_SEG_WIFI,inv_wifi_status);
-                                    obhmi_set_segment(UPDATE_SEG_BLE,inv_ble_status);
-                                    obhmi_set_segment(UPDATE_SEG_AQ,inv_iaq_status);
-                                    
+                                    obhmi_set_segment(UPDATE_SEG_WIFI, inv_wifi_status);
+                                    obhmi_set_segment(UPDATE_SEG_BLE, inv_ble_status);
+                                    obhmi_set_segment(UPDATE_SEG_AQ, inv_iaq_status);
+
                                     update_and_send_value_to_broker(IV0MODE, IV0MODE_AUTO);
                                     check_timer_stat = 1;
                                     break;
@@ -1104,20 +1129,19 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                     break;
             }
 
-            if ( check_timer_stat )
+            if (check_timer_stat)
             {
-                if ( ptr_hmi_ctrl_sm->blink_tmr_status == false )
+                if (ptr_hmi_ctrl_sm->blink_tmr_status == false)
                 {
                     start_obhmi_blink_timer();
                     ptr_hmi_ctrl_sm->blink_tmr_status = true;
                 }
-
                 check_timer_stat = 0;
             }
 
-            if ( update_seg )
+            if (update_seg)
             {
-                if(ptr_hmi_ctrl_sm->data_frame.data != IV0MODE_OFF)
+                if (ptr_hmi_ctrl_sm->data_frame.data != IV0MODE_OFF)
                 {
                     ptr_hmi_ctrl_sm->selected_mode = ptr_hmi_ctrl_sm->data_frame.data;
                 }
@@ -1146,33 +1170,33 @@ static void conn_obdhmi_btn_task(void *pvParameter)
     while (1)
     {
         /* Queue will be in blocked state untill data recevied */
-        if ( osal_success == osal_queue_receive((osal_queue_handle_t)pvParameter, (void *)&btn_evt, portMAX_DELAY) )
+        if (osal_success == osal_queue_receive((osal_queue_handle_t)pvParameter, (void *)&btn_evt, portMAX_DELAY))
         {
             ZERO_CHECK(uc1510c_get_touch_panel_status((uint8_t*)&lcd_btn_press_evt));
-            if ( (btn_evt.timer_counter_value == 1) )
+            if ((btn_evt.timer_counter_value == 1))
             {
                 /* Short press */
                 button_press_event = lcd_btn_press_evt | (BUTTON_EVT_SHORT_PRESS << 8);
                 /* Push the data into the queue */
                 push_data_to_the_queue(button_press_event, BTN_PRESSED_EVENT);
-#if CONN_ONBHMI_DEBUG_LOG                 
-                LOG(W, "short Press! %d", lcd_btn_press_evt);
-#endif 
+#if CONN_ONBHMI_DEBUG_LOG
+                LOG(D, "short Press! %d", lcd_btn_press_evt);
+#endif
             }
-            else if ( (btn_evt.timer_counter_value == 2) && (blink1_ok == 1) )
+            else if ((btn_evt.timer_counter_value == 2) && (blink1_ok == 1))
             {
                 //App pairing
                 /*Long press#1 */;
-#if CONN_ONBHMI_DEBUG_LOG                 
-                LOG(W, "Long Press! LP#1 = %d", lcd_btn_press_evt);
-#endif                
-                if(lcd_btn_press_evt == BTN_LIGHT)
+#if CONN_ONBHMI_DEBUG_LOG
+                LOG(D, "Long Press! LP#1 = %d", lcd_btn_press_evt);
+#endif
+                if (lcd_btn_press_evt == BTN_LIGHT)
                 {
                     blink1_ok = 0;
                     i32_ble_mode = 1;
-                    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, BT0SCAN, &i32_ble_mode, sizeof(int32_t), \
-                                connector_onboard_hmi.connector_id, portMAX_DELAY));
-                    
+                    //TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, BT0SCAN, &i32_ble_mode, sizeof(int32_t),
+//                                connector_onboard_hmi.connector_id, portMAX_DELAY));
+
                     i32_ble_mode = BT0PAIR_IN_PAIRING_MODE_ON;
                     TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, BT0PAIR, &i32_ble_mode, sizeof(int32_t),connector_onboard_hmi.connector_id, portMAX_DELAY));
                 }
@@ -1183,14 +1207,14 @@ static void conn_obdhmi_btn_task(void *pvParameter)
                     push_data_to_the_queue(button_press_event, BTN_PRESSED_EVENT);
                 }
             }
-            else if ( (btn_evt.timer_counter_value == 3) && (blink2_ok == 1) )
+            else if ((btn_evt.timer_counter_value == 3) && (blink2_ok == 1))
             {
                 //DP sensor Pairing
                 /* Long press#2 */;
                 blink2_ok = 0;
-#if CONN_ONBHMI_DEBUG_LOG                 
-                LOG(W, "Long Press! LP#2 = %d", lcd_btn_press_evt);
-#endif                
+#if CONN_ONBHMI_DEBUG_LOG
+                LOG(D, "Long Press! LP#2 = %d", lcd_btn_press_evt);
+#endif
                 /* Push the data into the queue */
                 prev_btn_press_evt = lcd_btn_press_evt;
                 button_press_event = lcd_btn_press_evt | (BUTTON_EVT_LONG_PRESS << 8);
@@ -1198,7 +1222,7 @@ static void conn_obdhmi_btn_task(void *pvParameter)
                 lcd_btn_state = BTN_LONG_PRESS_RELEASED;
 
             }
-            else if ( (btn_evt.timer_counter_value == 4) )
+            else if ((btn_evt.timer_counter_value == 4))
             {
                 /*Blink#1 */;
                 blink_led_bk_light(BLINK_LED_BK_LIGHT);
@@ -1207,7 +1231,7 @@ static void conn_obdhmi_btn_task(void *pvParameter)
             else if (btn_evt.timer_counter_value == 5)
             {
                 /* Blink#2 */;
-                if(lcd_btn_press_evt == BTN_LIGHT)
+                if (lcd_btn_press_evt == BTN_LIGHT)
                 {
                     blink_led_bk_light(BLINK_POWER);
                 }
@@ -1216,9 +1240,9 @@ static void conn_obdhmi_btn_task(void *pvParameter)
             else if (btn_evt.timer_counter_value == 8)
             {
                 /* Bsec_critical_error */;
-#if CONN_ONBHMI_DEBUG_LOG                 
-                LOG(I, "[BME68x Critical error occured]");
-#endif                
+#if CONN_ONBHMI_DEBUG_LOG
+                LOG(W, "[BME68x Critical error occured]");
+#endif
             }
             btn_press_wait = BTN_REL_WAIT_TIME / 2;
 
@@ -1236,11 +1260,11 @@ static void blink_led_bk_light(uint8_t sel_blink)
     uint8_t blnk_seg = SEG_POWER_BUTTON;
     uint8_t blink_count = 1;
 
-    if(sel_blink == BLINK_POWER)
+    if (sel_blink == BLINK_POWER)
     {
-       for(i_led_bk=0; i_led_bk<blink_count; i_led_bk++ )
+       for (i_led_bk = 0; i_led_bk < blink_count; i_led_bk++)
         {
-            
+
             uc1510c_set_segment(blnk_seg, SEG_OFF);
             vTaskDelay(pdMS_TO_TICKS(LCD_BK_LIT_BLINK_DELAY));
             uc1510c_set_segment(blnk_seg, SEG_ON);
@@ -1250,7 +1274,7 @@ static void blink_led_bk_light(uint8_t sel_blink)
     }
     else
     {
-        for(i_led_bk=0; i_led_bk<blink_count; i_led_bk++ )
+        for (i_led_bk = 0; i_led_bk < blink_count; i_led_bk++)
         {
             hmi_backlight_set_duty(ONBOARD_HMI_10_DUTY_CYCLE);
             btn_press_wait = BTN_REL_WAIT_TIME;
@@ -1261,7 +1285,7 @@ static void blink_led_bk_light(uint8_t sel_blink)
         }
     }
 
-    
+
     uc1510c_set_segment(blnk_seg, SEG_ON);
     hmi_backlight_set_duty(ONBOARD_HMI_MAX_DUTY_CYCLE);
 }
@@ -1274,21 +1298,21 @@ static void blink_led_bk_light(uint8_t sel_blink)
 static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 {
 	conn_onboardhmi_param_t* param_db;
-	uint8_t db_idx = DDMP_UNAVAILABLE; 
+	uint8_t db_idx = DDMP_UNAVAILABLE;
 	uint8_t index;
 
-	for ( index = 0u; index < conn_onbhmi_db_elements; index++ )
+	for (index = 0u; index < conn_onbhmi_db_elements; index++)
  	{
 		param_db = &conn_onboardhmi_param_db[index];
-      	
+
 		/* Validate the DDM parameter received */
-		if ( param_db->ddm_parameter == ddm_param )
+		if (param_db->ddm_parameter == ddm_param)
 	  	{
 			db_idx = index;
 			break;
 		}
 	}
-	
+
 	return db_idx;
 }
 
@@ -1297,24 +1321,24 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
   * @param  none.
   * @retval none.
   */
-static void initialize_dev_onboardhmi()
+static void initialize_dev_onboardhmi(void)
 {
 	error_type result;
     uc_drv_bus_conf uc1510c_bus_conf;
 
-    uc1510c_bus_conf.i2c.port    = I2C_MASTER0_PORT;
-    uc1510c_bus_conf.i2c.sda     = I2C_MASTER0_SDA;
-    uc1510c_bus_conf.i2c.scl     = I2C_MASTER0_SCL;
+    uc1510c_bus_conf.i2c.port = I2C_MASTER0_PORT;
+    uc1510c_bus_conf.i2c.sda = I2C_MASTER0_SDA;
+    uc1510c_bus_conf.i2c.scl = I2C_MASTER0_SCL;
     uc1510c_bus_conf.i2c.bitrate = I2C_MASTER0_FREQ;
-    
+
     /* Initialize the LCD Driver IC UC1510C */
     result = init_uc1510c(&uc1510c_bus_conf);
-    
-    if ( RES_PASS != result )
+
+    if (RES_PASS != result)
     {
-#if CONN_ONBHMI_DEBUG_LOG         
-        LOG(W, "UC1510C Driver init failed = %d",  result);
-#endif    
+#if CONN_ONBHMI_DEBUG_LOG
+        LOG(E, "UC1510C Driver init failed = %d", result);
+#endif
     }
 }
 
@@ -1325,18 +1349,10 @@ static void initialize_dev_onboardhmi()
   */
 static void install_parameters(void)
 {
-	int32_t available = 1;
 	uint32_t device_class = IV0;
 	/* Register Onboard Inventilate and Button Class */
 	int instance = broker_register_instance(&device_class, connector_onboard_hmi.connector_id);
 	ASSERT(instance != -1);
-
-    /* "Subscribe DDMP SNODEAVL"*/
-    TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, SNODE0AVL, &available, sizeof(int32_t), \
-               connector_onboard_hmi.connector_id, portMAX_DELAY));    
-
-   /*install SDP0DP for DP sensor Updates*/
-
 }
 
 /**
@@ -1352,53 +1368,44 @@ static void process_subscribe_request(uint32_t ddm_param)
     int32_t value = 0;
     int factor = 0;
 	conn_onboardhmi_param_t* param_db;
-    uint32_t list_value = 0;
-    SORTED_LIST_RETURN_VALUE ret = sorted_list_unique_get(&list_value, &conn_obhmi_table, ddm_param, 0);
 
-#if CONN_ONBHMI_DEBUG_LOG
-    LOG(I, "conn_obhmi: ddm_param = 0x%x match = %d", ddm_param, ret);
-#endif
+    /* Validate the DDM parameter received */
+    db_idx = get_ddm_index_from_db(ddm_param);
 
-    if ( SORTED_LIST_FAIL != ret )
-	{
-		/* Validate the DDM parameter received */
-		db_idx = get_ddm_index_from_db(ddm_param);
+    if (DDMP_UNAVAILABLE != db_idx)
+    {
+        param_db = &conn_onboardhmi_param_db[db_idx];
 
-		if ( DDMP_UNAVAILABLE != db_idx )
-	  	{
-			param_db = &conn_onboardhmi_param_db[db_idx];
+        index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_param));
 
-            index = ddm2_parameter_list_lookup(DDM2_PARAMETER_BASE_INSTANCE(ddm_param));
+        if (-1 != index)
+        {
+            factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
 
-            if ( -1 != index )
-			{
-                factor = Ddm2_unit_factor_list[Ddm2_parameter_list_data[index].out_unit];
-
-                if ( factor == 0 )
-                {
-                    factor = 1;
-                }
-                
-                /* Multiply with the factor */
-                value = param_db->i32Value * factor;
-
-                /* Frame and send the publish request */
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &value, sizeof(int32_t), connector_onboard_hmi.connector_id, portMAX_DELAY));
-            }
-            else
+            if (factor == 0)
             {
-#if CONN_ONBHMI_DEBUG_LOG                 
-                LOG(W, "DDMP 0x%x not found in ddm2_parameter_list_lookup", ddm_param);
-#endif                
+                factor = 1;
             }
-		}
+
+            /* Multiply with the factor */
+            value = param_db->i32Value * factor;
+
+            /* Frame and send the publish request */
+            TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_PUBLISH, ddm_param, &value, sizeof(int32_t), connector_onboard_hmi.connector_id, portMAX_DELAY));
+        }
         else
         {
-#if CONN_ONBHMI_DEBUG_LOG   
-            LOG(E, "Invalid DDMP Request ddm_param 0x%x", ddm_param);
-#endif        
+#if CONN_ONBHMI_DEBUG_LOG
+            LOG(W, "DDMP 0x%x not found in ddm2_parameter_list_lookup", ddm_param);
+#endif
         }
-	}
+    }
+    else
+    {
+#if CONN_ONBHMI_DEBUG_LOG
+        LOG(E, "Invalid DDMP Request ddm_param 0x%x", ddm_param);
+#endif
+    }
 }
 
 /**
@@ -1447,39 +1454,39 @@ static void inv_timer_cb(BaseType_t *data_in)
             xQueueSendFromISR(timer_queue, &evt, NULL);
         }
     }
-    if(button_first_press == 1)
+    if (button_first_press == 1)
     {
         btn_dbnc_count++;
         tch_timer_cnt++;
         pbutton_first_press = button_first_press;
- 
-        if( (tch_timer_cnt >TIME_3000MS) && (tch_timer_cnt <TIME_6000MS) && ((blink_event & 0x01) == 0)  )
+
+        if ((tch_timer_cnt > TIME_3000MS) && (tch_timer_cnt < TIME_6000MS) && ((blink_event & 0x01) == 0))
         {
             blink_event = 1;
             evt.timer_counter_value = 4;        //Trigger LCD blink for 1
             xQueueSendFromISR(timer_queue, &evt, data_in);
         }
-        else if( (tch_timer_cnt >TIME_6000MS)  && ((blink_event & 0x02) == 0)  )
+        else if ((tch_timer_cnt > TIME_6000MS) && ((blink_event & 0x02) == 0))
         {
             blink_event = 2;
             evt.timer_counter_value = 5;        //Trigger power button blink
             xQueueSendFromISR(timer_queue, &evt, data_in);
         }
-        
-        if( (btn_dbnc_count> TIME_500MS) && (btn_dbnc_count < TIME_508MS) )
+
+        if ((btn_dbnc_count > TIME_500MS) && (btn_dbnc_count < TIME_508MS))
         {
             button_released = 1;
-            
+
             btn_dbnc_count = 0;
             blink_event = 0;
 
 
             //Calculate_touch_timings   blink_event
-            if(tch_timer_cnt<TIME_500MS)
+            if (tch_timer_cnt < TIME_500MS)
             {
                 tch_btn_event = 0;
             }
-            else if( (tch_timer_cnt >TIME_500MS) && (tch_timer_cnt <TIME_3000MS) && ((tch_btn_event & 0x01) == 0)  )
+            else if ((tch_timer_cnt > TIME_500MS) && (tch_timer_cnt < TIME_3000MS) && ((tch_btn_event & 0x01) == 0))
             {
                 //Short press
                 button_event = 1;
@@ -1487,34 +1494,32 @@ static void inv_timer_cb(BaseType_t *data_in)
                 evt.timer_counter_value = button_event;
                 xQueueSendFromISR(timer_queue, &evt, data_in);
             }
-            else if( (tch_timer_cnt >TIME_3000MS) && (tch_timer_cnt <TIME_6000MS) && ((tch_btn_event & 0x02) == 0) )
+            else if ((tch_timer_cnt > TIME_3000MS) && (tch_timer_cnt < TIME_6000MS) && ((tch_btn_event & 0x02) == 0))
             {
                 //Long press 1
-                button_event = 2; 
+                button_event = 2;
                 tch_btn_event = tch_btn_event | 0x02;
                 evt.timer_counter_value = button_event;
                 xQueueSendFromISR(timer_queue, &evt, data_in);
 
             }
-            else if( (tch_timer_cnt >TIME_6000MS) && ((tch_btn_event & 0x04) == 0) )
+            else if ((tch_timer_cnt > TIME_6000MS) && ((tch_btn_event & 0x04) == 0))
             {
                 //Long press 2
-                button_event = 3; 
+                button_event = 3;
                 tch_btn_event = tch_btn_event | 0x04;
                 evt.timer_counter_value = button_event;
-                xQueueSendFromISR(timer_queue, &evt, data_in);  
+                xQueueSendFromISR(timer_queue, &evt, data_in);
             }
 
             button_first_press = 0;
             tch_timer_cnt = 0;
             tch_btn_event = 0;
         }
-        
+
     }
 
-#endif 
-
-
+#endif
 }
 
 #endif
@@ -1559,7 +1564,7 @@ static void short_press_tmr_cb( TimerHandle_t xTimer )
 {
     uint16_t short_press_event = BTN_NO_EVENTS;
 
-    if ( lcd_btn_state == BTN_PRESSED )
+    if (lcd_btn_state == BTN_PRESSED)
     {
         /* Stop the long press timer */
         TRUE_CHECK(xTimerStop(long_press_tmr_hdle, 0));
@@ -1589,7 +1594,7 @@ void onboard_hmi_interrupt_cb(int device, int port, int pin)
     int_touch = 1;
     btn_dbnc_delay = KEY_DEBOUNCE_COUNT ;  //1
     btn_dbnc_count = 0;
-    if(button_first_press == 0)
+    if (button_first_press == 0)
     {
         button_first_press = 1;
     }
@@ -1604,7 +1609,6 @@ void onboard_hmi_interrupt_cb(int device, int port, int pin)
             TRUE_CHECK(xTimerStart(long_press_tmr_hdle, 0));
             TRUE_CHECK(xTimerStart(short_press_tmr_hdle, 0));
             lcd_btn_state = BTN_PRESSED;
-              
             break;
 
         case BTN_PRESSED:                   //Process button press events
@@ -1639,7 +1643,7 @@ void onboard_hmi_interrupt_cb(int device, int port, int pin)
   * @param  none.
   * @retval none.
   */
-static void obhmi_blink_tmr_cb( TimerHandle_t xTimer )
+static void obhmi_blink_tmr_cb(TimerHandle_t xTimer)
 {
     push_data_to_the_queue(0, BLINK_TIMER_EXPIRED);
 }
@@ -1652,19 +1656,19 @@ static void obhmi_blink_tmr_cb( TimerHandle_t xTimer )
 static void push_data_to_the_queue(int32_t data, OBHMI_CTRL_DATA_ID data_id)
 {
     OBHMI_CTRL_DATA_FRAME obhmi_ctrl_data_frame;
-    
+
     /* Update the data frame */
-    obhmi_ctrl_data_frame.data    = data;
+    obhmi_ctrl_data_frame.data = data;
     obhmi_ctrl_data_frame.data_id = data_id;
 
     /* Append the data in the Queue */
-    osal_base_type_t ret = osal_queue_send (obhmi_pwr_ctrl_que_hdl, &obhmi_ctrl_data_frame, 0);
+    osal_base_type_t ret = osal_queue_send(obhmi_pwr_ctrl_que_hdl, &obhmi_ctrl_data_frame, 0);
 
-    if ( osal_success != ret )
+    if (osal_success != ret)
     {
-#if CONN_ONBHMI_DEBUG_LOG         
+#if CONN_ONBHMI_DEBUG_LOG
         LOG(W, "Queue error ret = %d", ret);
-#endif    
+#endif
     }
 }
 
@@ -1724,11 +1728,6 @@ OBHMI_CTRL_DATA_ID convert_ddmp_to_data_id(int32_t data, uint32_t ddm_param)
             inv_ble_status = data;
             break;
 
-        case SDP0AVL:						/*SDP0AVL received*/
-            data_id = UPDATE_SEG_DP_SENS_STAT;
-            ble_dp_con_sts = data;
-            break;
-
         case IV0BLREQ:
             data_id = BLINK_SEG_BLE_STAT;
             break;
@@ -1763,27 +1762,31 @@ static void handle_hmi_ctrl_sub_data(uint32_t ddm_param, int32_t data)
 {
     OBHMI_CTRL_DATA_ID data_id;
 
-    if(ddm_param == SDP0DP)
+    if (ddm_param == SDP0DP)
     {
-        LOG(I,"[BLE DP data received_OBHMI data = %d]",data);
-        TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0DP, NULL, 0, connector_onboard_hmi.connector_id, portMAX_DELAY));
+#if CONN_ONBHMI_DEBUG_LOG
+        LOG(I, "[BLE DP data received_OBHMI data = %d]", data);
+#endif
         /* update BLE icon in LCD */
         inv_ble_status = 1;
         push_data_to_the_queue(inv_ble_status, UPDATE_SEG_DP_SENS_STAT);
     }
-    
+
     /* Update button control variables based on the received DDMP request */
-    if  (   ( ( IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state ) && (ddm_param == IV0PWRON ) )  
-        || ( ( IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state ) && (ddm_param == IV0MODE ) )            
-        )
+    if (((IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state) && (ddm_param == IV0PWRON))
+        || ((IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state) && (ddm_param == IV0MODE)))
     {
-        LOG(I,"[ storage mode skip %d event]",ddm_param);
+#if CONN_ONBHMI_DEBUG_LOG
+        LOG(I, "[ storage mode skip %d event]", ddm_param);
+#endif
     }
-    else if ( ( (ptr_hmi_ctrl_sm->invent_error_status & (1 << BACKUP_BATTERY_LOW ) ) > 0 ) &&
-              ( (ddm_param == IV0PWRON ) || (ddm_param == IV0MODE ) || (ddm_param == DIM0LVL ) ) )
+    else if (((ptr_hmi_ctrl_sm->invent_error_status & (1 << BACKUP_BATTERY_LOW)) > 0) &&
+              ((ddm_param == IV0PWRON) || (ddm_param == IV0MODE) || (ddm_param == DIM0LVL)))
     {
         /*skip for battery low*/
-         LOG(I,"[ Battery low skip %d event]",ddm_param);
+#if CONN_ONBHMI_DEBUG_LOG
+         LOG(I, "[ Battery low skip %d event]", ddm_param);
+#endif
     }
     else
     {
@@ -1794,7 +1797,7 @@ static void handle_hmi_ctrl_sub_data(uint32_t ddm_param, int32_t data)
 #if CONN_ONBHMI_DEBUG_LOG
         LOG(I, "ddm_param = 0x%x, data = %d", ddm_param, data);
 #endif
-        if ( INVALID_DATA_ID != data_id )
+        if (INVALID_DATA_ID != data_id)
         {
             push_data_to_the_queue(data, data_id);
         }
@@ -1810,30 +1813,30 @@ void start_hmi_wait_timer(uint32_t period_ms)
 {
     osal_ubase_type_t ret;
 
-    if ( configured_time_ms != period_ms )
+    if (configured_time_ms != period_ms)
     {
         /* Store the new period */
         configured_time_ms = period_ms;
         /* Change timer period */
         ret = xTimerChangePeriod(obHmiOneShotTimer, pdMS_TO_TICKS(period_ms), 0);
-        
-        if ( ret != pdPASS )
+
+        if (ret != pdPASS)
         {
-#if CONN_ONBHMI_DEBUG_LOG 		    
-            LOG(I, "Timer period change failed = %d", ret);
-#endif            
-        }  
+#if CONN_ONBHMI_DEBUG_LOG
+            LOG(W, "Timer period change failed = %d", ret);
+#endif
+        }
     }
     else
     {
         /* Start timer */
-        ret = xTimerStart( obHmiOneShotTimer, 0 );
-        
-        if ( ret != pdPASS )
+        ret = xTimerStart(obHmiOneShotTimer, 0);
+
+        if (ret != pdPASS)
         {
-#if CONN_ONBHMI_DEBUG_LOG 
-            LOG(I, "Timer start failed = %d", ret);
-#endif            
+#if CONN_ONBHMI_DEBUG_LOG
+            LOG(W, "Timer start failed = %d", ret);
+#endif
         }
     }
 }
@@ -1845,13 +1848,13 @@ void start_hmi_wait_timer(uint32_t period_ms)
   */
 static void start_obhmi_blink_timer(void)
 {
-    osal_ubase_type_t ret = xTimerStart( blink_ctrl_timer_hdle, 0 );
-    
-    if ( ret != pdPASS )
+    osal_ubase_type_t ret = xTimerStart(blink_ctrl_timer_hdle, 0);
+
+    if (ret != pdPASS)
     {
-#if CONN_ONBHMI_DEBUG_LOG         
-        LOG(I, "Timer start failed = %d", ret);
-#endif        
+#if CONN_ONBHMI_DEBUG_LOG
+        LOG(W, "Timer start failed = %d", ret);
+#endif
     }
 }
 
@@ -1862,13 +1865,13 @@ static void start_obhmi_blink_timer(void)
   */
 static void stop_obhmi_blink_timer(void)
 {
-    osal_ubase_type_t  xTimerStoped = xTimerStop( blink_ctrl_timer_hdle, 0 );
-	
-    if ( xTimerStoped != pdPASS )
+    osal_ubase_type_t  xTimerStoped = xTimerStop(blink_ctrl_timer_hdle, 0);
+
+    if (xTimerStoped != pdPASS)
     {
-#if CONN_ONBHMI_DEBUG_LOG 		
-        LOG(I, "Timer stop Failed");
-#endif    
+#if CONN_ONBHMI_DEBUG_LOG
+        LOG(W, "Timer stop Failed");
+#endif
     }
 }
 
@@ -1879,13 +1882,13 @@ static void stop_obhmi_blink_timer(void)
   */
 void stop_hmi_wait_timer(void)
 {
-    osal_ubase_type_t  xTimerStoped = xTimerStop( obHmiOneShotTimer, 0 );
-	
-    if ( xTimerStoped != pdPASS )
+    osal_ubase_type_t  xTimerStoped = xTimerStop(obHmiOneShotTimer, 0);
+
+    if (xTimerStoped != pdPASS)
     {
-#if CONN_ONBHMI_DEBUG_LOG 		
+#if CONN_ONBHMI_DEBUG_LOG
         LOG(E, "Timer stop Failed");
-#endif        
+#endif
     }
 }
 
@@ -1896,13 +1899,13 @@ void stop_hmi_wait_timer(void)
   */
 void reset_hmi_wait_timer(void)
 {
-    osal_ubase_type_t  xTimerReset = xTimerReset( obHmiOneShotTimer, 0 );
-	
-    if ( xTimerReset != pdPASS )
+    osal_ubase_type_t  xTimerReset = xTimerReset(obHmiOneShotTimer, 0);
+
+    if (xTimerReset != pdPASS)
     {
-#if CONN_ONBHMI_DEBUG_LOG 		
+#if CONN_ONBHMI_DEBUG_LOG
         LOG(E, "Timer reset Failed");
-#endif        
+#endif
     }
 }
 
@@ -1917,15 +1920,15 @@ void update_and_send_value_to_broker(uint32_t ddm_parameter, int32_t value)
     DDMP2_CONTROL_ENUM control;
 	conn_onboardhmi_param_t* param_db;
     uint8_t db_idx = get_ddm_index_from_db(ddm_parameter);
-	
-	if ( DDMP_UNAVAILABLE != db_idx )
+
+	if (DDMP_UNAVAILABLE != db_idx)
    	{
 		param_db = &conn_onboardhmi_param_db[db_idx];
-		
+
 		/* Update the value in db table */
 		param_db->i32Value = value;
 
-        if ( DIM0LVL == ddm_parameter )
+        if (DIM0LVL == ddm_parameter)
         {
             control = DDMP2_CONTROL_SET;
         }
@@ -1934,16 +1937,15 @@ void update_and_send_value_to_broker(uint32_t ddm_parameter, int32_t value)
             control = DDMP2_CONTROL_PUBLISH;
         }
 
-        if ( ( IV0BLREQ == ddm_parameter ) || ( IV0FILST == ddm_parameter )  || ( IV0MODE == ddm_parameter ) )
+        if ((IV0BLREQ == ddm_parameter) || (IV0FILST == ddm_parameter)  || (IV0MODE == ddm_parameter))
         {
             OBHMI_CTRL_DATA_ID data_id = convert_ddmp_to_data_id(value, ddm_parameter);
 
             push_data_to_the_queue(value, data_id);
         }
-		
+
 		/* Send data to the broker */
-        connector_send_frame_to_broker(control, ddm_parameter, &value, sizeof(value), \
-                                   connector_onboard_hmi.connector_id, (TickType_t)portMAX_DELAY);
+        connector_send_frame_to_broker(control, ddm_parameter, &value, sizeof(value), connector_onboard_hmi.connector_id, (TickType_t)portMAX_DELAY);
    	}
 }
 
@@ -1965,17 +1967,19 @@ static void update_hmi_btn_ctrl_variables(uint32_t ddmp, int32_t data)
     switch (ddmp)
     {
         case IV0PWRON:
-            if( IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state )
+            if (IVPMGR0STATE_STORAGE == ptr_hmi_ctrl_sm->inv_state)
             {
                 hmi_btn_evt = BTN_NO_EVENTS;
                 lcd_btn_press_evt = BTN_NO_EVENTS;
-                LOG(I,"Skip DDMP  Event in storage mode");
+#if CONN_ONBHMI_DEBUG_LOG
+                LOG(I,"Skip DDMP Event in storage mode");
+#endif
             }
             else
             {
-                hmi_btn_evt       = BTN_POWER;
-                event_type        = BUTTON_EVT_SHORT_PRESS;
-                inv_pwr_state     = data;                    // Access using semaphore
+                hmi_btn_evt = BTN_POWER;
+                event_type = BUTTON_EVT_SHORT_PRESS;
+                inv_pwr_state = data;                    // Access using semaphore
                 lcd_btn_press_evt = BTN_POWER;               // Access using semaphore
             }
             break;
@@ -1983,65 +1987,42 @@ static void update_hmi_btn_ctrl_variables(uint32_t ddmp, int32_t data)
         case IV0BLREQ:
             /*Process BLE request*/
             hmi_btn_evt = BTN_LIGHT;
-            event_type  = BUTTON_EVT_LONG_PRESS;
+            event_type = BUTTON_EVT_LONG_PRESS;
             break;
 
         case DIM0LVL:
             /*Handle LED brightness control events*/
             hmi_btn_evt = BTN_LIGHT;
-            event_type  = BUTTON_EVT_SHORT_PRESS;
+            event_type = BUTTON_EVT_SHORT_PRESS;
             break;
-        
+
         case IV0MODE:
             /*handle Mode button short press events */
             hmi_btn_evt = BTN_MODE;
-            event_type  = BUTTON_EVT_SHORT_PRESS;
-            break;
-
-        case SDP0AVL:
-            /*Handle Dp sensor data*/
-            if ( DP_SENSOR_NOT_AVAILABLE == data )
-            {
-                LOG(W, "Subscribe request for DDMP SDP0AVL");
-                // Whenever the availability of sensor node received then the subscribtion should be done again
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0,
-                           connector_onboard_hmi.connector_id, portMAX_DELAY));
-           
-            }
-
-            if( DP_SENSOR_AVAILABLE == data)
-            {
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SDP0AVL, NULL, 0,
-                           connector_onboard_hmi.connector_id, portMAX_DELAY));
-
-                // Whenever the availability of sensor node received then the subscribtion should be done again
-                TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SUBSCRIBE, SNODE0AVL, NULL, 0, connector_onboard_hmi.connector_id, portMAX_DELAY));
-
-            }
-
+            event_type = BUTTON_EVT_SHORT_PRESS;
             break;
 
         default:
             break;
     }
 
-    if ( BTN_NO_EVENTS != hmi_btn_evt )
+    if (BTN_NO_EVENTS != hmi_btn_evt)
     {
-        for ( index = 0; index < ONBOARD_HMI_EVT_TABLE_SIZE; index++ )
+        for (index = 0; index < ONBOARD_HMI_EVT_TABLE_SIZE; index++)
         {
             btn_event_list = &onboard_hmi_btn_evt[index];
 
-            if ( btn_event_list->hmi_btn_evt == hmi_btn_evt )
+            if (btn_event_list->hmi_btn_evt == hmi_btn_evt)
             {
                 hmi_domain_to_ddm_system = btn_event_list->data_conversion.hmi_domain_to_ddm_system;
 
-                for ( idx2 = 0; idx2 < btn_event_list->data_conversion.size; idx2++ )
+                for (idx2 = 0; idx2 < btn_event_list->data_conversion.size; idx2++)
                 {
-                    if ( ( hmi_domain_to_ddm_system[idx2].ddm_parameter    == ddmp ) && 
-                         ( hmi_domain_to_ddm_system[idx2].ddm_system_value == data ) )
+                    if ((hmi_domain_to_ddm_system[idx2].ddm_parameter == ddmp) &&
+                         (hmi_domain_to_ddm_system[idx2].ddm_system_value == data))
                     {
-                        if ( BUTTON_EVT_SHORT_PRESS == event_type )
-                        { 
+                        if (BUTTON_EVT_SHORT_PRESS == event_type)
+                        {
                             btn_event_list->short_press_evt_cnt = hmi_domain_to_ddm_system[idx2].hmi_domain_value;
                         }
                         else

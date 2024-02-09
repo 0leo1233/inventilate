@@ -22,10 +22,10 @@
 
 #define OFF_MODE_RPM_MIN_PERCENT      ((uint8_t)      0u)
 #define OFF_MODE_RPM_MAX_PERCENT      ((uint8_t)      0u)
-  
+
 #define SLEEP_MODE_RPM_MIN_PERCENT    ((uint8_t)     40u)
 #define SLEEP_MODE_RPM_MAX_PERCENT    ((uint8_t)     40u)
-  
+
 #define AUTO_MODE_RPM_MIN_PERCENT     ((uint8_t)     40u)
 #define AUTO_MODE_RPM_MAX_PERCENT     ((uint8_t)    100u)
 
@@ -60,10 +60,10 @@
 #define NUM_OPERATING_MODES                       ((uint8_t)   4u + 1u)
 
 #define IV_CONTROL_PROCESSING_INTERVAL_MIN        ((uint8_t)    1u)         //Ticks in minutes
-#define IV_CONTROL_PROCESSING_INTERVAL_SECONDS    ((uint16_t)5000u)     	//Tick in seconds    
-#define RV_IDLE_COND_WAIT_TIME_MIN                ((uint8_t)   30u)           
+#define IV_CONTROL_PROCESSING_INTERVAL_SECONDS    ((uint16_t)5000u)     	//Tick in seconds
+#define RV_IDLE_COND_WAIT_TIME_MIN                ((uint8_t)   30u)
 #define RV_PRESS_COMP_WAIT_TIME_MIN               ((uint8_t)    2u)
-#define RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN    ((uint8_t)   10u)          
+#define RV_PRESS_COMP_EXCEED_COND_RUN_TIME_MIN    ((uint8_t)   10u)
 #define FAN_MOTOR_VALIDATION_INTERVAL_MIN         ((uint8_t)    5u)
 #define IV_STORAGE_HUMID_CHK_MIN                  ((uint8_t)    1u)
 #define IV_IAQ_ACC0_WAIT_MIN                      ((uint8_t)    30u)        //The wait time when the accuracy is 0 and IAQ is not GOOD
@@ -84,7 +84,7 @@
 
 #define IV_IVSETT_MIN       ((uint32_t)     0u)
 #define IV_IVSETT_MAX       ((uint32_t)     0xFFFF)              //Actual value = 0xFFFFFFFF
-#define IV_IVSETT_DEFAULT   ((uint32_t)      0u) 
+#define IV_IVSETT_DEFAULT   ((uint32_t)      0u)
 
 #define IV_FILTER_MIN_MIN   ((uint32_t)      0u)
 #define IV_FILTER_MIN_MAX   ((uint32_t)      0xFFFF)
@@ -117,7 +117,7 @@ Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 */
 #warning "Storage in Testing mode"
 #define STORAGE_MODE_SLEEP_TIME_21_HR_TEST             ((TickType_t)  10u) // 10 Minutes
-#define STORAGE_MODE_RUN_TIME_03_HR_TEST               ((TickType_t)   6u) //6 Minutes 
+#define STORAGE_MODE_RUN_TIME_03_HR_TEST               ((TickType_t)   6u) //6 Minutes
 #define STORAGE_MODE_SLEEP_TIME_21_HR             STORAGE_MODE_SLEEP_TIME_21_HR_TEST
 #define STORAGE_MODE_RUN_TIME_03_HR               STORAGE_MODE_RUN_TIME_03_HR_TEST
 
@@ -128,7 +128,7 @@ Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 
 /*Application code marco change here*/
 #define STORAGE_MODE_SLEEP_TIME_21_HR             ((TickType_t)  1260u) // 21 hours -> 21 * 60 = 1260 Minutes
-#define STORAGE_MODE_RUN_TIME_03_HR               ((TickType_t)   180u) // 03 hours -> 03 * 60 = 180  Minutes 
+#define STORAGE_MODE_RUN_TIME_03_HR               ((TickType_t)   180u) // 03 hours -> 03 * 60 = 180  Minutes
 #define STORAGE_RUN_START_TIME             (1u)
 #define STORAGE_RUN_END_TIME               (30u)
 
@@ -144,7 +144,7 @@ Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 
    DP_NO_DEC_POINT_RESOL
    ---------------------
- 
+
    2.345 ->  2     ( The numbers after the decimal point will be eliminated )
 
    DP_SIN_DEC_POINT_RESOL
@@ -170,11 +170,11 @@ Check for #define STORAGE_TEST_MODE in local_inventilate_inv_3.h before editing
 #define DP_THREE_DEC_POINT_RESOL                  ((int32_t) 3)
 #define DP_RESOLUTION_SELECTION                   DP_THREE_DEC_POINT_RESOL
 
-#define DIFF_PRESSURE_MAX_LIMIT                   ((float)  25.0f) 
-#define DIFF_PRESSURE_MIN_LIMIT                   ((float) -25.0f) 
-#define DIFF_PRESSURE_ACCEPTABLE_NEG_LIMIT        ((float)  -0.5f) 
-#define DIFF_PRESSURE_ACCEPTABLE_POS_LIMIT        ((float)   0.5f) 
-#define DP_POS_PRESS_COMP_VALIDATION_THRESHOLD    ((float)   0.5f) 
+#define DIFF_PRESSURE_MAX_LIMIT                   ((float)  25.0f)
+#define DIFF_PRESSURE_MIN_LIMIT                   ((float) -25.0f)
+#define DIFF_PRESSURE_ACCEPTABLE_NEG_LIMIT        ((float)  -0.5f)
+#define DIFF_PRESSURE_ACCEPTABLE_POS_LIMIT        ((float)   0.5f)
+#define DP_POS_PRESS_COMP_VALIDATION_THRESHOLD    ((float)   0.5f)
 #define DP_NEG_PRESS_COMP_VALIDATION_THRESHOLD    ((float)  -0.5f)
 #define DIFF_PRESS_ROC_MAX                        ((float)  50.0f)
 
@@ -202,13 +202,13 @@ typedef enum _invent_device_id
 typedef enum __dev_comp_config
 {
     IDLE_COMP_DEV  = 0,
-	IAQ_COMP_DEV   = 1,         
-	PRESS_COMP_DEV = 2,  
+	IAQ_COMP_DEV   = 1,
+	PRESS_COMP_DEV = 2,
 } DEV_COMP_CONFIG;
 
 typedef enum __error_code
 {
-	ERR_NONE = 0, 
+	ERR_NONE = 0,
 	ERR_INVALID_INPUT_PARAM = 1,
     ERR_OUT_OF_RANGE = 2
 } error_code;
@@ -337,7 +337,7 @@ typedef struct __filter_info
 typedef union
 {
     uint8_t byte;
-    struct 
+    struct
     {
         uint8_t EN_DIS_SOLAR        : 1;
         uint8_t EN_DIS_IONIZER      : 1;
@@ -353,177 +353,145 @@ typedef union
 typedef union
 {
     uint8_t byte;
-    struct 
+    struct
     {
-        uint8_t VAC_CHANGED         : 1;
-        uint8_t IINDPM_STAT         : 1;
-        uint32_t VINDPM_STAT        : 1;
-        uint8_t TREG_STAT           : 1;
-        uint8_t ICO_FLAG            : 1;
-        uint8_t RESERVED_5          : 1;
-        uint8_t RESERVED_6          : 1;
-        uint8_t RESERVED_7          : 1;
+        uint8_t VAC_CHANGED : 1;
+        uint8_t IINDPM_STAT : 1;
+        uint32_t VINDPM_STAT : 1;
+        uint8_t TREG_STAT : 1;
+        uint8_t ICO_FLAG : 1;
+        uint8_t RESERVED_5 : 1;
+        uint8_t RESERVED_6 : 1;
+        uint8_t RESERVED_7 : 1;
     }__attribute__((packed));
-}BMS_STATUS_FLAGS;
+} BMS_STATUS_FLAGS;
 
 typedef enum __storage_timer_config
 {
-    STORAGE_TIMER_21H        = 0,
-    STORAGE_TIMER_03H        = 1,
+    STORAGE_TIMER_21H = 0,
+    STORAGE_TIMER_03H = 1,
     STORAGE_TIMER_MAX_CONFIG = 2
 } STORAGE_TIMER_CONFIG;
 
 typedef struct __inventilate_control_algo
 {
-    bool                  per_tmr_exp;
-    bool                  storage_tmr_exp;
-    bool                  wait_tmr_exp;
-    bool                  change_dev;
-    bool                  data_received;
-    int32_t               ionizer_status;
-    int32_t               dp_comp_thr_val;
-    int32_t               dp_resol_factor;
-    int32_t               dp_resolution;
-    int32_t               dp_neg_acceptable_lim;
-    int32_t               dp_pos_acceptable_lim;
-    int32_t               dp_range_min;
-    int32_t               dp_range_max;
-    int32_t               dp_max_roc;
-    int32_t               prev_avg_iaq_value;
-    int32_t               prev_avg_dp_value;
-    int32_t               prev_avg_hum_value;
-    int32_t               curr_avg_iaq_value;
-    int32_t               curr_avg_dp_value;
-    int32_t               curr_avg_hum_value;
-    int32_t               accum_iaq_value;
-    int32_t               accum_dp_value;
-    int32_t               accum_hum_value;
-    int32_t               roc_max_val;
-    int32_t*              ptr_curr_data;
-    int32_t*              ptr_prev_data;
-    int32_t               rpm_step_table_iaq[RPM_STEP_MAX_LEVEL];
-    int32_t               rpm_step_table_dp[RPM_STEP_MAX_LEVEL];
-    uint8_t               step_table_index_iaq;
-    uint8_t               step_table_index_dp;
-    uint16_t              set_rpm[MAX_NUM_DEVICE];
-    uint16_t              prev_set_rpm[MAX_NUM_DEVICE];
-    int32_t               iaq_data_count;
-    int32_t               dp_data_count;
-    int32_t               humidity_data_count;
-    uint32_t              constant_rpm_motor;
-    uint32_t              dev_tacho[MAX_NUM_DEVICE];
-    uint8_t               rated_speed_percent[MAX_NUM_DEVICE];
-    uint32_t              min_counter;
-    uint32_t              invent_error_status;
-    uint32_t              invent_prev_err_status;
-    uint32_t              fan_mtr_dev_curr_stat;
-    uint32_t              fan_mtr_dev_prev_stat;
-    invent_device_id_t    prim_dev_id;
-    invent_device_id_t    sec_dev_id;
-    DEV_COMP_CONFIG       dev_comp_config[MAX_NUM_DEVICE];
-    BME6X_ACCURACY        sens_acc;
-    IV0PRST_ENUM          curr_pr_stat;
-    IV0AQST_ENUM          curr_iaq_stat;
-    IV0PRST_ENUM          prev_pr_stat;
-    IV0AQST_ENUM          prev_iaq_stat;
-    IV0MODE_ENUM          cur_sel_mode;
-    IV0MODE_ENUM          prev_sel_mode;
-    IV0MODE_ENUM          storage_mode_ctrl;
-    IVPMGR0STATE_ENUM     iv_pwr_state;
-	INVENT_CONTROL_STATE  curr_state;
-    INVENT_CONTROL_STATE  prev_state;
-    IV_DATA               iv_data;
-    DP_SENS_STATUS        dp_senor_status;
-    STORAGE_TIMER_CONFIG  storage_timer_config;
-    TickType_t            storage_tmr_val_ticks[STORAGE_TIMER_MAX_CONFIG];
-    uint8_t               dp_exceed_count;
-    IV0PWRSRC_ENUM        selected_power_source;  
+    bool per_tmr_exp;
+    bool storage_tmr_exp;
+    bool wait_tmr_exp;
+    bool change_dev;
+    bool data_received;
+    int32_t ionizer_status;
+    int32_t dp_comp_thr_val;
+    int32_t dp_resol_factor;
+    int32_t dp_resolution;
+    int32_t dp_neg_acceptable_lim;
+    int32_t dp_pos_acceptable_lim;
+    int32_t dp_range_min;
+    int32_t dp_range_max;
+    int32_t dp_max_roc;
+    int32_t prev_avg_iaq_value;
+    int32_t prev_avg_dp_value;
+    int32_t prev_avg_hum_value;
+    int32_t curr_avg_iaq_value;
+    int32_t curr_avg_dp_value;
+    int32_t curr_avg_hum_value;
+    int32_t accum_iaq_value;
+    int32_t accum_dp_value;
+    int32_t accum_hum_value;
+    int32_t roc_max_val;
+    int32_t* ptr_curr_data;
+    int32_t* ptr_prev_data;
+    int32_t rpm_step_table_iaq[RPM_STEP_MAX_LEVEL];
+    int32_t rpm_step_table_dp[RPM_STEP_MAX_LEVEL];
+    uint8_t step_table_index_iaq;
+    uint8_t step_table_index_dp;
+    uint16_t set_rpm[MAX_NUM_DEVICE];
+    uint16_t prev_set_rpm[MAX_NUM_DEVICE];
+    int32_t iaq_data_count;
+    int32_t dp_data_count;
+    int32_t humidity_data_count;
+    uint32_t constant_rpm_motor;
+    uint32_t dev_tacho[MAX_NUM_DEVICE];
+    uint8_t rated_speed_percent[MAX_NUM_DEVICE];
+    uint32_t min_counter;
+    uint32_t invent_error_status;
+    uint32_t invent_prev_err_status;
+    uint32_t fan_mtr_dev_curr_stat;
+    uint32_t fan_mtr_dev_prev_stat;
+    invent_device_id_t prim_dev_id;
+    invent_device_id_t sec_dev_id;
+    DEV_COMP_CONFIG dev_comp_config[MAX_NUM_DEVICE];
+    BME6X_ACCURACY sens_acc;
+    IV0PRST_ENUM curr_pr_stat;
+    IV0AQST_ENUM curr_iaq_stat;
+    IV0PRST_ENUM prev_pr_stat;
+    IV0AQST_ENUM prev_iaq_stat;
+    IV0MODE_ENUM cur_sel_mode;
+    IV0MODE_ENUM prev_sel_mode;
+    IV0MODE_ENUM storage_mode_ctrl;
+    IVPMGR0STATE_ENUM iv_pwr_state;
+	INVENT_CONTROL_STATE curr_state;
+    INVENT_CONTROL_STATE prev_state;
+    IV_DATA iv_data;
+    STORAGE_TIMER_CONFIG storage_timer_config;
+    TickType_t storage_tmr_val_ticks[STORAGE_TIMER_MAX_CONFIG];
+    uint8_t dp_exceed_count;
+    IV0PWRSRC_ENUM selected_power_source;
 } INVENTILATE_CONTROL_ALGO;
 
 typedef struct __nvs_config_conn_fan_mtr
 {
-   DATA_ID              data_id;
-   HAL_NVS_DATA_TYPE    data_type;
-   uint32_t             data_size;
-   uint32_t             min_val;
-   uint32_t             max_val;
-   uint32_t             default_val;
-   uint32_t             ddm;
-   void*                data_ptr;
-   char*                nvs_key;
+   DATA_ID data_id;
+   HAL_NVS_DATA_TYPE data_type;
+   uint32_t data_size;
+   uint32_t min_val;
+   uint32_t max_val;
+   uint32_t default_val;
+   uint32_t ddm;
+   void *data_ptr;
+   char *nvs_key;
 } nvs_config_conn_fan_mtr;
 
-extern INVENTILATE_CONTROL_ALGO  iv_ctrl_algo;
-extern INVENTILATE_CONTROL_ALGO* ptr_ctrl_algo;
-extern EXT_RAM_ATTR IV0_SETTINGS   ivsett_config;
+extern INVENTILATE_CONTROL_ALGO iv_ctrl_algo;
+extern INVENTILATE_CONTROL_ALGO *ptr_ctrl_algo;
+extern EXT_RAM_ATTR IV0_SETTINGS ivsett_config;
 extern EXT_RAM_ATTR FILTER_INFO filter_data;
 extern int32_t bme68x_humid_value;
 extern int32_t bm_humid_prev;
 extern int32_t bm_humid_curr;
 
-
-void init_iv_control_algo(INVENTILATE_CONTROL_ALGO* iv_algo);
-
+void init_iv_control_algo(INVENTILATE_CONTROL_ALGO *iv_algo);
 void parse_received_data(void);
-
 void initialize_fan_motor(void);
-
 error_code fan2_control_logic(int32_t recv_diff_press_val);
-
 void read_data_from_nvs(void);
-
 uint32_t calc_duty_cycle(uint32_t min_rpm, uint32_t max_rpm, uint32_t duty_min, uint32_t duty_max, uint32_t calc_rpm);
-
 void set_fan_motor_rpm(invent_device_id_t dev_id, uint32_t rpm);
-
 void set_iv_rpm_step_level(RPM_STEP_LEVEL step_level, uint32_t rpm);
-
 void update_and_send_val_to_broker(uint32_t ddm_parameter, int32_t value);
-
 void update_data_in_nvm(DATA_ID data_id, uint32_t data);
-
-void process_standby_request(INVENTILATE_CONTROL_ALGO* ptr_iv);
-
-void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO* ptr_iv);
-
-void update_dev_rpm(INVENTILATE_CONTROL_ALGO* ptr_iv, IV0MODE_ENUM mode);
-
-void reset_accumulated_data(INVENTILATE_CONTROL_ALGO* ptr_iv);
-
-void update_dp_comp_threshold_val(INVENTILATE_CONTROL_ALGO* ptr_iv);
-
+void process_standby_request(INVENTILATE_CONTROL_ALGO *ptr_iv);
+void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO *ptr_iv);
+void update_dev_rpm(INVENTILATE_CONTROL_ALGO *ptr_iv, IV0MODE_ENUM mode);
+void reset_accumulated_data(INVENTILATE_CONTROL_ALGO *ptr_iv);
+void update_dp_comp_threshold_val(INVENTILATE_CONTROL_ALGO *ptr_iv);
 void reset_dev_config(void);
-
-INVENT_CONTROL_STATE aq_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv);
-
-INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO* ptr_iv);
-
-IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO* ptr_iv);
-
-IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO* ptr_iv);
+INVENT_CONTROL_STATE aq_control_routine(INVENTILATE_CONTROL_ALGO *ptr_iv);
+INVENT_CONTROL_STATE press_control_routine(INVENTILATE_CONTROL_ALGO *ptr_iv);
+IV0PRST_ENUM find_press_comp_state(INVENTILATE_CONTROL_ALGO *ptr_iv);
+IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO *ptr_iv);
+void calc_mode_min_max_rpm(void);;
 
 extern void start_wait_tmr(uint32_t period_ms);
-
 extern void stop_wait_tmr(void);
-
 extern void start_periodic_timer(void);
-
 extern void stop_periodic_timer(void);
-
 extern void change_state(INVENT_CONTROL_STATE iv_ctrl_state);
-
 extern void update_iaq_status_to_broker(const IV0AQST_ENUM iaq_status);
-
 extern void update_dp_status_to_broker(const IV0PRST_ENUM press_status);
-
 extern void update_set_rpm_to_broker(const invent_device_id_t dev_id, const uint32_t rpm);
-
 extern void push_data_in_queue(int32_t data, DATA_ID data_id);
-
-void calc_mode_min_max_rpm(void);;
 
 #endif /* APP_FAN_MOTOR_CONTROL */
 
 #endif /* APP_FAN_MOTOR_CONTROL_H_ */
-
-

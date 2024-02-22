@@ -33,7 +33,7 @@ typedef enum
 
 
 /* Macro Definitions */
-#define CONN_PWR_DEBUG_LOG      0
+#define CONN_PWR_DEBUG_LOG      1
 #define EN_POOR_SOURCE_CHECK    0
 
 #define INV_PWR_CTRL_TASK_QUE_LEN	    ((osal_base_type_t)10)

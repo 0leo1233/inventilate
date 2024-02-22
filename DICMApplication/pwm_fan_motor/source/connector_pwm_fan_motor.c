@@ -235,6 +235,7 @@ static int initialize_connector_fan_motor(void)
 
 	/* Initialize the RPM ranges of devices FAN Motor */
 	read_data_from_nvs();
+    ivsett_config.EN_DIS_SOLAR = true;
 #if CONN_PWM_DEBUG_LOG
     LOG(I, "[IV0Sett = %d ]", ivsett_config.byte );
     if (ivsett_config.EN_DIS_IONIZER == true)

@@ -1076,6 +1076,11 @@ static error_type initialize_pwr_control_module(void)
     {
         LOG(E, "bq25798_init failed = %d", res);
     }
+    else
+    {
+        LOG(I, "bq25798_init successful = %d", res);
+    }
+    ivsett_config.EN_DIS_SOLAR = true;
 
     return res;
 }

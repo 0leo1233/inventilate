@@ -72,6 +72,20 @@ typedef enum
 #define STATUS_BIT_SOLAR                0
 #define STATUS_BIT_IONIZER              1
 
+//! \~ flaot data convert to string
+#define ENABLE_FLAOT_TO_STRING
+#ifdef ENABLE_FLAOT_TO_STRING
+#include <string.h>
+static char print_float_data[20];
+static char *float_string_print_ptr = (char *)&print_float_data;
+#define FLAOT_TO_STRING(out, in)                                        \
+    do {                                                                \
+        memset(print_float_data, 0, sizeof(print_float_data));          \
+        snprintf(print_float_data, sizeof(print_float_data), "%f", in); \
+        out = print_float_data;                                         \
+    }while(0)
+#endif
+
 typedef enum _bat_sts_
 {
     INV_BATTERY_GOOD = 0,
@@ -504,6 +518,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
 #if CONN_PWR_DEBUG_LOG
     LOG(I,"Battery low cut off %d mV",((MINIMUM_SYSTEM_VOLTAGE_VALUE * 250 ) + 2500));
     LOG(I,"Battery low alert %f",BACKUP_BATTERY_LOW_THRESHOLD);
+#ifdef ENABLE_FLAOT_TO_STRING
+    FLAOT_TO_STRING(float_string_print_ptr, BACKUP_BATTERY_LOW_THRESHOLD);
+    LOG(I, "[String] Battery low alert %s", float_string_print_ptr);
+#endif
     LOG(I,"Battery Charge cut off %d mV",CHARGE_VOLTAGE_LIMIT_VALUE);
 #endif
     while (1)
@@ -549,6 +567,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
 #if CONN_PWR_DEBUG_LOG
                 iterm = (float)data_1 * 40.0f;
                 LOG(I, "ITERM %f mA", iterm);
+            #ifdef ENABLE_FLAOT_TO_STRING
+                FLAOT_TO_STRING(float_string_print_ptr, iterm);
+                LOG(I, "[String] ITERM %s mA", float_string_print_ptr);
+            #endif
 #endif
                 data_1 = 0;
 
@@ -561,6 +583,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
 #if CONN_PWR_DEBUG_LOG
                 ichg = (float)data_2 / 1000.0f;
                 LOG(W, "ICHG = %f Amp", ichg);
+            #ifdef ENABLE_FLAOT_TO_STRING
+                FLAOT_TO_STRING(float_string_print_ptr, ichg);
+                LOG(W, "[String] ICHG = %s Amp", float_string_print_ptr);
+            #endif
 #endif
                 data_2 = 0;
 
@@ -620,11 +646,19 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
 #if CONN_PWR_DEBUG_LOG
                 f_vsysmin = ( ( MINIMUM_SYS_VOLT_REG_BIT_STEP_SIZE_MV * min_sys_volt_limit.byte ) + MINIMUM_SYS_VOLT_REG_OFFSET_MV )  / 1000.0f;
                 LOG(I, "VSYSMIN = %f volt", f_vsysmin);
+            #ifdef ENABLE_FLAOT_TO_STRING
+                FLAOT_TO_STRING(float_string_print_ptr, f_vsysmin);
+                LOG(I, "[String] VSYSMIN = %s volt", float_string_print_ptr);
+            #endif
 #endif
                 result = bq25798_read_reg(CHARGE_VOLTAGE_LIMIT_REG01H, (uint8_t*)&ch_volt_lim_reg.byte2, 2u);
 #if CONN_PWR_DEBUG_LOG
                 f_ch_v_lim = (float)SWAP2(ch_volt_lim_reg.byte2);
                 LOG(I, "VREG = %f volt", ((f_ch_v_lim * 10.0f ) / 1000.0f));
+            #ifdef ENABLE_FLAOT_TO_STRING
+                FLAOT_TO_STRING(float_string_print_ptr, ((f_ch_v_lim * 10.0f ) / 1000.0f));
+                LOG(I, "[String] VREG = %s volt", float_string_print_ptr);
+            #endif
 #endif
                 data_2 = 0;
 
@@ -671,6 +705,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     vbat = (float)data_2 / 1000.0f;
 					battreg_currval.bat_volt = vbat * 100;
                     LOG(W, "VBAT = %f Volt", vbat);
+                #ifdef ENABLE_FLAOT_TO_STRING
+                    FLAOT_TO_STRING(float_string_print_ptr, vbat);
+                    LOG(W, "[String] VBAT = %s Volt",float_string_print_ptr);
+                #endif
 
                     data_2 = 0;
 
@@ -680,6 +718,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     data_2 = SWAP2(data_2);
                     vac1 = (float)data_2 / 1000.0f;
                     LOG(I, "VAC1 = %f Volt",vac1);
+                #ifdef ENABLE_FLAOT_TO_STRING
+                    FLAOT_TO_STRING(float_string_print_ptr, vac1);
+                    LOG(W, "[String] VAC1 = %s Volt",float_string_print_ptr);
+                #endif
 					battreg_currval.solar_volt =  vac1*100;
                     result = bq25798_read_reg(VAC2_ADC_REG39H, (uint8_t*)&data_2, 2u);
                     LOG(I, "VAC2_ADC_REG39H 0x%x", SWAP2(data_2));
@@ -688,6 +730,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     vac2 = (float)data_2 / 1000.0f;
 					battreg_currval.veh_batt_volt = vac2*100;
                     LOG(I, "VAC2 = %f Volt",vac2);
+                #ifdef ENABLE_FLAOT_TO_STRING
+                    FLAOT_TO_STRING(float_string_print_ptr, vac2);
+                    LOG(W, "[String] VAC2 = %s Volt",float_string_print_ptr);
+                #endif
 
                     data_2 = 0;
 
@@ -697,6 +743,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     data_2 = SWAP2(data_2);
                     vsys = (float)data_2 / 1000.0f;
                     LOG(I, "VSYS = %f Volt", vsys);
+                #ifdef ENABLE_FLAOT_TO_STRING
+                    FLAOT_TO_STRING(float_string_print_ptr, vsys);
+                    LOG(W, "[String] VSYS = %s Volt",float_string_print_ptr);
+                #endif
 
                     data_2 = 0;
 
@@ -708,6 +758,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     f_ibus = (float)i16_ibus / 1000.0f;
 
                     LOG(W, "IBUS = %f Amp",f_ibus);
+                #ifdef ENABLE_FLAOT_TO_STRING
+                    FLAOT_TO_STRING(float_string_print_ptr, f_ibus);
+                    LOG(W, "[String] IBUS = %s Amp",float_string_print_ptr);
+                #endif
 
                     data_2 = 0;
 
@@ -719,6 +773,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     f_ibat = (float)i16_ibat / 1000.0f;
 					battreg_currval.bat_curr = f_ibat*100;
                     LOG(W, "IBAT = %f Amp", f_ibat);
+                #ifdef ENABLE_FLAOT_TO_STRING
+                    FLAOT_TO_STRING(float_string_print_ptr, f_ibat);
+                    LOG(W, "[String] IBAT = %s Amp",float_string_print_ptr);
+                #endif
 
                     data_2 = 0;
 
@@ -733,6 +791,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     f_ts = (float)data_2 * TS_BIT_STEP_SIZE;
 
                     LOG(W, "TS = %f percent", f_ts);
+                #ifdef ENABLE_FLAOT_TO_STRING
+                    FLAOT_TO_STRING(float_string_print_ptr, f_ts);
+                    LOG(W, "[String] TS = %s percent",float_string_print_ptr);
+                #endif
 
                     data_2 = 0;
 
@@ -744,6 +806,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     f_tdie = (float)i16_tdie * TDIE_BIT_STEP_SIZE;
 
                     LOG(W, "TDIE = %f degC", f_tdie);
+                #ifdef ENABLE_FLAOT_TO_STRING
+                    FLAOT_TO_STRING(float_string_print_ptr, f_tdie);
+                    LOG(W, "[String] TDIE = %s degC",float_string_print_ptr);
+                #endif
                     result = bq25798_start_adc_conversion();
 
                     LOG(I, "result = %d", result);
@@ -1446,6 +1512,12 @@ static void update_active_power_source(void)
 
     LOG(W, "Charger flag status changed = 0x%x", chr_flag0_reg.byte);
     LOG(I, "UAPS_VAC1 = %f Volt  VAC2 = %f", vac1, vac2);
+#ifdef ENABLE_FLAOT_TO_STRING
+    FLAOT_TO_STRING(float_string_print_ptr, vac1);
+    LOG(W, "[String] UAPS_VAC1 = %s Volt",float_string_print_ptr);
+    FLAOT_TO_STRING(float_string_print_ptr, vac2);
+    LOG(W, "[String] VAC2 = %s Volt",float_string_print_ptr);
+#endif
 
     /* Read the STATUS REG1B to get the status of VAC1 and VAC2 */
     result = bq25798_read_reg(CHARGE_STATUS_0_REG1BH, &chr_status0_reg.byte, 1u);

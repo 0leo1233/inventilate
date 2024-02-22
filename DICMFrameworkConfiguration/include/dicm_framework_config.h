@@ -95,8 +95,8 @@ extern void battery_ic_interrupt_cb(int device, int port, int pin);
 #if defined(CONNECTOR_WIFI)
 #define WIFI_NETWORK_STA
 #define WIFI_NETWORK_AP
-#define BUILD_STATION_SSID            "Dometic_Guestzone"
-#define BUILD_STATION_PASSWORD        "Mobileliving"
+#define BUILD_STATION_SSID            "E-Labor"
+#define BUILD_STATION_PASSWORD        "rmsl8501"
 
 #endif
 

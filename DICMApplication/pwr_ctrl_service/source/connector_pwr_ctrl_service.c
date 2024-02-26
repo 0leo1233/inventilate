@@ -72,6 +72,9 @@ typedef enum
 #define STATUS_BIT_SOLAR                0
 #define STATUS_BIT_IONIZER              1
 
+//! \~ The ready time of BMS-IC which registers can be written after bq25798 init
+#define BMS_IC_READY_TIME    (500)
+
 typedef enum _bat_sts_
 {
     INV_BATTERY_GOOD = 0,
@@ -506,6 +509,9 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
     LOG(I,"Battery low alert %f",BACKUP_BATTERY_LOW_THRESHOLD);
     LOG(I,"Battery Charge cut off %d mV",CHARGE_VOLTAGE_LIMIT_VALUE);
 #endif
+
+    vTaskDelay(pdMS_TO_TICKS(BMS_IC_READY_TIME));
+
     while (1)
     {
        if (ivsett_config.EN_DIS_SOLAR == true)
@@ -1074,7 +1080,13 @@ static error_type initialize_pwr_control_module(void)
 
     if (RES_PASS != res)
     {
+        ivsett_config.EN_DIS_SOLAR = false;
         LOG(E, "bq25798_init failed = %d", res);
+    }
+    else
+    {
+        ivsett_config.EN_DIS_SOLAR = true;
+        LOG(I, "bq25798_init succeed = %d", res);
     }
 
     return res;
@@ -1164,7 +1176,7 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
         case INVENT_EN_DIS_SOLAR:
             LOG(I, "En/Disable Solar mode %d solar Mode = %d old_conf", pwr_ctrl_data_frame->data, (pwr_ctrl_data_frame->data ? 1 : 0));         //ToDo
             result = 0;
-            ivsett_config.EN_DIS_SOLAR = ((pwr_ctrl_data_frame->data & (1 << STATUS_BIT_SOLAR)) >> STATUS_BIT_SOLAR);
+            
             ivsett_config.EN_DIS_IONIZER = ((pwr_ctrl_data_frame->data & (1 << STATUS_BIT_IONIZER)) >> STATUS_BIT_IONIZER);
             update_data_in_nvm(IV_IVSETT, pwr_ctrl_data_frame->data);
             break;
@@ -1572,18 +1584,8 @@ void battery_ic_interrupt_cb(int device, int port, int pin)
             if (BQ25798_PART_NUMBER == bq25798_get_chip_id())
             {
                 /* Update the active power source detected at startup */
-                if (ivsett_config.EN_DIS_SOLAR == true)
-                {
-                    update_active_source_timer = 1;     /*update_active_power_source*/
-                }
-                else if (BQ25798_DEV_NUMBER == bq25798_get_chip_id())
-                {
-                    /*BQ25672 detected*/
-                    LOG(W, "[init_bq25798_IC]")
-                    /* Update the active power source detected at startup */
-                    update_active_source_timer = 1;     /*update_active_power_source*/
-                }
-
+                update_active_source_timer = 1;     /*update_active_power_source*/
+                
                 /* Change the state to init done */
                 batt_ch_intr_stat = BATT_CH_STATE_IC_INIT_DONE;
             }

@@ -120,6 +120,9 @@ interrupt generated at an interval of 4ms
 
 #define  USER_ERRACK_MAX        ((uint8_t)  5u)
 
+//! \~ Solar kit is on default
+#define SOLAR_KIT_DEFAULT_ON       (0x01)
+
 typedef enum _sel_blink_ack
 {
     BLINK_LED_BK_LIGHT  =   0,
@@ -242,7 +245,7 @@ static conn_onboardhmi_param_t conn_onboardhmi_param_db[] =
     { SDP0DP,           DDM2_TYPE_INT32_T,  0, 	    1, 	0,                                  handle_hmi_ctrl_sub_data },
     { IV0PRST,          DDM2_TYPE_INT32_T,  1,      0,  IV0PRST_PRESS_STATUS_UNKNOWN,       NULL },
     { IV0SETCHRGCRNT,   DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
-    { IV0SETT,          DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
+    { IV0SETT,          DDM2_TYPE_INT32_T,  1,      0,  SOLAR_KIT_DEFAULT_ON,               handle_hmi_ctrl_sub_data },
     { IV0STGT,          DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
     { SBMEB0AQR,        DDM2_TYPE_INT32_T,  0,      1,  0,                                  handle_hmi_ctrl_sub_data }
 };

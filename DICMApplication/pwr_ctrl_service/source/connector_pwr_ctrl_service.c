@@ -144,6 +144,9 @@ static float f_ibat = 0.0f;
 
 static inv_bat_status_flags BATTERY_STATUS;
 
+//! \~ Save the dim level
+static DIM_LEVEL_DUTY_CYCLE dim_level = DIM_LVL_DUTY_CYCLE_0;
+
 /* Structure for Connector fan motor */
 CONNECTOR connector_pwr_ctrl_service =
 {
@@ -160,7 +163,8 @@ static conn_pwr_ctrl_parameter_t conn_pwr_ctrl_param_db[] =
     { .ddm_parameter = IV0STORAGE,      .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = IV0STORAGE_DEACTIVATE,           .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = IV0SETCHRGCRNT,  .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = IV0SETT,         .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
-    { .ddm_parameter = IV0ERRST,        .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data }
+    { .ddm_parameter = IV0ERRST,        .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
+    { .ddm_parameter = DIM0LVL,         .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data }
 };
 
 /* Calculate the connector power control database table num elements */
@@ -799,7 +803,10 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                 {
                     update_and_send_value_to_broker(IV0MODE, IV0MODE_OFF);
                     update_and_send_value_to_broker(IV0PWRON, IV0PWRON_OFF);
-                    update_and_send_value_to_broker(DIM0LVL, 20);
+                    if (dim_level > DIM_LVL_DUTY_CYCLE_5)
+                    {
+                        update_and_send_value_to_broker(DIM0LVL, DIM_LVL_DUTY_CYCLE_5);
+                    } 
 #if CONN_PWR_DEBUG_LOG
                         LOG(I,"Battery Low! mode  changed  to stand-by");
 #endif
@@ -1227,6 +1234,11 @@ static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data)
         case IV0SETCHRGCRNT:
             pwr_ctrl_data_frame.data_id = INVENT_SET_CHARGING_CURRENT;
              break;
+
+        case DIM0LVL:
+            dim_level = (DIM_LEVEL_DUTY_CYCLE)data;
+            pwr_ctrl_data_frame.data_id = INVALID_DATA;
+            break;
 
         case IV0SETT:
             pwr_ctrl_data_frame.data_id = INVENT_EN_DIS_SOLAR;

@@ -731,7 +731,6 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
                 seg_stat[SEG_MODE_AUTO] = SEG_ON;
                 seg_stat[SEG_MODE_MENU_LINE] = SEG_ON;
                 seg_stat[SEG_STORAGE_MODE] = SEG_OFF;
-                seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = SEG_OFF;
 
                 for (seg = SEG_AIR_QUALITY_LEVEL_1_LOW; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++)
                 {

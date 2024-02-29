@@ -126,6 +126,14 @@ typedef enum _sel_blink_ack
     BLINK_POWER         =   1
 }SEL_TOUCH_ACK;
 
+typedef enum _BATTERY_LOW_STA
+{
+    BATTERY_ALL_NORMAL = 0,
+    BATTERY_NORMAL_TO_LOW = 1,
+    BATTERY_LOW_TO_NORMAL = 2,
+    BATTERY_ALL_LOW = 3,
+}BATTERY_LOW_STA;
+
 static xQueueHandle timer_queue;
 
 static uint8_t user_errack = 0;
@@ -134,6 +142,7 @@ static int32_t  inv_ble_status = 0;
 static int32_t  inv_iaq_status = 0;
 int32_t  inv_acqrc_level = 0;
 uint8_t ble_dp_con_sts = 0;
+static BATTERY_LOW_STA battery_sta = BATTERY_ALL_NORMAL;
 
 /** Static Function declarations ********************************************/
 static void inventory_handler_cb(void *arg, uint32_t device_class_instance, bool is_available);
@@ -913,8 +922,31 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
 
                     if (ptr_hmi_ctrl_sm->invent_error_status != ptr_hmi_ctrl_sm->invent_prev_err_status)
                     {
+                        if ((battery_sta != BATTERY_NORMAL_TO_LOW) 
+                        && (!(ptr_hmi_ctrl_sm->invent_prev_err_status & (1 << BACKUP_BATTERY_LOW))) && (ptr_hmi_ctrl_sm->invent_error_status & (1 << BACKUP_BATTERY_LOW)))
+                        {
+                            battery_sta = BATTERY_NORMAL_TO_LOW;
+                        }
+                        else if ((battery_sta != BATTERY_LOW_TO_NORMAL) 
+                        && (ptr_hmi_ctrl_sm->invent_prev_err_status & (1 << BACKUP_BATTERY_LOW)) && (!(ptr_hmi_ctrl_sm->invent_error_status & (1 << BACKUP_BATTERY_LOW))))
+                        {
+                            battery_sta = BATTERY_LOW_TO_NORMAL;
+                        }
+                        else if ((battery_sta != BATTERY_ALL_NORMAL) 
+                        && (!(ptr_hmi_ctrl_sm->invent_prev_err_status & (1 << BACKUP_BATTERY_LOW))) && (!(ptr_hmi_ctrl_sm->invent_error_status & (1 << BACKUP_BATTERY_LOW))))
+                        {
+                            battery_sta = BATTERY_ALL_NORMAL;
+                        }
+                        else if ((battery_sta != BATTERY_ALL_LOW) 
+                        && (ptr_hmi_ctrl_sm->invent_prev_err_status & (1 << BACKUP_BATTERY_LOW)) && (ptr_hmi_ctrl_sm->invent_error_status & (1 << BACKUP_BATTERY_LOW)))
+                        {
+                            battery_sta = BATTERY_ALL_LOW;
+                        }
                         ptr_hmi_ctrl_sm->invent_prev_err_status = ptr_hmi_ctrl_sm->invent_error_status;
-                        update_blink_info(ptr_hmi_ctrl_sm->invent_error_status, true);
+                        if (battery_sta != BATTERY_LOW_TO_NORMAL)
+                        {
+                            update_blink_info(ptr_hmi_ctrl_sm->invent_error_status, true);
+                        }
                         check_timer_stat = 1;
                     }
                     break;

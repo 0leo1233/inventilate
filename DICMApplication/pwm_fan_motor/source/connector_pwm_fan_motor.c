@@ -714,58 +714,50 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                 case INVENTILATE_STATE_PROCESS_PARAM:
                     {
-                        if (IV0MODE_AUTO != ptr_ctrl_algo->cur_sel_mode)
+                        if (ptr_ctrl_algo->prev_sel_mode != ptr_ctrl_algo->cur_sel_mode)
                         {
                             reset_dev_config();
                             LOG(I, "rst_dev curr_mode %d prev_mode %d ", ptr_ctrl_algo->cur_sel_mode, ptr_ctrl_algo->prev_sel_mode);
+                        }
 
+                        if ((IV0PRST_VALID_PRESS_LEVEL != ptr_ctrl_algo->curr_pr_stat) &&
+                            (IV0PRST_PRESS_STATUS_UNKNOWN != ptr_ctrl_algo->curr_pr_stat) &&
+                            (IV0MODE_AUTO == ptr_ctrl_algo->cur_sel_mode))
+                        {
+                            /* When the program control reached this point which means pressure exceeds the acceptable range
+                            The timer is start here for a defined period of time to validate the
+                            pressure compensation control, after this timer expires */
+
+                            /* Reset the timer flag before starting the timer */
+                            ptr_ctrl_algo->wait_tmr_exp = false;
+                            /* Set the DP compensation threshold */
+                            update_dp_comp_threshold_val(ptr_ctrl_algo);
+                            /* Start wait timer */
+                            start_wait_tmr(MIN_TO_MSEC(RV_PRESS_COMP_WAIT_TIME_MIN));
+                            /* Update state */
+                            ptr_ctrl_algo->curr_state = INVENTILATE_STATE_PRESS_CTRL;
+                        }
+                        else if ((IV0MODE_AUTO == ptr_ctrl_algo->cur_sel_mode) &&
+                                (((IV0AQST_AIR_QUALITY_GOOD != ptr_ctrl_algo->curr_iaq_stat) && (IV0AQST_AIR_QUALITY_UNKNOWN != ptr_ctrl_algo->curr_iaq_stat)) ||
+                                (iaq_value > IAQ_DEF_GOOD_MAX)))
+                        {
+                            /* Update state */
+                            iaq_run_state = 0;
+                            ptr_ctrl_algo->curr_state = INVENTILATE_STATE_AQ_CTRL;
                         }
                         else
                         {
-                            if ((IV0PRST_VALID_PRESS_LEVEL != ptr_ctrl_algo->curr_pr_stat) &&
-                                (IV0PRST_PRESS_STATUS_UNKNOWN != ptr_ctrl_algo->curr_pr_stat) &&
+                            LOG(I, "pp_els curr_mode %d prev_mode %d ",ptr_ctrl_algo->cur_sel_mode, ptr_ctrl_algo->prev_sel_mode);
+                            if ((IV0AQST_AIR_QUALITY_GOOD == ptr_ctrl_algo->curr_iaq_stat) &&
+                                (IV0PRST_VALID_PRESS_LEVEL == ptr_ctrl_algo->curr_pr_stat) &&
                                 (IV0MODE_AUTO == ptr_ctrl_algo->cur_sel_mode))
                             {
-                                /* When the program control reached this point which means pressure exceeds the acceptable range
-                                The timer is start here for a defined period of time to validate the
-                                pressure compensation control, after this timer expires */
-
                                 /* Reset the timer flag before starting the timer */
                                 ptr_ctrl_algo->wait_tmr_exp = false;
-                                /* Set the DP compensation threshold */
-                                update_dp_comp_threshold_val(ptr_ctrl_algo);
-                                /* Start wait timer */
-                                start_wait_tmr(MIN_TO_MSEC(RV_PRESS_COMP_WAIT_TIME_MIN));
-                                /* Update state */
-                                ptr_ctrl_algo->curr_state = INVENTILATE_STATE_PRESS_CTRL;
-                            }
-                            else if ((IV0MODE_AUTO == ptr_ctrl_algo->cur_sel_mode) &&
-                                    (((IV0AQST_AIR_QUALITY_GOOD != ptr_ctrl_algo->curr_iaq_stat) && (IV0AQST_AIR_QUALITY_UNKNOWN != ptr_ctrl_algo->curr_iaq_stat)) ||
-                                    (iaq_value > IAQ_DEF_GOOD_MAX)))
-                            {
-                                /* Update state */
-                                iaq_run_state = 0;
-                                ptr_ctrl_algo->curr_state = INVENTILATE_STATE_AQ_CTRL;
-                            }
-                            else if (ptr_ctrl_algo->cur_sel_mode != ptr_ctrl_algo->prev_sel_mode)
-                            {
-                                ///reset_dev_config();
-                                //LOG(I,"rst_dev curr_mode %d prev_mode %d ",ptr_ctrl_algo->cur_sel_mode, ptr_ctrl_algo->prev_sel_mode );
-                            }
-                            else
-                            {
-                                LOG(I, "pp_els curr_mode %d prev_mode %d ",ptr_ctrl_algo->cur_sel_mode, ptr_ctrl_algo->prev_sel_mode);
-                                if ((IV0AQST_AIR_QUALITY_GOOD == ptr_ctrl_algo->curr_iaq_stat) &&
-                                    (IV0PRST_VALID_PRESS_LEVEL == ptr_ctrl_algo->curr_pr_stat) &&
-                                    (IV0MODE_AUTO == ptr_ctrl_algo->cur_sel_mode))
-                                {
-                                    /* Reset the timer flag before starting the timer */
-                                    ptr_ctrl_algo->wait_tmr_exp = false;
-                                    /* Start timer to wait for 30 min */
-                                    start_wait_tmr(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN));
-                                    /* Set the state to be transfer */
-                                    ptr_ctrl_algo->curr_state = INVENTILATE_STATE_WAIT_FOR_IDLE_SETTLE;
-                                }
+                                /* Start timer to wait for 30 min */
+                                start_wait_tmr(MIN_TO_MSEC(RV_IDLE_COND_WAIT_TIME_MIN));
+                                /* Set the state to be transfer */
+                                ptr_ctrl_algo->curr_state = INVENTILATE_STATE_WAIT_FOR_IDLE_SETTLE;
                             }
                         }
                     }

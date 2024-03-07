@@ -91,7 +91,6 @@
 
 
 #define FAN_MOTOR_MAX_DUTY_CYCLE                 ((uint32_t)   100u)
-#define NVS_DB_SIZE                              ((uint32_t)    15u)
 #define PRESS_COMP_EXCEEDS_LIMIT_RPM             ((uint32_t)     0u)
 
 #define RELATIVE_HUMIDITY_ACCEPTABLE_MIN_VALUE   ((int32_t)      0)

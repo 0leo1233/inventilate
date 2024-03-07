@@ -13,6 +13,10 @@
 #include "osal.h"
 #include "app_fan_motor_ctrl.h"
 
+
+#define NVS_DB_SIZE(x)       (sizeof(x)/sizeof(x[0]))
+
+
 int32_t bme68x_humid_value;
 int32_t bm_humid_prev;                      /*used in storage mode algorithm to store previous humidity value*/
 int32_t bm_humid_curr;                      /*used in storage mode algorithm to store current humidity value*/
@@ -49,7 +53,7 @@ static percent_range_t percent_range[NUM_OPERATING_MODES] =
 INVENTILATE_CONTROL_ALGO iv_ctrl_algo;
 
 /* NVS Table for connecor fan motor */
-static nvs_config_conn_fan_mtr nvs_db[NVS_DB_SIZE] =
+static nvs_config_conn_fan_mtr nvs_db[] =
 {
     //   data_id               data_type               data_size       min_val             max_val            default_val           ddmp                                        data_ptr                                                            nvs_key
     {IV_FAN1_RPM_MIN,   HAL_NVS_DATA_TYPE_UINT32, sizeof(uint32_t), MOTOR_FAN_MIN_RPM,  MOTOR_FAN_MAX_RPM,  DEV_FAN1_MIN_RPM,   MTR0MINSPD | DDM2_PARAMETER_INSTANCE(0),    (void*)&fan_motor_control_db[DEV_FAN1_AIR_IN].whole_rpm_range.min_rpm,  "mn_rpm_f1" },
@@ -146,7 +150,7 @@ uint8_t get_nvsdb_index(DATA_ID data_id)
 {
     uint8_t index = 0;
 
-    for (index = 0u; index < NVS_DB_SIZE; index++)
+    for (index = 0u; index < NVS_DB_SIZE(nvs_db); index++)
     {
         if (data_id == nvs_db[index].data_id)
         {
@@ -168,7 +172,7 @@ void update_data_in_nvm(DATA_ID data_id, uint32_t data)
     uint8_t db_idx = get_nvsdb_index(data_id);
     hal_nvs_error nvs_err;
 
-    if ((NVS_DB_SIZE != db_idx))
+    if ((NVS_DB_SIZE(nvs_db) != db_idx))
     {
         /* Update the data in the pointer */
         *((uint32_t*)(nvs_db[db_idx].data_ptr)) = data;
@@ -952,7 +956,7 @@ void read_data_from_nvs(void)
     // If failed default value should be configured
 
     // Read from NVS
-    for (index = 0u; index < NVS_DB_SIZE; index++)
+    for (index = 0u; index < NVS_DB_SIZE(nvs_db); index++)
 	{
         nvs_err = hal_nvs_read(nvs_db[index].nvs_key, nvs_db[index].data_type, nvs_db[index].data_ptr, nvs_db[index].data_size);
 

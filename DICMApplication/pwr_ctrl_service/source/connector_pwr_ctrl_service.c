@@ -75,6 +75,9 @@ typedef enum
 //! \~ The ready time of BMS-IC which registers can be written after bq25798 init
 #define BMS_IC_READY_TIME    (500)
 
+//! \~ The max count for bq25798 to init
+#define BQ25798_INIT_MAX_CNT   (3)
+
 typedef enum _bat_sts_
 {
     INV_BATTERY_GOOD = 0,
@@ -1072,6 +1075,7 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 static error_type initialize_pwr_control_module(void)
 {
     error_type res = RES_FAIL;
+    uint8_t bms_init_cnt = BQ25798_INIT_MAX_CNT;
 
     drv_bus_conf bq25798_bus_conf;
 
@@ -1082,8 +1086,9 @@ static error_type initialize_pwr_control_module(void)
     bq25798_bus_conf.i2c.scl = I2C_MASTER0_SCL;
     bq25798_bus_conf.i2c.bitrate = I2C_MASTER0_FREQ;
 
-    res = bq25798_init(&bq25798_bus_conf);
-
+    do {
+        res = bq25798_init(&bq25798_bus_conf);
+    } while((RES_PASS != res) && (bms_init_cnt--));
     if (RES_PASS != res)
     {
         ivsett_config.EN_DIS_SOLAR = false;

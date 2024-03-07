@@ -82,10 +82,6 @@
 #define IAQ_CONFIG_MIN      ((uint32_t)     0u)
 #define IAQ_CONFIG_MAX      ((uint32_t)   500u)
 
-#define IV_IVSETT_MIN       ((uint32_t)     0u)
-#define IV_IVSETT_MAX       ((uint32_t)     0xFFFF)              //Actual value = 0xFFFFFFFF
-#define IV_IVSETT_DEFAULT   ((uint32_t)      0u)
-
 #define IV_FILTER_MIN_MIN   ((uint32_t)      0u)
 #define IV_FILTER_MIN_MAX   ((uint32_t)      0xFFFF)
 

@@ -165,7 +165,6 @@ static conn_pwr_ctrl_parameter_t conn_pwr_ctrl_param_db[] =
     { .ddm_parameter = IV0FILST,        .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = IV0FILST_FILTER_CHANGE_NOT_REQ,  .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = IV0STORAGE,      .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = IV0STORAGE_DEACTIVATE,           .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = IV0SETCHRGCRNT,  .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
-    { .ddm_parameter = IV0SETT,         .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = IV0ERRST,        .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = DIM0LVL,         .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data }
 };
@@ -1180,14 +1179,6 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
             LOG(I, "Charge ichg(%d)  set to %d mA", result, pwr_ctrl_data_frame->data);
             break;
 
-        case INVENT_EN_DIS_SOLAR:
-            LOG(I, "En/Disable Solar mode %d solar Mode = %d old_conf", pwr_ctrl_data_frame->data, (pwr_ctrl_data_frame->data ? 1 : 0));         //ToDo
-            result = 0;
-            
-            ivsett_config.EN_DIS_IONIZER = ((pwr_ctrl_data_frame->data & (1 << STATUS_BIT_IONIZER)) >> STATUS_BIT_IONIZER);
-            update_data_in_nvm(IV_IVSETT, pwr_ctrl_data_frame->data);
-            break;
-
         case INVENT_STORAGE_MODE_SEL:
             pwr_ctrl_sm.storage_mode_sel = pwr_ctrl_data_frame->data;
             break;
@@ -1250,10 +1241,6 @@ static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data)
         case DIM0LVL:
             dim_level = (DIM_LEVEL_DUTY_CYCLE)data;
             pwr_ctrl_data_frame.data_id = INVALID_DATA;
-            break;
-
-        case IV0SETT:
-            pwr_ctrl_data_frame.data_id = INVENT_EN_DIS_SOLAR;
             break;
 
         default:

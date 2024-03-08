@@ -79,6 +79,10 @@ typedef enum
 //! \~ The max count for bq25798 to init
 #define BQ25798_INIT_MAX_CNT   (3)
 
+//! \~ The time for detecting the communication error of I2C
+#define I2C_ERR_DETECT_30S  (30000)
+#define I2C_ERR_DETECT_TICKS pdMS_TO_TICKS(I2C_ERR_DETECT_30S)
+
 typedef enum _bat_sts_
 {
     INV_BATTERY_GOOD = 0,
@@ -494,6 +498,8 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
     float f_vsysmin = 0.0f;
     float f_ch_v_lim = 0.0f;
 #endif
+    uint8_t I2C_err = false;
+    TickType_t I2C_err_tick = 0;
 
     REG00_MINIMAL_SYS_VOLTAGE  min_sys_volt_limit;
     REG01_CHARGE_VOLTAGE_LIMIT ch_volt_lim_reg;
@@ -760,6 +766,34 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     result = bq25798_start_adc_conversion();
 
                     LOG(I, "result = %d", result);
+                }
+                
+                I2C_err = (result != RES_PASS) ? true : false;
+                if (I2C_err == true)
+                {
+                    if (!I2C_err_tick)
+                    {
+                        I2C_err_tick = xTaskGetTickCount();
+                    }
+
+                    if ((I2C_err_tick + I2C_ERR_DETECT_TICKS) < xTaskGetTickCount())
+                    {
+                    #if CONN_PWR_DEBUG_LOG
+                        LOG(I, "I2C communication error!");
+                    #endif
+                        if (dim_level > DIM_LVL_DUTY_CYCLE_0)
+                        {
+                            update_and_send_value_to_broker(DIM0LVL, DIM_LVL_DUTY_CYCLE_0);
+                        }
+                        update_and_send_value_to_broker(IV0PWRON, IV0PWRON_OFF);
+
+                        pwr_ctrl_error_code(PWR_COMM_ERROR_WITH_BAT_IC);
+                    }
+                }
+                else if ((I2C_err == false) && (I2C_err_tick))
+                {
+                    I2C_err_tick = 0;
+                    pwr_ctrl_error_code(PWR_NO_COMM_ERROR_WITH_BAT_IC);
                 }
 
 #if (EN_POOR_SOURCE_CHECK == 1)

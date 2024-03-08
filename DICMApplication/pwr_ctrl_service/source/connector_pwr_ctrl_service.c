@@ -29,6 +29,7 @@ typedef enum
     PWR_BAT_OVER_HEATING             = 7,
     PWR_BAT_COOL                     = 8,
     PWR_BAT_EXPIRED                  = 9,
+    PWR_NO_COMM_ERROR_WITH_BAT_IC    = 10,
 } PWR_CTRL_ERR_CODES;
 
 
@@ -1675,14 +1676,24 @@ static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error)
             LOG(I, "pwr_ctrl Err: BMS_COM_ERR");
 #endif
             break;
+        
+        case PWR_NO_COMM_ERROR_WITH_BAT_IC:
+            err_frame &= ~(1 << COMM_ERROR_WITH_BATTERY_IC);
+#if CONN_PWR_DEBUG_LOG
+            LOG(I, "pwr_ctrl Err: BMS_COM_ERR CLEAR");
+#endif
+            break;
+        
         case PWR_BAT_OVER_HEATING:
             err_frame |= (1 << BATTERY_OVER_HEATING);
             LOG(I, "pwr_ctrl Err: Bat Heating");
             break;
+
         case PWR_BAT_COOL:
             err_frame &= ~(1 << BATTERY_OVER_HEATING);
             LOG(I, "pwr_ctrl Err: Bat Cool");
             break;
+
         case PWR_BAT_EXPIRED:
             err_frame |= (1 << BATTERY_EXPIRED);
 #if CONN_PWR_DEBUG_LOG

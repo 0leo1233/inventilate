@@ -335,7 +335,7 @@ typedef union
     struct
     {
         uint8_t EN_DIS_SOLAR        : 1;
-        uint8_t EN_DIS_IONIZER      : 1;
+        uint8_t RESERVED_1          : 1;
         uint8_t RESERVED_2          : 1;
         uint8_t RESERVED_3          : 1;
         uint8_t RESERVED_4          : 1;

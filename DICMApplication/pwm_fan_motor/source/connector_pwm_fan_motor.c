@@ -30,6 +30,9 @@
 // Minimal time between sending zero tacho value from interrupt, when no new interrupts has been received
 #define TACHO_ERROR_MIN_INTERNAL_MS     (2000u)
 
+//! \~ The min time for error detection
+#define MIN_TIME_OF_ERR_DETECTION   (30 * 1000)
+
 /* Function pointer declaration */
 typedef void (*conn_mtr_param_changed_t)(uint32_t dev_id, int32_t i32Value);
 
@@ -86,6 +89,8 @@ static void stop_storage_timer(void);
 static void storage_cb_func(TimerHandle_t xTimer);
 static void storage_humid_chk_cb_func(TimerHandle_t xTimer);
 static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value);
+static bool is_left_time_of_peridic_tmr_hdle_lt_30s(void);
+static bool is_need_to_skip_cur_err_detection(invent_device_id_t dev_id);
 
 //! Quene handle definition
 osal_queue_handle_t iv_ctrl_que_handle;
@@ -536,6 +541,11 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                     for (invent_device_id_t dev_id = 0; dev_id < MAX_NUM_DEVICE; dev_id++)
                     {
+                        if (is_need_to_skip_cur_err_detection(dev_id))
+                        {
+                            continue;
+                        }
+
                         if (ptr_ctrl_algo->set_rpm[dev_id] != 0)
                         {
                             LOG(I, "[calculate tolerance value to check RPM mismatch error]");
@@ -1232,6 +1242,8 @@ void parse_received_data(void)
         case IV_MTR_SET_RPM:                                                        //Set MOTOR RPM
             /* set the requested RPM to the corresponding device */
             set_fan_motor_rpm((invent_device_id_t)(ptr_ctrl_algo->iv_data.data_id - IV_FAN1_SET_RPM), ptr_ctrl_algo->iv_data.data);
+            ptr_ctrl_algo->is_left_time_lt_30s[(invent_device_id_t)(ptr_ctrl_algo->iv_data.data_id - IV_FAN1_SET_RPM)] = \
+            (is_left_time_of_peridic_tmr_hdle_lt_30s()) ? true : false;
             break;
 
         case IV_ONE_SHOT_TMR_EXP:
@@ -1994,4 +2006,32 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
 
     return yield;
 }
+
+//! \~ To check the left time of peridic_tmr_hdle whether is less than 30s.
+static bool is_left_time_of_peridic_tmr_hdle_lt_30s(void)
+{
+    if ((xTimerIsTimerActive(peridic_tmr_hdle) == pdTRUE) 
+    && (xTimerGetExpiryTime(peridic_tmr_hdle) > xTaskGetTickCount()))
+    {
+        if ((xTimerGetExpiryTime(peridic_tmr_hdle) - xTaskGetTickCount()) < (pdMS_TO_TICKS(MIN_TIME_OF_ERR_DETECTION)))
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+//! \~ According to the left time of peridic_tmr_hdle, to check with whether is need to skip current error detcetion.
+static bool is_need_to_skip_cur_err_detection(invent_device_id_t dev_id)
+{
+    if (ptr_ctrl_algo->is_left_time_lt_30s[dev_id] == true)
+    {
+        ptr_ctrl_algo->is_left_time_lt_30s[dev_id] = false;
+        return true;
+    }
+
+    return false;
+}
+
 #endif /* CONNECTOR_PWM_FAN_MOTOR */

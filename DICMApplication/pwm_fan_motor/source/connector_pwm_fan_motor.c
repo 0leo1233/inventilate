@@ -31,7 +31,7 @@
 #define TACHO_ERROR_MIN_INTERNAL_MS     (2000u)
 
 //! \~ The min time for error detection
-#define MIN_TIME_OF_ERR_DETECTION   (30 * 1000)
+#define MIN_TIME_OF_ERR_DETECTION_MS   (30 * 1000)
 
 /* Function pointer declaration */
 typedef void (*conn_mtr_param_changed_t)(uint32_t dev_id, int32_t i32Value);
@@ -2013,7 +2013,7 @@ static bool is_left_time_of_peridic_tmr_hdle_lt_30s(void)
     if ((xTimerIsTimerActive(peridic_tmr_hdle) == pdTRUE) 
     && (xTimerGetExpiryTime(peridic_tmr_hdle) > xTaskGetTickCount()))
     {
-        if ((xTimerGetExpiryTime(peridic_tmr_hdle) - xTaskGetTickCount()) < (pdMS_TO_TICKS(MIN_TIME_OF_ERR_DETECTION)))
+        if ((xTimerGetExpiryTime(peridic_tmr_hdle) - xTaskGetTickCount()) < (pdMS_TO_TICKS(MIN_TIME_OF_ERR_DETECTION_MS)))
         {
             return true;
         }

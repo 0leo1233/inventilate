@@ -30,6 +30,9 @@
 // Minimal time between sending zero tacho value from interrupt, when no new interrupts has been received
 #define TACHO_ERROR_MIN_INTERNAL_MS     (2000u)
 
+// ! \~ The max count of fan mismatch
+#define FAN_MISMATCH_MAX_COUNT    (6)
+
 /* Function pointer declaration */
 typedef void (*conn_mtr_param_changed_t)(uint32_t dev_id, int32_t i32Value);
 
@@ -86,6 +89,8 @@ static void stop_storage_timer(void);
 static void storage_cb_func(TimerHandle_t xTimer);
 static void storage_humid_chk_cb_func(TimerHandle_t xTimer);
 static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value);
+static void set_fan_mismatch_cnt(invent_device_id_t dev_id);
+static bool is_exceed_max_count(invent_device_id_t dev_id);
 
 //! Quene handle definition
 osal_queue_handle_t iv_ctrl_que_handle;
@@ -549,7 +554,8 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                                 }
                             }
-                            else if ((ptr_ctrl_algo->dev_tacho[dev_id] < min_limit_rpm) || (ptr_ctrl_algo->dev_tacho[dev_id] > max_limit_rpm))
+                            else if (((ptr_ctrl_algo->dev_tacho[dev_id] < min_limit_rpm) || (ptr_ctrl_algo->dev_tacho[dev_id] > max_limit_rpm))
+                            && (is_exceed_max_count(dev_id)))
                             {
                                 // Error : Tacho reading is not matched with the expected RPM..
                                 switch (dev_id)
@@ -1187,6 +1193,7 @@ void parse_received_data(void)
             LOG(I, "Tacho read dev%d = %d", ptr_ctrl_algo->iv_data.data_id - IV_FAN1_TACHO, ptr_ctrl_algo->iv_data.data);
 #endif
             ptr_ctrl_algo->dev_tacho[ptr_ctrl_algo->iv_data.data_id - IV_FAN1_TACHO] = ptr_ctrl_algo->iv_data.data;
+            set_fan_mismatch_cnt(ptr_ctrl_algo->iv_data.data_id - IV_FAN1_TACHO);
             break;
 
         case IV_IAQ_GOOD_MIN:                                                       //Update IAQ Good mimimum level in NVS
@@ -1967,4 +1974,45 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
 
     return yield;
 }
+
+//! \~ To check with whether the tacho from dev[x] is fan mismatch
+static bool is_fan_mismatch(invent_device_id_t dev_id, uint32_t tacho)
+{
+    uint16_t rated_speed = 0;
+    uint32_t max_limit_rpm = 0;
+    uint32_t min_limit_rpm = 0;
+
+    rated_speed   = (uint16_t)((float)ptr_ctrl_algo->set_rpm[dev_id] * ( (float)ptr_ctrl_algo->rated_speed_percent[dev_id] / (float)100.0f ));
+    max_limit_rpm = ptr_ctrl_algo->set_rpm[dev_id] + rated_speed;
+    min_limit_rpm = ptr_ctrl_algo->set_rpm[dev_id] - rated_speed;
+
+    return ((tacho < min_limit_rpm) || (tacho > max_limit_rpm)) ? true : false;
+}
+
+//! \~ Set the count of fan mimatch while detecting error
+static void set_fan_mismatch_cnt(invent_device_id_t dev_id)
+{
+    if (is_fan_mismatch(dev_id, ptr_ctrl_algo->dev_tacho[dev_id]))
+    {
+        if (ptr_ctrl_algo->fan_mismatch_cnt[dev_id] < FAN_MISMATCH_MAX_COUNT)
+        {
+            ptr_ctrl_algo->fan_mismatch_cnt[dev_id]++;
+        }
+    }
+    else
+    {
+        ptr_ctrl_algo->fan_mismatch_cnt[dev_id] = 0;
+    }
+}
+
+static bool is_exceed_max_count(invent_device_id_t dev_id)
+{
+    if (ptr_ctrl_algo->fan_mismatch_cnt[dev_id] >= FAN_MISMATCH_MAX_COUNT)
+    {
+        ptr_ctrl_algo->fan_mismatch_cnt[dev_id] = 0;
+        return true;
+    }
+    return false;
+}
+
 #endif /* CONNECTOR_PWM_FAN_MOTOR */

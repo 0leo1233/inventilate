@@ -74,7 +74,7 @@ typedef enum
 #define STATUS_BIT_IONIZER              1
 
 //! \~ The ready time of BMS-IC which registers can be written after bq25798 init
-#define BMS_IC_READY_TIME    (500)
+#define BMS_IC_READY_TIME_MS    (500)
 
 //! \~ The max count for bq25798 to init
 #define BQ25798_INIT_MAX_CNT   (3)
@@ -523,7 +523,7 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
     LOG(I,"Battery Charge cut off %d mV",CHARGE_VOLTAGE_LIMIT_VALUE);
 #endif
 
-    vTaskDelay(pdMS_TO_TICKS(BMS_IC_READY_TIME));
+    vTaskDelay(pdMS_TO_TICKS(BMS_IC_READY_TIME_MS));
 
     while (1)
     {

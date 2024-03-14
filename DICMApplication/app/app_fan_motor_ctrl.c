@@ -339,6 +339,10 @@ void init_iv_control_algo(INVENTILATE_CONTROL_ALGO *ptr_iv)
     ptr_iv->rated_speed_percent[DEV_FAN2_AIR_OUT] = DEV_FAN2_RATED_SPEED_PERCENT;
     ptr_iv->rated_speed_percent[DEV_MOTOR] = DEV_MOTOR_RATED_SPEED_PERCENT;
 
+    ptr_iv->fan_mismatch_cnt[DEV_FAN1_AIR_IN]   = 0;
+    ptr_iv->fan_mismatch_cnt[DEV_FAN2_AIR_OUT]  = 0;
+    ptr_iv->fan_mismatch_cnt[DEV_MOTOR]         = 0;
+
     /* Calculate and update min, max RPM according the modes */
     calc_mode_min_max_rpm();
 }

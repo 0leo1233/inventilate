@@ -9,6 +9,7 @@
 #define NUM_SECONDS_PER_MINUTE                    ((uint32_t)   60u)
 #define NUM_MILL_SEC_PER_SECOND                   ((uint32_t) 1000u)
 #define MIN_TO_MSEC(x)                            (NUM_MILL_SEC_PER_SECOND * NUM_SECONDS_PER_MINUTE * x)
+#define SEC_TO_MSEC(x)                            (NUM_MILL_SEC_PER_SECOND * x)
 
 extern void onboard_hmi_interrupt_cb(int device, int port, int pin);
 extern void battery_ic_interrupt_cb(int device, int port, int pin);

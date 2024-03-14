@@ -253,7 +253,9 @@ typedef enum __onboard_hmi_seg_ctrl
     ENABLE_ALL_SEGEMENT = 0,
     DISABLE_ALL_SEGEMENT = 1,
     POWERED_OFF_STATE_SEG = 2,
-    POWERED_ON_STATE_SEG = 3
+    POWERED_ON_STATE_SEG = 3,
+    ENTER_I2C_COMM_ERR = 4,
+    EXIT_I2C_COMM_ERR = 5
 } ONBOARD_HMI_SEG_CTRL;
 
 /* Enums for LCD segn=ment status */

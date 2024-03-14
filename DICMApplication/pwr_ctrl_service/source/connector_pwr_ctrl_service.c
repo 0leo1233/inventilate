@@ -29,6 +29,7 @@ typedef enum
     PWR_BAT_OVER_HEATING             = 7,
     PWR_BAT_COOL                     = 8,
     PWR_BAT_EXPIRED                  = 9,
+    PWR_NO_COMM_ERROR_WITH_BAT_IC    = 10,
 } PWR_CTRL_ERR_CODES;
 
 
@@ -71,6 +72,16 @@ typedef enum
 
 #define STATUS_BIT_SOLAR                0
 #define STATUS_BIT_IONIZER              1
+
+//! \~ The ready time of BMS-IC which registers can be written after bq25798 init
+#define BMS_IC_READY_TIME_MS    (500)
+
+//! \~ The max count for bq25798 to init
+#define BQ25798_INIT_MAX_CNT   (3)
+
+//! \~ The time for detecting the communication error of I2C
+#define I2C_ERR_DETECT_30S  (30000)
+#define I2C_ERR_DETECT_TICKS pdMS_TO_TICKS(I2C_ERR_DETECT_30S)
 
 typedef enum _bat_sts_
 {
@@ -162,7 +173,6 @@ static conn_pwr_ctrl_parameter_t conn_pwr_ctrl_param_db[] =
     { .ddm_parameter = IV0FILST,        .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = IV0FILST_FILTER_CHANGE_NOT_REQ,  .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = IV0STORAGE,      .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = IV0STORAGE_DEACTIVATE,           .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = IV0SETCHRGCRNT,  .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
-    { .ddm_parameter = IV0SETT,         .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = IV0ERRST,        .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data },
     { .ddm_parameter = DIM0LVL,         .type = DDM2_TYPE_INT32_T, .pub = 0, .sub = 1, .i32Value = 0,                               .cb_func = handle_pwr_ctrl_sub_data }
 };
@@ -488,6 +498,8 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
     float f_vsysmin = 0.0f;
     float f_ch_v_lim = 0.0f;
 #endif
+    uint8_t I2C_err = false;
+    TickType_t I2C_err_tick = 0;
 
     REG00_MINIMAL_SYS_VOLTAGE  min_sys_volt_limit;
     REG01_CHARGE_VOLTAGE_LIMIT ch_volt_lim_reg;
@@ -510,6 +522,9 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
     LOG(I,"Battery low alert %f",BACKUP_BATTERY_LOW_THRESHOLD);
     LOG(I,"Battery Charge cut off %d mV",CHARGE_VOLTAGE_LIMIT_VALUE);
 #endif
+
+    vTaskDelay(pdMS_TO_TICKS(BMS_IC_READY_TIME_MS));
+
     while (1)
     {
        if (ivsett_config.EN_DIS_SOLAR == true)
@@ -751,6 +766,34 @@ static void conn_pwr_ctrl_bms_task_bq25798(void *pvParameter)
                     result = bq25798_start_adc_conversion();
 
                     LOG(I, "result = %d", result);
+                }
+                
+                I2C_err = (result != RES_PASS) ? true : false;
+                if (I2C_err == true)
+                {
+                    if (!I2C_err_tick)
+                    {
+                        I2C_err_tick = xTaskGetTickCount();
+                    }
+
+                    if ((I2C_err_tick + I2C_ERR_DETECT_TICKS) < xTaskGetTickCount())
+                    {
+                    #if CONN_PWR_DEBUG_LOG
+                        LOG(I, "I2C communication error!");
+                    #endif
+                        if (dim_level > DIM_LVL_DUTY_CYCLE_0)
+                        {
+                            update_and_send_value_to_broker(DIM0LVL, DIM_LVL_DUTY_CYCLE_0);
+                        }
+                        update_and_send_value_to_broker(IV0PWRON, IV0PWRON_OFF);
+
+                        pwr_ctrl_error_code(PWR_COMM_ERROR_WITH_BAT_IC);
+                    }
+                }
+                else if ((I2C_err == false) && (I2C_err_tick))
+                {
+                    I2C_err_tick = 0;
+                    pwr_ctrl_error_code(PWR_NO_COMM_ERROR_WITH_BAT_IC);
                 }
 
 #if (EN_POOR_SOURCE_CHECK == 1)
@@ -1067,6 +1110,7 @@ static uint8_t get_ddm_index_from_db(uint32_t ddm_param)
 static error_type initialize_pwr_control_module(void)
 {
     error_type res = RES_FAIL;
+    uint8_t bms_init_cnt = BQ25798_INIT_MAX_CNT;
 
     drv_bus_conf bq25798_bus_conf;
 
@@ -1077,11 +1121,18 @@ static error_type initialize_pwr_control_module(void)
     bq25798_bus_conf.i2c.scl = I2C_MASTER0_SCL;
     bq25798_bus_conf.i2c.bitrate = I2C_MASTER0_FREQ;
 
-    res = bq25798_init(&bq25798_bus_conf);
-
+    do {
+        res = bq25798_init(&bq25798_bus_conf);
+    } while((RES_PASS != res) && (bms_init_cnt--));
     if (RES_PASS != res)
     {
+        ivsett_config.EN_DIS_SOLAR = false;
         LOG(E, "bq25798_init failed = %d", res);
+    }
+    else
+    {
+        ivsett_config.EN_DIS_SOLAR = true;
+        LOG(I, "bq25798_init succeed = %d", res);
     }
 
     return res;
@@ -1168,14 +1219,6 @@ static void parse_pwr_ctrl_frame(PWR_CTRL_DATA* pwr_ctrl_data_frame)
             LOG(I, "Charge ichg(%d)  set to %d mA", result, pwr_ctrl_data_frame->data);
             break;
 
-        case INVENT_EN_DIS_SOLAR:
-            LOG(I, "En/Disable Solar mode %d solar Mode = %d old_conf", pwr_ctrl_data_frame->data, (pwr_ctrl_data_frame->data ? 1 : 0));         //ToDo
-            result = 0;
-            ivsett_config.EN_DIS_SOLAR = ((pwr_ctrl_data_frame->data & (1 << STATUS_BIT_SOLAR)) >> STATUS_BIT_SOLAR);
-            ivsett_config.EN_DIS_IONIZER = ((pwr_ctrl_data_frame->data & (1 << STATUS_BIT_IONIZER)) >> STATUS_BIT_IONIZER);
-            update_data_in_nvm(IV_IVSETT, pwr_ctrl_data_frame->data);
-            break;
-
         case INVENT_STORAGE_MODE_SEL:
             pwr_ctrl_sm.storage_mode_sel = pwr_ctrl_data_frame->data;
             break;
@@ -1238,10 +1281,6 @@ static void handle_pwr_ctrl_sub_data(uint32_t ddm_param, int32_t data)
         case DIM0LVL:
             dim_level = (DIM_LEVEL_DUTY_CYCLE)data;
             pwr_ctrl_data_frame.data_id = INVALID_DATA;
-            break;
-
-        case IV0SETT:
-            pwr_ctrl_data_frame.data_id = INVENT_EN_DIS_SOLAR;
             break;
 
         default:
@@ -1584,18 +1623,8 @@ void battery_ic_interrupt_cb(int device, int port, int pin)
             if (BQ25798_PART_NUMBER == bq25798_get_chip_id())
             {
                 /* Update the active power source detected at startup */
-                if (ivsett_config.EN_DIS_SOLAR == true)
-                {
-                    update_active_source_timer = 1;     /*update_active_power_source*/
-                }
-                else if (BQ25798_DEV_NUMBER == bq25798_get_chip_id())
-                {
-                    /*BQ25672 detected*/
-                    LOG(W, "[init_bq25798_IC]")
-                    /* Update the active power source detected at startup */
-                    update_active_source_timer = 1;     /*update_active_power_source*/
-                }
-
+                update_active_source_timer = 1;     /*update_active_power_source*/
+                
                 /* Change the state to init done */
                 batt_ch_intr_stat = BATT_CH_STATE_IC_INIT_DONE;
             }
@@ -1681,14 +1710,24 @@ static void pwr_ctrl_error_code(const PWR_CTRL_ERR_CODES error)
             LOG(I, "pwr_ctrl Err: BMS_COM_ERR");
 #endif
             break;
+        
+        case PWR_NO_COMM_ERROR_WITH_BAT_IC:
+            err_frame &= ~(1 << COMM_ERROR_WITH_BATTERY_IC);
+#if CONN_PWR_DEBUG_LOG
+            LOG(I, "pwr_ctrl Err: BMS_COM_ERR CLEAR");
+#endif
+            break;
+        
         case PWR_BAT_OVER_HEATING:
             err_frame |= (1 << BATTERY_OVER_HEATING);
             LOG(I, "pwr_ctrl Err: Bat Heating");
             break;
+
         case PWR_BAT_COOL:
             err_frame &= ~(1 << BATTERY_OVER_HEATING);
             LOG(I, "pwr_ctrl Err: Bat Cool");
             break;
+
         case PWR_BAT_EXPIRED:
             err_frame |= (1 << BATTERY_EXPIRED);
 #if CONN_PWR_DEBUG_LOG

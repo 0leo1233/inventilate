@@ -64,3 +64,6 @@ dependencies.lock
 **/__pycache__/
 
 /sdkconfig*
+
+#vscode file
+.vscode/

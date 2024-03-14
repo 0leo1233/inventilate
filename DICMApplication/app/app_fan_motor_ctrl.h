@@ -82,16 +82,11 @@
 #define IAQ_CONFIG_MIN      ((uint32_t)     0u)
 #define IAQ_CONFIG_MAX      ((uint32_t)   500u)
 
-#define IV_IVSETT_MIN       ((uint32_t)     0u)
-#define IV_IVSETT_MAX       ((uint32_t)     0xFFFF)              //Actual value = 0xFFFFFFFF
-#define IV_IVSETT_DEFAULT   ((uint32_t)      0u)
-
 #define IV_FILTER_MIN_MIN   ((uint32_t)      0u)
 #define IV_FILTER_MIN_MAX   ((uint32_t)      0xFFFF)
 
 
 #define FAN_MOTOR_MAX_DUTY_CYCLE                 ((uint32_t)   100u)
-#define NVS_DB_SIZE                              ((uint32_t)    15u)
 #define PRESS_COMP_EXCEEDS_LIMIT_RPM             ((uint32_t)     0u)
 
 #define RELATIVE_HUMIDITY_ACCEPTABLE_MIN_VALUE   ((int32_t)      0)
@@ -438,6 +433,8 @@ typedef struct __inventilate_control_algo
     uint8_t dp_exceed_count;
     IV0PWRSRC_ENUM selected_power_source;
     bool is_left_time_lt_30s[MAX_NUM_DEVICE];    //!< \~ The flag of peridic_tmr_hdle which left time is less than 30s
+    
+    uint8_t fan_mismatch_cnt[MAX_NUM_DEVICE];   //!< \~ The count of detecting fan mismatch continuely
 } INVENTILATE_CONTROL_ALGO;
 
 typedef struct __nvs_config_conn_fan_mtr

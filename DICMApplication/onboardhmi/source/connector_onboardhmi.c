@@ -120,6 +120,7 @@ interrupt generated at an interval of 4ms
 
 #define  USER_ERRACK_MAX        ((uint8_t)  5u)
 
+
 typedef enum _sel_blink_ack
 {
     BLINK_LED_BK_LIGHT  =   0,
@@ -175,6 +176,7 @@ static void start_obhmi_blink_timer(void);
 static void stop_obhmi_blink_timer(void);
 void update_blink_info(const uint32_t error_code, bool update);
 void error_check_ack(void);
+static void handle_comm_err_of_I2C(uint32_t prev_err_sta, uint32_t cur_err_sta);
 
 /* Handles for the tasks create by main(). */
 static osal_queue_handle_t obhmi_pwr_ctrl_que_hdl;
@@ -251,7 +253,6 @@ static conn_onboardhmi_param_t conn_onboardhmi_param_db[] =
     { SDP0DP,           DDM2_TYPE_INT32_T,  0, 	    1, 	0,                                  handle_hmi_ctrl_sub_data },
     { IV0PRST,          DDM2_TYPE_INT32_T,  1,      0,  IV0PRST_PRESS_STATUS_UNKNOWN,       NULL },
     { IV0SETCHRGCRNT,   DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
-    { IV0SETT,          DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
     { IV0STGT,          DDM2_TYPE_INT32_T,  1,      0,  0,                                  handle_hmi_ctrl_sub_data },
     { SBMEB0AQR,        DDM2_TYPE_INT32_T,  0,      1,  0,                                  handle_hmi_ctrl_sub_data }
 };
@@ -669,9 +670,6 @@ void update_blink_info(const uint32_t error_code, bool update)
                 case BACKUP_BATTERY_LOW:
                     //Process backup Battery low condition
                     //fallthrough
-                case COMM_ERROR_WITH_BATTERY_IC:
-                    //Handle Battery ic communication error
-                    //fallthrough
                 case BATTERY_OVER_HEATING:
                     //Handle Battery IC temperature status
                     //fallthrough
@@ -777,9 +775,6 @@ void update_blink_info(const uint32_t error_code, bool update)
                     //fallthrough
                 case BACKUP_BATTERY_LOW:
                     //Process backup Battery low condition
-                    //fallthrough
-                case COMM_ERROR_WITH_BATTERY_IC:
-                    //Handle Battery ic communication error
                     //fallthrough
                 case BATTERY_OVER_HEATING:
                     //Handle Battery IC temperature status
@@ -919,6 +914,21 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
 
                 case INV_ERROR_STATUS:
                     ptr_hmi_ctrl_sm->invent_error_status = ptr_hmi_ctrl_sm->data_frame.data;
+                    if ((ptr_hmi_ctrl_sm->invent_prev_err_status & (1 << COMM_ERROR_WITH_BATTERY_IC)) 
+                    != (ptr_hmi_ctrl_sm->invent_error_status & (1 << COMM_ERROR_WITH_BATTERY_IC)))
+                    {
+                        handle_comm_err_of_I2C((ptr_hmi_ctrl_sm->invent_prev_err_status & (1 << COMM_ERROR_WITH_BATTERY_IC)), \
+                        (ptr_hmi_ctrl_sm->invent_error_status & (1 << COMM_ERROR_WITH_BATTERY_IC)));
+
+                        if (ptr_hmi_ctrl_sm->invent_error_status & (1 << COMM_ERROR_WITH_BATTERY_IC))
+                        {
+                            ptr_hmi_ctrl_sm->invent_prev_err_status |= (1 << COMM_ERROR_WITH_BATTERY_IC);
+                        }
+                        else
+                        {
+                            ptr_hmi_ctrl_sm->invent_prev_err_status &= ~(1 << COMM_ERROR_WITH_BATTERY_IC);
+                        }
+                    }
 
                     if (ptr_hmi_ctrl_sm->invent_error_status != ptr_hmi_ctrl_sm->invent_prev_err_status)
                     {
@@ -1812,12 +1822,13 @@ static void handle_hmi_ctrl_sub_data(uint32_t ddm_param, int32_t data)
         LOG(I, "[ storage mode skip %d event]", ddm_param);
 #endif
     }
-    else if (((ptr_hmi_ctrl_sm->invent_error_status & (1 << BACKUP_BATTERY_LOW)) > 0) &&
-              ((ddm_param == IV0PWRON) || (ddm_param == IV0MODE) || (ddm_param == DIM0LVL)))
+    else if ((((ptr_hmi_ctrl_sm->invent_error_status & (1 << BACKUP_BATTERY_LOW)) > 0) 
+    || ((ptr_hmi_ctrl_sm->invent_error_status & (1 << COMM_ERROR_WITH_BATTERY_IC)) > 0)) 
+    && ((ddm_param == IV0PWRON) || (ddm_param == IV0MODE) || (ddm_param == DIM0LVL)))
     {
         /*skip for battery low*/
 #if CONN_ONBHMI_DEBUG_LOG
-         LOG(I, "[ Battery low skip %d event]", ddm_param);
+         LOG(I, "[ Battery low or communication error of I2C skip %d event]", ddm_param);
 #endif
     }
     else
@@ -2067,6 +2078,22 @@ static void update_hmi_btn_ctrl_variables(uint32_t ddmp, int32_t data)
                     }
                 }
             }
+        }
+    }
+}
+
+//! \~ The handle of I2C communication error
+static void handle_comm_err_of_I2C(uint32_t prev_err_sta, uint32_t cur_err_sta)
+{
+    if (cur_err_sta != prev_err_sta)
+    {
+        if ((!prev_err_sta) && (cur_err_sta))   //!< \~ error appears
+        {
+            onboard_hmi_update_segments(ENTER_I2C_COMM_ERR);
+        }
+        else if ((prev_err_sta) && (!cur_err_sta))  //!< \~ error disappears
+        {
+            onboard_hmi_update_segments(EXIT_I2C_COMM_ERR);
         }
     }
 }

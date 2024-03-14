@@ -183,7 +183,6 @@ static conn_fan_motor_parameter_t conn_fan_motor_param_db[] =
     {IVPMGR0STATE                         , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
     {IV0IONST                             , DDM2_TYPE_INT32_T, 	0, 	1, 	         IV0IONST_ON,        handle_invsub_data},
     {IV0ERRST                             , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
-    {IV0SETT                              , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
     {IV0STGT                       , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        NULL},
     {IV0PWRSRC                            , DDM2_TYPE_INT32_T, 	0, 	1, 	                   0,        handle_invsub_data},
 };
@@ -240,26 +239,6 @@ static int initialize_connector_fan_motor(void)
 
 	/* Initialize the RPM ranges of devices FAN Motor */
 	read_data_from_nvs();
-#if CONN_PWM_DEBUG_LOG
-    LOG(I, "[IV0Sett = %d ]", ivsett_config.byte );
-    if (ivsett_config.EN_DIS_IONIZER == true)
-    {
-        LOG(I, "Ionizer Enabled");
-    }
-    else
-    {
-        LOG(I, "Ionizer Disbled");
-    }
-
-    if (ivsett_config.EN_DIS_SOLAR == true)
-    {
-        LOG(I, "Solar Enabled");
-    }
-    else
-    {
-        LOG(I, "Solar Disbled");
-    }
-#endif
 
 	/* Initialize the fan and motor */
     initialize_fan_motor();
@@ -1253,9 +1232,6 @@ void parse_received_data(void)
             ptr_ctrl_algo->invent_error_status = ptr_ctrl_algo->iv_data.data;
             break;
 
-        case IV_IVSETT:
-            /*IV set config Enable/Disable Solar*/
-            break;
         case IV_POWER_SOURCE:
             /*Active power source*/
             LOG(I, "[Act_pwr_src %d ]", ptr_ctrl_algo->iv_data.data);
@@ -1581,9 +1557,6 @@ static void handle_invsub_data(uint32_t ddm_param, int32_t data)
             iv_data.data_id = IV_ERROR_STATUS;
             break;
 
-        case IV0SETT:
-            iv_data.data_id = IV_IVSETT;
-            break;
         case IV0PWRSRC:
             iv_data.data_id = IV_POWER_SOURCE;
             break;

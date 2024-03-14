@@ -185,6 +185,13 @@ uint8_t handle_onboard_hmi_button_event(uint16_t event_data, IVPMGR0STATE_ENUM i
 #endif
             index = ONBOARD_HMI_EVT_TABLE_SIZE;
         }
+        else if ((inv_err_codes & (1 << COMM_ERROR_WITH_BATTERY_IC)) > 0)
+        {
+        #ifdef EN_APP_ONBHMI_LOG
+            LOG(W, "Communication error of I2C");
+        #endif
+            index = ONBOARD_HMI_EVT_TABLE_SIZE;
+        }
         else if (hmi_standby_mode == 1)
         {
             /* When the inventilate is in STANDBY state, skip the processing of this MODE button events and long press events */
@@ -682,6 +689,8 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
 {
     ONBOARDHMI_SEGMENT seg;
 
+    static uint8_t i2c_comm_err_flag = false;
+
 	switch (hmi_ctrl_cmd)
 	{
 		case ENABLE_ALL_SEGEMENT:
@@ -700,25 +709,28 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
 
         case POWERED_OFF_STATE_SEG:
             {
-                for (seg = SEG_AIR_QUALITY_LEVEL_1_LOW; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++)
+                if (i2c_comm_err_flag == false)
                 {
-                    if ((seg != SEG_LIGHT_BUTTON) && (seg != SEG_POWER_BUTTON))
+                    for (seg = SEG_AIR_QUALITY_LEVEL_1_LOW; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++)
                     {
-                        uc1510c_set_segment(seg, SEG_OFF);
-                    }
-                    else
-                    {
-                        if (seg_stat[seg] != SEG_ON)
+                        if ((seg != SEG_LIGHT_BUTTON) && (seg != SEG_POWER_BUTTON))
                         {
-                            uc1510c_set_segment(seg, SEG_ON);
-                            seg_stat[seg] = SEG_ON;
+                            uc1510c_set_segment(seg, SEG_OFF);
+                        }
+                        else
+                        {
+                            if (seg_stat[seg] != SEG_ON)
+                            {
+                                uc1510c_set_segment(seg, SEG_ON);
+                                seg_stat[seg] = SEG_ON;
+                            }
                         }
                     }
-                }
 
-                seg_stat[SEG_MODE_AUTO] = SEG_OFF;
-                seg_stat[SEG_MODE_TURBO] = SEG_OFF;
-                seg_stat[SEG_MODE_SLEEP] = SEG_OFF;
+                    seg_stat[SEG_MODE_AUTO] = SEG_OFF;
+                    seg_stat[SEG_MODE_TURBO] = SEG_OFF;
+                    seg_stat[SEG_MODE_SLEEP] = SEG_OFF;
+                }
             }
 			break;
 
@@ -738,6 +750,47 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
                 }
             }
             break;
+
+        case ENTER_I2C_COMM_ERR:
+            {
+                i2c_comm_err_flag = true;
+
+                seg_stat[SEG_LIGHT_BUTTON] = SEG_OFF;
+                seg_stat[SEG_WARNING_STATUS] = SEG_ON;
+                seg_stat[SEG_POWER_BUTTON] = SEG_ON;
+                for (seg = SEG_AIR_QUALITY_LEVEL_1_LOW; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++)
+                {
+                    if ((seg != SEG_WARNING_STATUS) && (seg != SEG_POWER_BUTTON))
+                    {
+                        uc1510c_set_segment(seg, SEG_OFF);
+                    }
+                    else
+                    {
+                        uc1510c_set_segment(seg, seg_stat[seg]);
+                    }
+                }
+            }
+            break;
+
+        case EXIT_I2C_COMM_ERR:
+            {
+                i2c_comm_err_flag = false;
+
+                seg_stat[SEG_LIGHT_BUTTON] = SEG_ON;
+                seg_stat[SEG_WARNING_STATUS] = SEG_OFF;
+                seg_stat[SEG_POWER_BUTTON] = SEG_ON;
+                for (seg = SEG_AIR_QUALITY_LEVEL_1_LOW; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++)
+                {
+                    if ((seg != SEG_LIGHT_BUTTON) && (seg != SEG_POWER_BUTTON))
+                    {
+                        uc1510c_set_segment(seg, SEG_OFF);
+                    }
+                    else
+                    {
+                        uc1510c_set_segment(seg, seg_stat[seg]);
+                    }
+                }
+            }
 
         default:
             break;

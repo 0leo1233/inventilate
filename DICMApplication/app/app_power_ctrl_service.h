@@ -33,8 +33,7 @@ typedef enum __pwr_data_id
     INVENT_PWR_CTRL_STATE       = 5,
     INVENT_POWER_SOURCE_CHANGED = 6,
     INVENT_SET_CHARGING_CURRENT = 7,
-    INVENT_EN_DIS_SOLAR         = 8,
-    INVALID_DATA                = 9
+    INVALID_DATA                = 8
 }PWR_CTRL_DATA_ID;
 
 typedef struct __pwr_ctrl_data

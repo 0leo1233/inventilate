@@ -2004,12 +2004,14 @@ static bool is_left_time_of_peridic_tmr_hdle_lt_30s(void)
 //! \~ According to the left time of peridic_tmr_hdle, to check with whether is need to skip current error detcetion.
 static bool is_need_to_skip_cur_err_detection(invent_device_id_t dev_id)
 {
-    if (ptr_ctrl_algo->is_left_time_lt_30s[dev_id] == true)
+    if ((dev_id >= MAX_NUM_DEVICE) || (ptr_ctrl_algo->is_left_time_lt_30s[dev_id] != true))
     {
-        ptr_ctrl_algo->is_left_time_lt_30s[dev_id] = false;
-        return true;
+        return false;
     }
-    return false;
+
+    ptr_ctrl_algo->is_left_time_lt_30s[dev_id] = false;
+    
+    return true;
 }
 
 //! \~ To check with whether the tacho from dev[x] is fan mismatch

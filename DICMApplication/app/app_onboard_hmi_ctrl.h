@@ -328,7 +328,6 @@ typedef struct _onboard_hmi_button_event
 } ONBOARD_HMI_BUTTON_EVENT;
 
 extern uint8_t hmi_standby_mode;
-extern int32_t  inv_acqrc_level;
 extern uint8_t ble_dp_con_sts;
 extern LCDSEG_STATUS seg_stat[ONBOARD_HMI_MAX_SEGEMENT];
 extern ONBOARD_HMI_BUTTON_EVENT onboard_hmi_btn_evt[];

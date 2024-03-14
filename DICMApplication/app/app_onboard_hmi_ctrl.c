@@ -324,26 +324,23 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
                 }
                 else
                 {
-                    if (inv_acqrc_level > BME6X_LOW_ACCURACY)
+                    if (IV0AQST_AIR_QUALITY_GOOD == i32value)
                     {
-                        if (IV0AQST_AIR_QUALITY_GOOD == i32value)
-                        {
-                            seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = SEG_ON;
-                            seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID] = SEG_ON;
-                            seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_ON;
-                        }
-                        else if (IV0AQST_AIR_QUALITY_FAIR == i32value)
-                        {
-                            seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = SEG_ON;
-                            seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID] = SEG_ON;
-                            seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
-                        }
-                        else
-                        {
-                            seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = SEG_ON;
-                            seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID] = SEG_OFF;
-                            seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
-                        }
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = SEG_ON;
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID] = SEG_ON;
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_ON;
+                    }
+                    else if (IV0AQST_AIR_QUALITY_FAIR == i32value)
+                    {
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = SEG_ON;
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID] = SEG_ON;
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
+                    }
+                    else if (IV0AQST_AIR_QUALITY_BAD == i32value)
+                    {
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_1_LOW] = SEG_ON;
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_2_MID] = SEG_OFF;
+                        seg_stat[SEG_AIR_QUALITY_LEVEL_3_HIGH] = SEG_OFF;
                     }
                     else
                     {

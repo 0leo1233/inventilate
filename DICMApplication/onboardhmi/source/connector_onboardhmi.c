@@ -141,7 +141,7 @@ static uint8_t user_errack = 0;
 static int32_t  inv_wifi_status = 0;
 static int32_t  inv_ble_status = 0;
 static int32_t  inv_iaq_status = 0;
-int32_t  inv_acqrc_level = 0;
+static int32_t  inv_acqrc_level = 0;
 uint8_t ble_dp_con_sts = 0;
 static BATTERY_LOW_STA battery_sta = BATTERY_ALL_NORMAL;
 
@@ -1144,6 +1144,11 @@ static void conn_onboardhmi_ctrl_task(void *pvParameter)
                                     obhmi_set_segment(UPDATE_SEG_MODE, IV0MODE_AUTO);
                                     obhmi_set_segment(UPDATE_SEG_WIFI, inv_wifi_status);
                                     obhmi_set_segment(UPDATE_SEG_BLE, inv_ble_status);
+                                    if (inv_acqrc_level <= BME6X_LOW_ACCURACY)
+                                    {
+                                        inv_iaq_status = IV0AQST_AIR_QUALITY_UNKNOWN;
+                                        
+                                    }
                                     obhmi_set_segment(UPDATE_SEG_AQ, inv_iaq_status);
 
                                     update_and_send_value_to_broker(IV0MODE, IV0MODE_AUTO);
@@ -1737,7 +1742,7 @@ OBHMI_CTRL_DATA_ID convert_ddmp_to_data_id(int32_t data, uint32_t ddm_param)
         case SBMEB0AQR:
             //get_bm68x_accuracy_level
             inv_acqrc_level = data;
-            data_id = UPDATE_SEG_AQ;
+            data_id = INVALID_DATA_ID;
             break;
 
         case IV0FILST:

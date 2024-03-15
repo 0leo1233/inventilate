@@ -1907,10 +1907,7 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
         }
         if (mtr_tacho_cnt[capture_signal] >= TACHO_UPDATE_COUNT)
         {
-            if (mtr_tacho_cnt[capture_signal] > 0)
-            {
-                dev_rpm[capture_signal] /= mtr_tacho_cnt[capture_signal];
-            }
+            dev_rpm[capture_signal] /= mtr_tacho_cnt[capture_signal];
             
             // Send tacho event MTR0_NEW_TACHO_DATA_EVENT
             tacho_event.capture_signal = capture_signal;

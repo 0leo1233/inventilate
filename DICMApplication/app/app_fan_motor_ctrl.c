@@ -339,6 +339,10 @@ void init_iv_control_algo(INVENTILATE_CONTROL_ALGO *ptr_iv)
     ptr_iv->rated_speed_percent[DEV_FAN2_AIR_OUT] = DEV_FAN2_RATED_SPEED_PERCENT;
     ptr_iv->rated_speed_percent[DEV_MOTOR] = DEV_MOTOR_RATED_SPEED_PERCENT;
 
+    ptr_iv->is_left_time_lt_30s[DEV_FAN1_AIR_IN]    = false;	
+    ptr_iv->is_left_time_lt_30s[DEV_FAN2_AIR_OUT]   = false;
+    ptr_iv->is_left_time_lt_30s[DEV_MOTOR]          = false;
+    
     ptr_iv->fan_mismatch_cnt[DEV_FAN1_AIR_IN]   = 0;
     ptr_iv->fan_mismatch_cnt[DEV_FAN2_AIR_OUT]  = 0;
     ptr_iv->fan_mismatch_cnt[DEV_MOTOR]         = 0;

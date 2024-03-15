@@ -30,6 +30,8 @@
 // Minimal time between sending zero tacho value from interrupt, when no new interrupts has been received
 #define TACHO_ERROR_MIN_INTERNAL_MS     (2000u)
 
+//! \~ The min time for error detection
+#define MIN_TIME_OF_ERR_DETECTION_MS   (30 * 1000)
 // ! \~ The max count of fan mismatch
 #define FAN_MISMATCH_MAX_COUNT    (6)
 
@@ -89,6 +91,8 @@ static void stop_storage_timer(void);
 static void storage_cb_func(TimerHandle_t xTimer);
 static void storage_humid_chk_cb_func(TimerHandle_t xTimer);
 static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value);
+static bool is_left_time_of_peridic_tmr_hdle_lt_30s(void);
+static bool is_need_to_skip_cur_err_detection(invent_device_id_t dev_id);
 static void set_fan_mismatch_cnt(invent_device_id_t dev_id);
 static bool is_exceed_max_count(invent_device_id_t dev_id);
 
@@ -520,6 +524,11 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 
                     for (invent_device_id_t dev_id = 0; dev_id < MAX_NUM_DEVICE; dev_id++)
                     {
+                        if (is_need_to_skip_cur_err_detection(dev_id))
+                        {
+                            continue;
+                        }
+
                         if (ptr_ctrl_algo->set_rpm[dev_id] != 0)
                         {
                             LOG(I, "[calculate tolerance value to check RPM mismatch error]");
@@ -1218,6 +1227,8 @@ void parse_received_data(void)
         case IV_MTR_SET_RPM:                                                        //Set MOTOR RPM
             /* set the requested RPM to the corresponding device */
             set_fan_motor_rpm((invent_device_id_t)(ptr_ctrl_algo->iv_data.data_id - IV_FAN1_SET_RPM), ptr_ctrl_algo->iv_data.data);
+            ptr_ctrl_algo->is_left_time_lt_30s[(invent_device_id_t)(ptr_ctrl_algo->iv_data.data_id - IV_FAN1_SET_RPM)] = \
+            (is_left_time_of_peridic_tmr_hdle_lt_30s()) ? true : false;
             break;
 
         case IV_ONE_SHOT_TMR_EXP:
@@ -1973,6 +1984,34 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
     }
 
     return yield;
+}
+
+//! \~ To check the left time of peridic_tmr_hdle whether is less than 30s.
+static bool is_left_time_of_peridic_tmr_hdle_lt_30s(void)
+{
+    if ((xTimerIsTimerActive(peridic_tmr_hdle) == pdTRUE) 
+    && (xTimerGetExpiryTime(peridic_tmr_hdle) > xTaskGetTickCount()))
+    {
+        if ((xTimerGetExpiryTime(peridic_tmr_hdle) - xTaskGetTickCount()) < (pdMS_TO_TICKS(MIN_TIME_OF_ERR_DETECTION_MS)))
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+//! \~ According to the left time of peridic_tmr_hdle, to check with whether is need to skip current error detcetion.
+static bool is_need_to_skip_cur_err_detection(invent_device_id_t dev_id)
+{
+    if ((dev_id >= MAX_NUM_DEVICE) || (ptr_ctrl_algo->is_left_time_lt_30s[dev_id] != true))
+    {
+        return false;
+    }
+
+    ptr_ctrl_algo->is_left_time_lt_30s[dev_id] = false;
+    
+    return true;
 }
 
 //! \~ To check with whether the tacho from dev[x] is fan mismatch

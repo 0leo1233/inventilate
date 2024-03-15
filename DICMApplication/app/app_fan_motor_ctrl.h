@@ -432,6 +432,8 @@ typedef struct __inventilate_control_algo
     TickType_t storage_tmr_val_ticks[STORAGE_TIMER_MAX_CONFIG];
     uint8_t dp_exceed_count;
     IV0PWRSRC_ENUM selected_power_source;
+    bool is_left_time_lt_30s[MAX_NUM_DEVICE];    //!< \~ The flag of peridic_tmr_hdle which left time is less than 30s
+    
     uint8_t fan_mismatch_cnt[MAX_NUM_DEVICE];   //!< \~ The count of detecting fan mismatch continuely
 } INVENTILATE_CONTROL_ALGO;
 

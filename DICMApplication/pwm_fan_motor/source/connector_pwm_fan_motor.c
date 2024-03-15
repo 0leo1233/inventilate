@@ -35,6 +35,9 @@
 // ! \~ The max count of fan mismatch
 #define FAN_MISMATCH_MAX_COUNT    (6)
 
+//! \~ The times for updating tacho
+#define TACHO_UPDATE_COUNT  (10)
+
 /* Function pointer declaration */
 typedef void (*conn_mtr_param_changed_t)(uint32_t dev_id, int32_t i32Value);
 
@@ -119,7 +122,10 @@ static volatile uint8_t pulse_count_per_revol[MAX_NUM_DEVICE];
 static volatile uint32_t current_cap_value[MAX_NUM_DEVICE];
 static volatile uint32_t previous_cap_value[MAX_NUM_DEVICE];
 static volatile capture_info_t dev_capt[MAX_NUM_DEVICE];
-uint32_t dev_rpm[MAX_NUM_DEVICE];
+static uint32_t dev_rpm[MAX_NUM_DEVICE];
+
+//！\~ The variable to save the count of tacho
+static uint8_t mtr_tacho_cnt[MAX_NUM_DEVICE] = {0};
 
 // Inventory handler structures
 static EXT_RAM_ATTR inventory_handler_t l_ih;
@@ -1895,21 +1901,33 @@ static bool pwm_cap_isr_cb(uint8_t unit, uint8_t capture_signal, uint32_t value)
             {
                 // Find rpm from the pulse per second
                 dev_capt[capture_signal].dev_rpm  = (current_cap_value[capture_signal] * NUM_SECONDS_PER_MINUTE) / pulse_count_per_revol[capture_signal];
-                dev_rpm[capture_signal] = dev_capt[capture_signal].dev_rpm;
+                dev_rpm[capture_signal] += dev_capt[capture_signal].dev_rpm;
+                mtr_tacho_cnt[capture_signal]++;
             }
         }
-        // Send tacho event MTR0_NEW_TACHO_DATA_EVENT
-        tacho_event.capture_signal = capture_signal;
-        tacho_event.capture_info.dev_rpm = dev_capt[capture_signal].dev_rpm;
-        ddmp2_create_set(&frame_event_to_send, MTR0_NEW_TACHO_DATA_EVENT, (const void*)&tacho_event, sizeof(tacho_event), connector_pwm_fan_motor.connector_id);
-        if (pdFALSE == xRingbufferSendFromISR(connector_pwm_fan_motor.to_connector, &frame_event_to_send, ddmp2_full_frame_size(DDMP2_CONTROL_SET, sizeof(tacho_event)), &pxHigherPriorityTaskWoken))
+        if (mtr_tacho_cnt[capture_signal] >= TACHO_UPDATE_COUNT)
         {
-            /* Do Nothing */
-        }
-        // Check if we need to yield in caller function
-        if (pxHigherPriorityTaskWoken == pdTRUE)
-        {
-            yield = true;
+            if (mtr_tacho_cnt[capture_signal] > 0)
+            {
+                dev_rpm[capture_signal] /= mtr_tacho_cnt[capture_signal];
+            }
+            
+            // Send tacho event MTR0_NEW_TACHO_DATA_EVENT
+            tacho_event.capture_signal = capture_signal;
+            tacho_event.capture_info.dev_rpm = dev_rpm[capture_signal];
+            ddmp2_create_set(&frame_event_to_send, MTR0_NEW_TACHO_DATA_EVENT, (const void*)&tacho_event, sizeof(tacho_event), connector_pwm_fan_motor.connector_id);
+            if (pdFALSE == xRingbufferSendFromISR(connector_pwm_fan_motor.to_connector, &frame_event_to_send, ddmp2_full_frame_size(DDMP2_CONTROL_SET, sizeof(tacho_event)), &pxHigherPriorityTaskWoken))
+            {
+                /* Do Nothing */
+            }
+            // Check if we need to yield in caller function
+            if (pxHigherPriorityTaskWoken == pdTRUE)
+            {
+                yield = true;
+            }
+
+            mtr_tacho_cnt[capture_signal] = 0;
+            dev_rpm[capture_signal] = 0;
         }
         // Reset to handle case when no tacho has been received for a long time
         dev_capt[capture_signal].dev_rpm = 0;

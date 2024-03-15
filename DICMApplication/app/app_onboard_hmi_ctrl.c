@@ -519,18 +519,7 @@ void obhmi_set_segment(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
 
         case UPDATE_SEG_IONIZER:
             {
-#ifdef EN_IONIZER_FLAG
-                if (ivsett_config.EN_DIS_IONIZER == true)
-                {
-                seg_stat[SEG_IONIZER_STATUS] = ( IV0IONST_ON == (IV0IONST_ENUM)i32value ) ? SEG_ON : SEG_OFF;
-                }
-                else
-                {
-                    seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
-                }
-#else
                 seg_stat[SEG_IONIZER_STATUS] = (IV0IONST_ON == (IV0IONST_ENUM)i32value) ? SEG_ON : SEG_OFF;
-#endif
 #ifdef EN_APP_ONBHMI_LOG
                 LOG(I, "SEG_IONIZER_STATUS = %d", seg_stat[SEG_IONIZER_STATUS]);
 #endif
@@ -641,21 +630,7 @@ void obhmi_update_var(OBHMI_CTRL_DATA_ID data_id, int32_t i32value)
             break;
 
         case UPDATE_SEG_IONIZER:
-
-#ifdef EN_IONIZER_FLAG
-            if (ivsett_config.EN_DIS_IONIZER == true)
-            {
-                seg_stat[SEG_IONIZER_STATUS] = (IV0IONST_ON == (IV0IONST_ENUM)i32value) ? SEG_ON : SEG_OFF;
-            }
-            else
-            {
-                seg_stat[SEG_IONIZER_STATUS] = SEG_OFF;
-
-            }
-#else
             seg_stat[SEG_IONIZER_STATUS] = (IV0IONST_ON == (IV0IONST_ENUM)i32value) ? SEG_ON : SEG_OFF;
-
-#endif
             break;
 
         default:
@@ -743,6 +718,7 @@ void onboard_hmi_update_segments(ONBOARD_HMI_SEG_CTRL hmi_ctrl_cmd)
                 seg_stat[SEG_MODE_AUTO] = SEG_ON;
                 seg_stat[SEG_MODE_MENU_LINE] = SEG_ON;
                 seg_stat[SEG_STORAGE_MODE] = SEG_OFF;
+                seg_stat[SEG_IONIZER_STATUS] = SEG_ON;
 
                 for (seg = SEG_AIR_QUALITY_LEVEL_1_LOW; seg < ONBOARD_HMI_MAX_SEGEMENT; seg++)
                 {

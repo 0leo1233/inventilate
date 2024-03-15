@@ -698,23 +698,8 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                             reset_dev_config();
 #if (INVENT_HARWARE_VERSION >= HW_VERSION_4_1)
                             // Power ON Ionizer when the inventilate is powered ON by user
-#ifdef EN_IONIZER_FLAG
-
-                            if (ivsett_config.EN_DIS_IONIZER == true)
-                            {
-                                EN_IONIZER(1);
-                                ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_ON;
-                            }
-                            else
-                            {
-                                EN_IONIZER(0);
-                                ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_OFF;
-                            }
-#else
-                                EN_IONIZER(1);
-                                ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_ON;
-
-#endif  // EN_IONIZER_FLAG
+                            EN_IONIZER(1);
+                            ptr_ctrl_algo->ionizer_status    = (int32_t)IV0IONST_ON;
 #endif  // (INVENT_HARWARE_VERSION >= HW_VERSION_4_1)
 
                             TRUE_CHECK(connector_send_frame_to_broker(DDMP2_CONTROL_SET, IV0IONST, &ptr_ctrl_algo->ionizer_status, sizeof(int32_t),
@@ -887,23 +872,8 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                     {
 #if (INVENT_HARWARE_VERSION >= HW_VERSION_4_1)
                         // Power ON Ionizer
-#ifdef EN_IONIZER_FLAG
-
-                        if (ivsett_config.EN_DIS_IONIZER == true)
-                        {
-                            EN_IONIZER(1);
-                            ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_ON;
-                        }
-                        else
-                        {
-                            EN_IONIZER(0);
-                            ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_OFF;
-                        }
-#else
                         EN_IONIZER(1);
                         ptr_ctrl_algo->ionizer_status = (int32_t)IV0IONST_ON;
-
-#endif  // EN_IONIZER_FLAG
 #endif  // (INVENT_HARWARE_VERSION >= HW_VERSION_4_1)
 
 

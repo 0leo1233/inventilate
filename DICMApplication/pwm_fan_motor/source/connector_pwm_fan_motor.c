@@ -1093,13 +1093,14 @@ void parse_received_data(void)
             break;
 
         case IAQ_DATA:
-            ptr_ctrl_algo->iaq_data_count++;                                         /* Increment the data counter */
-            ptr_ctrl_algo->accum_iaq_value += ptr_ctrl_algo->iv_data.data;
+            ptr_ctrl_algo->curr_avg_iaq_value = ptr_ctrl_algo->iv_data.data;
+            ptr_ctrl_algo->iaq_data_count = 1;
+            ptr_ctrl_algo->per_tmr_exp = true;
             break;
 
         case IV_HUMIDITY_DATA:
-            ptr_ctrl_algo->humidity_data_count++;
-            ptr_ctrl_algo->curr_avg_hum_value += ptr_ctrl_algo->iv_data.data;
+            ptr_ctrl_algo->curr_avg_hum_value = ptr_ctrl_algo->iv_data.data;
+            ptr_ctrl_algo->humidity_data_count = 1;
             break;
 
         case IV_VOC_SENSOR_ACC:

@@ -373,17 +373,10 @@ void reset_accumulated_data(INVENTILATE_CONTROL_ALGO *ptr_iv)
   */
 void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO *ptr_iv)
 {
-    if (ptr_iv->iaq_data_count > 0)
-    {
-        /* Calculate the average value of IAQ */
-        ptr_iv->curr_avg_iaq_value = ptr_iv->accum_iaq_value / ptr_iv->iaq_data_count;
-        ptr_iv->accum_iaq_value = ptr_iv->curr_avg_iaq_value;
 #if INV_ALGO_DEBUG
-        LOG(I, "avg_iaq=%d cnt=%d", ptr_iv->curr_avg_iaq_value, ptr_iv->iaq_data_count);
+    LOG(I, "avg_iaq=%d", ptr_iv->curr_avg_iaq_value);
+    LOG(I, "avg_hum=%d", ptr_iv->humidity_data_count);
 #endif
-         /* Average value will be consider as 1 sample */
-        ptr_iv->iaq_data_count = 1;
-    }
 
     if (ptr_iv->dp_data_count > 0)
     {
@@ -394,17 +387,6 @@ void calc_avg_for_iaq_dp(INVENTILATE_CONTROL_ALGO *ptr_iv)
 #endif
         /* Average value will be consider as 1 sample */
         ptr_iv->dp_data_count = 1;
-    }
-
-    if (ptr_iv->humidity_data_count > 0)
-    {
-        /* Calculate the average value of relative humidity */
-        ptr_iv->curr_avg_hum_value = ptr_iv->curr_avg_hum_value / ptr_iv->humidity_data_count;
-#if INV_ALGO_DEBUG
-        LOG(I, "avg_hum=%d cnt=%d", ptr_iv->curr_avg_hum_value, ptr_iv->humidity_data_count);
-#endif
-         /* Average value will be consider as 1 sample */
-        ptr_iv->humidity_data_count = 1;
     }
 }
 

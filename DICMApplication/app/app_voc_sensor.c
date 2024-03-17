@@ -16,6 +16,7 @@
 #include "hal_i2c_master.h"
 #include "hal_cpu.h"
 #include <string.h>
+#include "app_api.h"
 
 #if (CONFIG_DICM_SUPPORT_INTEGRATED_BSEC_LIB_2_X == 1)
 
@@ -36,8 +37,42 @@
 #endif
 
 #define APP_VOC_DEBUG_LOG 0
-#define APP_VOC_LOG 0
 #define BSEC_FLASH_KEY (const char *)"bsec"
+
+//! \~ 1 min to calculate the iaq-average
+#define CACL_IAQ_1_MIN_TICKS    pdMS_TO_TICKS(MIN_TO_MSEC(1))
+
+//! \~ 30s to calculate the average iaq
+#define CACL_IAQ_30_SEC_TICKS   pdMS_TO_TICKS(SEC_TO_MSEC(30))
+
+typedef struct _CELL_DATA{
+	uint8_t data_cnt;
+	uint32_t data_avg;
+}CELL_DATA;
+
+//! \~ iaq and humidity average data
+typedef struct _IAQ_HUMIDITY_DATA{
+	CELL_DATA iaq;
+	CELL_DATA humidity;
+}IAQ_HUMIDITY_DATA;
+
+//! \~ iaq level structure
+typedef struct _IAQ_LEVEL{
+    uint8_t iaq_level;
+    uint32_t iaq_level_min;
+    uint32_t iaq_level_max;
+}IAQ_LEVEL;
+
+//! \~ The structure variable for the average value of iaq and humidity
+static IAQ_HUMIDITY_DATA bme68x_iaq_humidity_avg = {0};
+
+//! \~ The table of iaq level
+static IAQ_LEVEL iaq_level_table[] = 
+{
+    {IV0AQST_AIR_QUALITY_GOOD, IAQ_DEF_GOOD_MIN, IAQ_DEF_GOOD_MAX},
+    {IV0AQST_AIR_QUALITY_FAIR, IAQ_DEF_FAIR_MIN, IAQ_DEF_FAIR_MAX},
+    {IV0AQST_AIR_QUALITY_BAD,  IAQ_DEF_BAD_MIN,  IAQ_DEF_BAD_MAX},
+}; 
 
 /* Struct instance for read_service */
 read_voc_data_service inst_read_service;
@@ -164,22 +199,32 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
 #endif  // CONFIG_DICM_SUPPORT_INVENT_SERIAL_BME68X_BSEC_LOGS
 #endif  //APP_VOC_DEBUG_LOG
 
-        /*Send IAQ data to broker whenever data changes*/
-        if (inst_read_service.iaq_index != bsec_out->iaq.data)
+        if (bsec_out->iaq.accuracy > BME6X_LOW_ACCURACY)
         {
-            /* store the new IAQ index value */
-            inst_read_service.iaq_index = bsec_out->iaq.data;
             /* Publish the value to broker */
-			update_voc_sens_to_broker(bsec_out);
+            update_voc_sens_to_broker(bsec_out);
+            
+            /*Send accuracy  to broker when accuracy is updated*/
+            if (inst_read_service.aqrc_lvl != bsec_out->iaq.accuracy)
+            {
+                /* store the new Accuracy index value */
+                inst_read_service.aqrc_lvl = bsec_out->iaq.accuracy;
+            }  
         }
+        else
+        {   /*Send accuracy  to broker when accuracy is updated*/
+            if (inst_read_service.aqrc_lvl != bsec_out->iaq.accuracy)
+            {
+                /* store the new Accuracy index value */
+                inst_read_service.aqrc_lvl = bsec_out->iaq.accuracy;
 
-         /*Send accuracy  to broker when accuracy is updated*/
-        if (inst_read_service.aqrc_lvl != bsec_out->iaq.accuracy)
-        {
-            /* store the new Accuracy index value */
-            inst_read_service.aqrc_lvl = bsec_out->iaq.accuracy;
-            /* Publish the value to broker */
-			update_voc_sens_to_broker(bsec_out);
+                //! \~ Clear the iaq and humidity when accuracy less than 2
+                bsec_out->iaq.data = 0;
+                bsec_out->raw_humidity.data = 0;
+
+                /* Publish the value to broker */
+                update_voc_sens_to_broker(bsec_out);
+            }  
         }
     }
     else
@@ -193,19 +238,98 @@ static void bme68x_output_ready_cb(bme68x_bsec_output *bsec_out)
   * @param  Pointer to the struct type bme68x_bsec_output.
   * @retval void.
   */
-void update_voc_sens_to_broker(bme68x_bsec_output *bsec_out)
+static void update_voc_sens_to_broker(bme68x_bsec_output *bsec_out)
 {
+	static TickType_t prev_tick = 0;
+    static TickType_t cur_tick = 0;
+	static uint8_t cur_iaq_level = IV0AQST_AIR_QUALITY_GOOD;
+	static uint8_t prev_iaq_level = IV0AQST_AIR_QUALITY_GOOD;
+    uint8_t i = 0;
+
+    if ((bsec_out->iaq.data > IAQ_CONFIG_MAX) || (bsec_out->raw_humidity.data > INVENT_RELATIVE_HUMIDITY_MAX_VALUE))
+    {
+        return;
+    }
+
+    cur_tick = xTaskGetTickCount();
+    prev_tick = (prev_tick == 0) ? cur_tick : prev_tick;
+    if (cur_tick < prev_tick)
+    {
+        memset (&bme68x_iaq_humidity_avg, 0, sizeof(bme68x_iaq_humidity_avg));
+		prev_tick = 0;
+    }
+
+    if ((cur_tick - prev_tick) > CACL_IAQ_1_MIN_TICKS)
+    {
+        if (bme68x_iaq_humidity_avg.iaq.data_cnt > 0)
+        {
+            bme68x_iaq_humidity_avg.iaq.data_avg /= bme68x_iaq_humidity_avg.iaq.data_cnt;
+            update_and_publish_to_broker(SBMEB0IAQ, bme68x_iaq_humidity_avg.iaq.data_avg);
+        }
+
+        if (bme68x_iaq_humidity_avg.humidity.data_cnt > 0)
+        {   
+            bme68x_iaq_humidity_avg.humidity.data_avg /= bme68x_iaq_humidity_avg.humidity.data_cnt;
+            update_and_publish_to_broker(SBMEB0HUM, bme68x_iaq_humidity_avg.humidity.data_avg);
+        }
+
+    #if APP_VOC_DEBUG_LOG
+        LOG(I, "### Update iaq and humidity after 1 mim\n");
+        LOG(I, "### bme68x_iaq_humidity_avg.iaq.data_avg = %u\n", bme68x_iaq_humidity_avg.iaq.data_avg);
+        LOG(I, "### bme68x_iaq_humidity_avg.humidity.data_avg = %u\n", bme68x_iaq_humidity_avg.humidity.data_avg);
+    #endif // APP_VOC_DEBUG_LOG
+
+        memset (&bme68x_iaq_humidity_avg, 0, sizeof(bme68x_iaq_humidity_avg));
+        prev_tick = cur_tick;
+    }
+    else
+    {
+        for (i = 0; i < (uint8_t)(sizeof(iaq_level_table) / sizeof(IAQ_LEVEL)); i++)
+        {
+            if ((bsec_out->iaq.data >= iaq_level_table[i].iaq_level_min) && (bsec_out->iaq.data <= iaq_level_table[i].iaq_level_max))
+            {
+                cur_iaq_level = iaq_level_table[i].iaq_level;
+            }
+        }
+
+        if (cur_iaq_level != prev_iaq_level)
+        {
+            prev_iaq_level = cur_iaq_level;
+
+            if ((cur_tick - prev_tick) > CACL_IAQ_30_SEC_TICKS)
+            {
+                if (bme68x_iaq_humidity_avg.iaq.data_cnt > 0)
+                {
+                    bme68x_iaq_humidity_avg.iaq.data_avg /= bme68x_iaq_humidity_avg.iaq.data_cnt;
+                    update_and_publish_to_broker(SBMEB0IAQ, bme68x_iaq_humidity_avg.iaq.data_avg);
+                }
+
+                if (bme68x_iaq_humidity_avg.humidity.data_cnt > 0)
+                {
+                    bme68x_iaq_humidity_avg.humidity.data_avg /= bme68x_iaq_humidity_avg.humidity.data_cnt;
+                    update_and_publish_to_broker(SBMEB0HUM, bme68x_iaq_humidity_avg.humidity.data_avg);
+                }
+            }
+
+            memset (&bme68x_iaq_humidity_avg, 0, sizeof(bme68x_iaq_humidity_avg));
+            prev_tick = cur_tick;
+        }
+
+        bme68x_iaq_humidity_avg.iaq.data_avg += bsec_out->iaq.data;
+        bme68x_iaq_humidity_avg.iaq.data_cnt++;
+        bme68x_iaq_humidity_avg.humidity.data_avg += bsec_out->raw_humidity.data;
+        bme68x_iaq_humidity_avg.humidity.data_cnt++;
+    }
+
 	/* Update the newly calculated value of IAQ index in data base and publish to broker */
-	update_and_publish_to_broker(SBMEB0IAQ, bsec_out->iaq.data);
-	update_and_publish_to_broker(SBMEB0TEMP, bsec_out->raw_temperature.data);
-	update_and_publish_to_broker(SBMEB0PRS, bsec_out->raw_pressure.data);
-	update_and_publish_to_broker(SBMEB0HUM, bsec_out->raw_humidity.data);
-	update_and_publish_to_broker(SBMEB0GAS, bsec_out->raw_gas.data);
-	update_and_publish_to_broker(SBMEB0CO2, bsec_out->co2_equivalent.data);
-	update_and_publish_to_broker(SBMEB0VOC, bsec_out->breath_voc_eq.data);
-	update_and_publish_to_broker(SBMEB0SST, bsec_out->stabilization_status.data);
-	update_and_publish_to_broker(SBMEB0RIS, bsec_out->run_in_status.data);
-	update_and_publish_to_broker(SBMEB0AQR, bsec_out->iaq.accuracy);       // DDMP need to be update after changed in Master DDMP
+	update_and_publish_to_broker( SBMEB0TEMP, bsec_out->raw_temperature.data);
+	update_and_publish_to_broker(  SBMEB0PRS, bsec_out->raw_pressure.data);
+	update_and_publish_to_broker(  SBMEB0GAS, bsec_out->raw_gas.data);
+	update_and_publish_to_broker(  SBMEB0CO2, bsec_out->co2_equivalent.data);
+	update_and_publish_to_broker(  SBMEB0VOC, bsec_out->breath_voc_eq.data);
+	update_and_publish_to_broker(  SBMEB0SST, bsec_out->stabilization_status.data);
+	update_and_publish_to_broker(  SBMEB0RIS, bsec_out->run_in_status.data);
+	update_and_publish_to_broker(  SBMEB0AQR, bsec_out->iaq.accuracy);       // DDMP need to be update after changed in Master DDMP
 }
 
 /**

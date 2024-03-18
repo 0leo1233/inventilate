@@ -451,6 +451,11 @@ IV0AQST_ENUM find_air_quality_status(INVENTILATE_CONTROL_ALGO *ptr_iv)
     ptr_iv->ptr_prev_data = &ptr_iv->prev_avg_iaq_value;
     ptr_iv->roc_max_val = INVENT_IAQ_INDEX_MAX;
 
+    if ((*ptr_iv->ptr_prev_data == 0) && (*ptr_iv->ptr_curr_data < IAQ_DEF_GOOD_MAX))
+    {
+        *ptr_iv->ptr_prev_data = *ptr_iv->ptr_curr_data;
+    }
+
     if (((ptr_iv->iaq_data_count > 0) && (ptr_iv->sens_acc == BME6X_HIGH_ACCURACY)) || ((ptr_iv->iaq_data_count > 0) && (ptr_iv->sens_acc == BME6X_MEDIUM_ACCURACY)))
     {
         /* Find the Air Quality status from IAQ */

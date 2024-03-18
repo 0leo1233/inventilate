@@ -480,6 +480,7 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
 {
     uint32_t tacho_read = 0;
     int32_t iaq_value = 0;
+    bool is_tacho_read_device_inactive = false;
 
     while (1)
     {
@@ -561,12 +562,9 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                                         /*Motor No Tacho*/
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat |= (1 << MOTOR_NO_TACHO_DEVICE_ACTIVE);
                                         break;
-                                    case MAX_NUM_DEVICE:
-                                        break;
                                     default:
                                         /* invalid device*/
                                         break;
-
                                 }
                             }
                             else if (((ptr_ctrl_algo->dev_tacho[dev_id] < min_limit_rpm) || (ptr_ctrl_algo->dev_tacho[dev_id] > max_limit_rpm))
@@ -587,9 +585,8 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                                         /*Motor Mismatch*/
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat |= (1 << MOTOR_RPM_MISMATCH);
                                         break;
-                                    case MAX_NUM_DEVICE:
+                                    default:
                                         break;
-
                                 }
                             }
                             else
@@ -601,18 +598,20 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                                     case 0:
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~(1 << FAN1_RPM_MISMATCH);
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~(1 << FAN1_NO_TACHO_DEVICE_ACTIVE);
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~(1 << FAN1_TACHO_READ_DEVICE_INACTIVE);
                                         break;
                                     case 1:
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~(1 << FAN2_RPM_MISMATCH);
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~(1 << FAN2_NO_TACHO_DEVICE_ACTIVE);
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~(1 << FAN2_TACHO_READ_DEVICE_INACTIVE);
                                         break;
                                     case 2:
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~(1 << MOTOR_RPM_MISMATCH);
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~(1 << MOTOR_NO_TACHO_DEVICE_ACTIVE);
+                                        ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~(1 << MOTOR_TACHO_READ_DEVICE_INACTIVE);
                                         break;
-                                    case MAX_NUM_DEVICE:
+                                    default:
                                         break;
-
                                 }
                             }
                         }
@@ -635,9 +634,8 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat |= (1 << MOTOR_TACHO_READ_DEVICE_INACTIVE);
                                         LOG(W, "[MOTOR_INACT %d]", ptr_ctrl_algo->dev_tacho[dev_id]);
                                         break;
-                                    case MAX_NUM_DEVICE:
+                                    default:
                                         break;
-
                                 }
                             }
                             else
@@ -654,10 +652,29 @@ static void conn_fan_mtr_ctrl_task(void *pvParameter)
                                     case 2:
                                         ptr_ctrl_algo->fan_mtr_dev_curr_stat &= ~ (1 << MOTOR_TACHO_READ_DEVICE_INACTIVE);
                                         break;
-                                    case MAX_NUM_DEVICE:
+                                    default:
                                         break;
-
                                 }
+                            }
+
+                            switch (dev_id)
+                            {
+                                case DEV_FAN1_AIR_IN:
+                                    is_tacho_read_device_inactive = (ptr_ctrl_algo->fan_mtr_dev_curr_stat & (1 << FAN1_TACHO_READ_DEVICE_INACTIVE)) ? true : false;
+                                    break;
+                                case DEV_FAN2_AIR_OUT:
+                                    is_tacho_read_device_inactive = (ptr_ctrl_algo->fan_mtr_dev_curr_stat & (1 << FAN2_TACHO_READ_DEVICE_INACTIVE)) ? true : false;
+                                    break;
+                                case DEV_MOTOR:
+                                    is_tacho_read_device_inactive = (ptr_ctrl_algo->fan_mtr_dev_curr_stat & (1 << MOTOR_TACHO_READ_DEVICE_INACTIVE)) ? true : false;
+                                    break;
+                                default:
+                                    is_tacho_read_device_inactive = false;
+                                    break;
+                            }
+                            if (is_tacho_read_device_inactive)
+                            {   
+                                update_and_send_val_to_broker(MTR0TACHO | DDM2_PARAMETER_INSTANCE(dev_id), 0);
                             }
                         }
 

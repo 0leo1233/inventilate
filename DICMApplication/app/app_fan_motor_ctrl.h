@@ -390,9 +390,6 @@ typedef struct __inventilate_control_algo
     int32_t curr_avg_iaq_value;
     int32_t curr_avg_dp_value;
     int32_t curr_avg_hum_value;
-    int32_t accum_iaq_value;
-    int32_t accum_dp_value;
-    int32_t accum_hum_value;
     int32_t roc_max_val;
     int32_t* ptr_curr_data;
     int32_t* ptr_prev_data;
